@@ -949,6 +949,12 @@
             }
         }
         
+        // Update both cards AND map markers when filters change
+        function applyFiltersToAll() {
+            updateMapMarkers();
+            updateCardListFromMap();
+        }
+        
         // Wire up filter controls
         function initFilters() {
             // Category checkboxes
@@ -960,7 +966,7 @@
                     if (allCheckbox.checked) {
                         categoryCheckboxes.forEach(cb => cb.checked = false);
                     }
-                    updateCardListFromMap();
+                    applyFiltersToAll();
                 });
             }
             
@@ -974,27 +980,27 @@
                     if (!anySelected && allCheckbox) {
                         allCheckbox.checked = true;
                     }
-                    updateCardListFromMap();
+                    applyFiltersToAll();
                 });
             });
             
             // Rating radios
             document.querySelectorAll('input[name="min-rating"]').forEach(radio => {
-                radio.addEventListener('change', updateCardListFromMap);
+                radio.addEventListener('change', applyFiltersToAll);
             });
             
             // Reviews radios
             document.querySelectorAll('input[name="min-reviews"]').forEach(radio => {
-                radio.addEventListener('change', updateCardListFromMap);
+                radio.addEventListener('change', applyFiltersToAll);
             });
             
             // Photo checkbox
             const photoCheckbox = document.getElementById('filter-has-photo');
             if (photoCheckbox) {
-                photoCheckbox.addEventListener('change', updateCardListFromMap);
+                photoCheckbox.addEventListener('change', applyFiltersToAll);
             }
             
-            // Sort select
+            // Sort select (sort only affects cards, not map)
             const sortSelect = document.getElementById('sort-select');
             if (sortSelect) {
                 sortSelect.addEventListener('change', updateCardListFromMap);
@@ -1010,7 +1016,7 @@
                     document.querySelector('input[name="min-reviews"][value="0"]').checked = true;
                     if (photoCheckbox) photoCheckbox.checked = false;
                     if (sortSelect) sortSelect.value = 'rating';
-                    updateCardListFromMap();
+                    applyFiltersToAll();
                 });
             }
         }
@@ -1033,6 +1039,38 @@
             container.innerHTML = providerList.map(p => renderProviderCard(p)).join('');
         }
         
+        // Create a marker for a single provider
+        function createMarker(p) {
+            const rating = p.rating || 0;
+            const color = rating >= 4.5 ? '#10b981' : rating >= 4 ? '#3b82f6' : rating >= 3 ? '#f59e0b' : '#6b7280';
+            
+            const icon = L.divIcon({
+                html: `<div style="background:${color};border:2px solid white;border-radius:50%;width:14px;height:14px;box-shadow:0 2px 4px rgba(0,0,0,0.3);"></div>`,
+                className: '',
+                iconSize: [14, 14],
+                iconAnchor: [7, 7]
+            });
+            
+            const marker = L.marker([p.lat, p.lng], { icon });
+            const providerData = JSON.stringify(p).replace(/'/g, "\\'");
+            const reviewCount = p.reviewCount || 0;
+            const hasValidRating = reviewCount > 0 && rating > 0;
+            const ratingDisplay = hasValidRating 
+                ? `<span style="color:#f59e0b;">⭐ ${rating.toFixed(1)}</span> <span style="color:#6b7280;">(${reviewCount})</span>`
+                : `<span style="color:#6b7280;">New provider</span>`;
+            marker.bindPopup(`
+                <div style="text-align:center;min-width:150px;">
+                    <strong>${p.name}</strong><br>
+                    <span style="color:#6b7280;">📍 ${p.city}, ${p.state}</span><br>
+                    ${ratingDisplay}<br>
+                    <button onclick='openQuoteModal(${providerData})' style="margin-top:8px;padding:8px 16px;background:#2563eb;color:white;border:none;border-radius:6px;cursor:pointer;font-weight:600;">
+                        Get Quote
+                    </button>
+                </div>
+            `);
+            return marker;
+        }
+        
         // Load ALL providers onto the map
         function loadAllMarkersOnMap(providerList) {
             if (!markers) return;
@@ -1040,35 +1078,7 @@
             
             providerList.forEach(p => {
                 if (p.lat && p.lng) {
-                    const rating = p.rating || 0;
-                    const color = rating >= 4.5 ? '#10b981' : rating >= 4 ? '#3b82f6' : rating >= 3 ? '#f59e0b' : '#6b7280';
-                    
-                    const icon = L.divIcon({
-                        html: `<div style="background:${color};border:2px solid white;border-radius:50%;width:14px;height:14px;box-shadow:0 2px 4px rgba(0,0,0,0.3);"></div>`,
-                        className: '',
-                        iconSize: [14, 14],
-                        iconAnchor: [7, 7]
-                    });
-                    
-                    const marker = L.marker([p.lat, p.lng], { icon });
-                    // Don't reveal provider details - capture the lead instead
-                    const providerData = JSON.stringify(p).replace(/'/g, "\\'");
-                    const reviewCount = p.reviewCount || 0;
-                    const hasValidRating = reviewCount > 0 && rating > 0;
-                    const ratingDisplay = hasValidRating 
-                        ? `<span style="color:#f59e0b;">⭐ ${rating.toFixed(1)}</span> <span style="color:#6b7280;">(${reviewCount})</span>`
-                        : `<span style="color:#6b7280;">New provider</span>`;
-                    marker.bindPopup(`
-                        <div style="text-align:center;min-width:150px;">
-                            <strong>${p.name}</strong><br>
-                            <span style="color:#6b7280;">📍 ${p.city}, ${p.state}</span><br>
-                            ${ratingDisplay}<br>
-                            <button onclick='openQuoteModal(${providerData})' style="margin-top:8px;padding:8px 16px;background:#2563eb;color:white;border:none;border-radius:6px;cursor:pointer;font-weight:600;">
-                                Get Quote
-                            </button>
-                        </div>
-                    `);
-                    markers.addLayer(marker);
+                    markers.addLayer(createMarker(p));
                 }
             });
             
@@ -1077,6 +1087,28 @@
             
             // Check if we can navigate now
             checkAndNavigate();
+        }
+        
+        // Update map markers to match current filters
+        function updateMapMarkers() {
+            if (!markers || !allMapProviders.length) return;
+            
+            readFiltersFromDOM();
+            
+            // Clear existing markers
+            markers.clearLayers();
+            
+            // Apply filters to all providers
+            const filteredProviders = applyFilters(allMapProviders);
+            
+            // Add filtered markers back
+            filteredProviders.forEach(p => {
+                if (p.lat && p.lng) {
+                    markers.addLayer(createMarker(p));
+                }
+            });
+            
+            console.log('Map updated:', filteredProviders.length, 'markers shown');
         }
         
         // Get search location directly from URL (don't rely on app.js)
