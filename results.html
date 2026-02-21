@@ -775,31 +775,57 @@
             checkAndNavigate();
         }
         
+        // Get search location directly from URL (don't rely on app.js)
+        function getSearchLocation() {
+            const params = new URLSearchParams(window.location.search);
+            return params.get('location') || params.get('zip') || '';
+        }
+        
         // Override renderResults to load ALL providers and set up navigation
         const originalRenderResults = renderResults;
         renderResults = function(providerList) {
+            const searchLoc = getSearchLocation();
+            console.log('=== renderResults called ===');
+            console.log('Search location from URL:', searchLoc);
+            console.log('providerList length:', providerList ? providerList.length : 'null');
+            
             // Store search location for later
-            if (window.searchLocation) {
-                pendingSearchLocation = window.searchLocation;
-                console.log('Pending search:', pendingSearchLocation);
+            if (searchLoc) {
+                pendingSearchLocation = searchLoc;
+                console.log('Set pendingSearchLocation:', pendingSearchLocation);
             }
             
             // Load ALL providers on the map
             if (typeof providers !== 'undefined' && providers.length > 0) {
+                console.log('Loading from global providers:', providers.length);
                 loadAllMarkersOnMap(providers);
             } else {
+                console.log('Loading from providerList');
                 loadAllMarkersOnMap(providerList);
             }
             
             // If no search, show initial cards
-            if (!window.searchLocation) {
+            if (!searchLoc) {
                 originalRenderResults(providerList);
             }
         };
         
         // Init map when DOM ready
         document.addEventListener('DOMContentLoaded', () => {
+            console.log('=== DOMContentLoaded ===');
+            console.log('URL:', window.location.href);
+            console.log('Search params:', window.location.search);
             initMap();
+            
+            // Show search location in UI for debugging
+            const params = new URLSearchParams(window.location.search);
+            const loc = params.get('location');
+            if (loc) {
+                const header = document.querySelector('.results-header h1, .results-header h2, h1, h2');
+                if (header) {
+                    header.textContent = 'Searching: ' + loc;
+                }
+            }
         });
     </script>
 </body>
