@@ -675,6 +675,7 @@
         
         function renderProviderCards(providerList) {
             const container = document.getElementById('results-container');
+            console.log('[DEBUG] results-container found:', !!container);
             if (!container) return;
             
             if (providerList.length === 0) {
@@ -687,7 +688,11 @@
                 return;
             }
             
-            container.innerHTML = providerList.map(p => renderProviderCard(p)).join('');
+            const html = providerList.map(p => renderProviderCard(p)).join('');
+            console.log('[DEBUG] Generated HTML length:', html.length);
+            console.log('[DEBUG] First 500 chars:', html.substring(0, 500));
+            container.innerHTML = html;
+            console.log('[DEBUG] Container children after render:', container.children.length);
         }
         
         function renderProviderCard(p) {
