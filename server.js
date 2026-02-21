@@ -341,11 +341,16 @@ async function sendTeaserToProvider(provider, leadId, lead) {
 // STRIPE WEBHOOK
 // ============================================
 
-// Credit pack pricing
+// Credit pack pricing (one-time purchases)
 const CREDIT_PACKS = {
   200: { credits: 5, name: 'Starter Pack' },
   700: { credits: 20, name: 'Pro Pack' },
   1500: { credits: 60, name: 'Premium Pack' }
+};
+
+// Monthly subscription plans
+const SUBSCRIPTIONS = {
+  99: { credits: 3, name: 'Featured Partner', perks: ['verified', 'priority'] }
 };
 
 // Get or create provider by email
@@ -443,30 +448,54 @@ app.post('/api/stripe-webhook', async (req, res) => {
     
     // Check if this is a credit pack purchase (by amount)
     const creditPack = CREDIT_PACKS[amount];
+    const subscription = SUBSCRIPTIONS[amount];
     
-    if (creditPack) {
-      // === CREDIT PACK PURCHASE ===
-      console.log(`Credit pack purchase: ${creditPack.name} (${creditPack.credits} credits) for $${amount}`);
+    if (creditPack || subscription) {
+      const pack = creditPack || subscription;
+      const isSubscription = !!subscription;
+      // === CREDIT PACK OR SUBSCRIPTION PURCHASE ===
+      console.log(`${isSubscription ? 'Subscription' : 'Credit pack'} purchase: ${pack.name} (${pack.credits} credits) for $${amount}`);
       
       // Get or create provider
       const provider = getOrCreateProvider(customerEmail, customerName);
       
       // Add credits
-      db.prepare('UPDATE providers SET credit_balance = credit_balance + ? WHERE id = ?').run(creditPack.credits, provider.id);
+      db.prepare('UPDATE providers SET credit_balance = credit_balance + ? WHERE id = ?').run(pack.credits, provider.id);
+      
+      // Apply subscription perks if any
+      if (isSubscription && subscription.perks) {
+        if (subscription.perks.includes('verified')) {
+          db.prepare('UPDATE providers SET verified = 1 WHERE id = ?').run(provider.id);
+        }
+        if (subscription.perks.includes('priority')) {
+          db.prepare('UPDATE providers SET priority = priority + 10 WHERE id = ?').run(provider.id);
+        }
+      }
       
       // Update purchase log
-      db.prepare('UPDATE purchase_log SET status = ?, lead_id = ? WHERE payment_id = ?').run('Credits Added', `PACK_${creditPack.credits}`, paymentId);
+      const packType = isSubscription ? `SUB_${pack.credits}` : `PACK_${pack.credits}`;
+      db.prepare('UPDATE purchase_log SET status = ?, lead_id = ? WHERE payment_id = ?').run('Credits Added', packType, paymentId);
       
       // Send confirmation email
-      const newBalance = provider.credit_balance + creditPack.credits;
+      const newBalance = provider.credit_balance + pack.credits;
+      const subscriptionPerks = isSubscription ? `
+  <div style="background: #fef3c7; border: 1px solid #fcd34d; padding: 15px; border-radius: 8px; margin: 10px 0;">
+    <strong>🏆 Featured Partner Benefits Active:</strong>
+    <ul style="margin: 5px 0 0 15px; padding: 0;">
+      <li>✅ Verified Badge on your listing</li>
+      <li>🔝 Priority placement in search results</li>
+      <li>📧 ${pack.credits} leads included each month</li>
+    </ul>
+  </div>` : '';
+      
       const html = `
 <div style="font-family: Arial, sans-serif; max-width: 600px;">
-  <h2 style="color: #16a34a;">✅ ${creditPack.name} Activated!</h2>
-  <p>Thanks for your purchase! Your account has been credited.</p>
+  <h2 style="color: #16a34a;">✅ ${pack.name} Activated!</h2>
+  <p>Thanks for your ${isSubscription ? 'subscription' : 'purchase'}! Your account has been credited.</p>
   <div style="background: #f0fdf4; border: 1px solid #86efac; padding: 20px; border-radius: 8px; margin: 20px 0;">
-    <strong>Credits Added:</strong> ${creditPack.credits}<br>
+    <strong>Credits Added:</strong> ${pack.credits}<br>
     <strong>New Balance:</strong> ${newBalance} credits
-  </div>
+  </div>${subscriptionPerks}
   <p>You'll now automatically receive full contact details for leads in your service area.</p>
   <div style="background: #f9f9f9; padding: 15px; border-radius: 8px; margin: 20px 0;">
     <strong>Next Steps:</strong>
@@ -481,16 +510,17 @@ app.post('/api/stripe-webhook', async (req, res) => {
   <p>— DumpsterMap</p>
 </div>`;
       
-      const emailSent = await sendEmail(customerEmail, `${creditPack.name} Activated - ${creditPack.credits} Credits Added`, html);
+      const emailSent = await sendEmail(customerEmail, `${pack.name} Activated - ${pack.credits} Credits Added`, html);
       
       // Notify admin
       const isNewProvider = provider.notes?.includes('Auto-created');
+      const purchaseType = isSubscription ? '🔄' : '💰';
       await sendAdminNotification(
-        `💰 ${creditPack.name} Purchased${isNewProvider ? ' (NEW PROVIDER)' : ''}`,
-        `Buyer: ${customerEmail}\nAmount: $${amount}\nCredits: ${creditPack.credits}\nNew Balance: ${provider.credit_balance + creditPack.credits}\n${isNewProvider ? '⭐ Auto-created provider account' : ''}`
+        `${purchaseType} ${pack.name} Purchased${isNewProvider ? ' (NEW PROVIDER)' : ''}`,
+        `Buyer: ${customerEmail}\nAmount: $${amount}\nCredits: ${pack.credits}\nNew Balance: ${provider.credit_balance + pack.credits}\nType: ${isSubscription ? 'Monthly Subscription' : 'One-time Pack'}\n${isNewProvider ? '⭐ Auto-created provider account' : ''}`
       );
       
-      return res.json({ received: true, processed: true, type: 'credit_pack', credits: creditPack.credits, emailSent });
+      return res.json({ received: true, processed: true, type: isSubscription ? 'subscription' : 'credit_pack', credits: pack.credits, emailSent });
     }
     
     // === SINGLE LEAD PURCHASE ($40) ===
@@ -1074,7 +1104,8 @@ app.get('/admin/logs', (req, res) => {
   const starterRev = db.prepare("SELECT SUM(amount) as total FROM purchase_log WHERE lead_id = 'PACK_5' AND status = 'Credits Added'").get().total || 0;
   const proRev = db.prepare("SELECT SUM(amount) as total FROM purchase_log WHERE lead_id = 'PACK_20' AND status = 'Credits Added'").get().total || 0;
   const premiumRev = db.prepare("SELECT SUM(amount) as total FROM purchase_log WHERE lead_id = 'PACK_60' AND status = 'Credits Added'").get().total || 0;
-  const totalRev = singleLeadRev + starterRev + proRev + premiumRev;
+  const subscriptionRev = db.prepare("SELECT SUM(amount) as total FROM purchase_log WHERE lead_id LIKE 'SUB_%' AND status = 'Credits Added'").get().total || 0;
+  const totalRev = singleLeadRev + starterRev + proRev + premiumRev + subscriptionRev;
   
   const html = `
 <!DOCTYPE html>
@@ -1097,7 +1128,7 @@ app.get('/admin/logs', (req, res) => {
   <a href="/admin?key=${req.query.key}" class="back">← Back to Admin</a>
   <h1>📋 System Logs</h1>
   
-  <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 15px; margin-bottom: 30px;">
+  <div style="display: grid; grid-template-columns: repeat(6, 1fr); gap: 15px; margin-bottom: 30px;">
     <div style="background: white; padding: 15px; border-radius: 8px; text-align: center; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
       <div style="font-size: 24px; font-weight: bold; color: #1e40af;">$${totalRev.toFixed(0)}</div>
       <div style="font-size: 12px; color: #64748b;">Total Revenue</div>
@@ -1118,6 +1149,10 @@ app.get('/admin/logs', (req, res) => {
       <div style="font-size: 24px; font-weight: bold; color: #9333ea;">$${premiumRev.toFixed(0)}</div>
       <div style="font-size: 12px; color: #64748b;">Premium Packs</div>
     </div>
+    <div style="background: white; padding: 15px; border-radius: 8px; text-align: center; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+      <div style="font-size: 24px; font-weight: bold; color: #f59e0b;">$${subscriptionRev.toFixed(0)}</div>
+      <div style="font-size: 12px; color: #64748b;">Subscriptions</div>
+    </div>
   </div>
   
   <h2>Purchase Log</h2>
@@ -1130,6 +1165,7 @@ app.get('/admin/logs', (req, res) => {
       if (typeDisplay === 'PACK_5') typeDisplay = '📦 Starter (5 cr)';
       else if (typeDisplay === 'PACK_20') typeDisplay = '📦 Pro (20 cr)';
       else if (typeDisplay === 'PACK_60') typeDisplay = '📦 Premium (60 cr)';
+      else if (typeDisplay === 'SUB_3') typeDisplay = '🔄 Featured ($99/mo)';
       else if (typeDisplay === 'MANUAL') typeDisplay = '🔧 Manual';
       else if (typeDisplay === 'CREDIT_PACK') typeDisplay = '📦 Credit Pack';
       return `
@@ -1204,6 +1240,45 @@ app.get('/admin/export/:type', (req, res) => {
   res.setHeader('Content-Type', 'text/csv');
   res.setHeader('Content-Disposition', `attachment; filename=${filename}`);
   res.send(csv);
+});
+
+// ============================================
+// PROVIDER PROFILE LOOKUP
+// ============================================
+app.get('/api/provider', (req, res) => {
+  const email = (req.query.email || '').toLowerCase().trim();
+  if (!email) {
+    return res.status(400).json({ error: 'Email required' });
+  }
+  
+  const provider = getProviderByEmail(email);
+  if (!provider) {
+    return res.json({ 
+      found: false, 
+      message: 'No provider account found for this email. Purchase credits to get started!' 
+    });
+  }
+  
+  const serviceZips = (provider.service_zips || '').split(',').map(z => z.trim()).filter(z => z);
+  
+  res.json({
+    found: true,
+    companyName: provider.company_name,
+    email: provider.email,
+    creditBalance: provider.credit_balance,
+    totalLeads: provider.total_leads,
+    status: provider.status,
+    verified: !!provider.verified,
+    priority: provider.priority || 0,
+    serviceZips: serviceZips,
+    serviceZipCount: serviceZips.length,
+    warnings: serviceZips.length === 0 ? ['No service zips configured - you won\'t receive leads!'] : [],
+    tips: [
+      serviceZips.length === 0 ? 'Reply to any DumpsterMap email with your service zip codes to start receiving leads.' : null,
+      provider.credit_balance === 0 ? 'Purchase credits at dumpstermap.io/for-providers to receive full lead details.' : null,
+      !provider.phone ? 'Add a phone number to receive SMS lead alerts.' : null
+    ].filter(Boolean)
+  });
 });
 
 // ============================================
