@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>For Providers - List Your Dumpster Rental Business | DumpsterMap</title>
+    <meta name="description" content="Claim your free listing on DumpsterMap. Get found by customers searching for dumpster rentals in your area. Free exposure, leads, and review visibility.">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        :root {
+            --primary: #2563eb;
+            --primary-dark: #1d4ed8;
+            --secondary: #059669;
+            --accent: #f59e0b;
+            --text: #1f2937;
+            --text-light: #6b7280;
+            --bg: #ffffff;
+            --bg-light: #f9fafb;
+            --border: #e5e7eb;
+        }
+        
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            color: var(--text);
+            line-height: 1.6;
+            background: var(--bg-light);
+        }
+        
+        /* Header */
+        header {
+            background: white;
+            border-bottom: 1px solid var(--border);
+            padding: 1rem 2rem;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        
+        .header-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-weight: 800;
+            font-size: 1.5rem;
+            color: var(--primary);
+            text-decoration: none;
+        }
+        
+        .logo-icon {
+            width: 40px;
+            height: 40px;
+            background: var(--primary);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        nav {
+            display: flex;
+            gap: 1.5rem;
+            align-items: center;
+        }
+        
+        nav a {
+            color: var(--text);
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.2s;
+        }
+        
+        nav a:hover {
+            color: var(--primary);
+        }
+        
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            font-weight: 600;
+            text-decoration: none;
+            transition: all 0.2s;
+        }
+        
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: var(--primary-dark);
+        }
+        
+        .btn-secondary {
+            background: white;
+            color: var(--primary);
+            border: 2px solid var(--primary);
+        }
+        
+        .btn-secondary:hover {
+            background: var(--primary);
+            color: white;
+        }
+        
+        /* Hero */
+        .hero {
+            background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
+            color: white;
+            padding: 4rem 2rem;
+            text-align: center;
+        }
+        
+        .hero h1 {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+        }
+        
+        .hero p {
+            font-size: 1.25rem;
+            opacity: 0.9;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        
+        /* Container */
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 3rem 2rem;
+        }
+        
+        /* Stats Bar */
+        .stats-bar {
+            display: flex;
+            justify-content: center;
+            gap: 4rem;
+            padding: 2rem;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            margin-top: -2rem;
+            position: relative;
+            z-index: 10;
+            max-width: 800px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        
+        .stat {
+            text-align: center;
+        }
+        
+        .stat-number {
+            font-size: 2rem;
+            font-weight: 800;
+            color: var(--primary);
+        }
+        
+        .stat-label {
+            color: var(--text-light);
+            font-size: 0.875rem;
+        }
+        
+        /* Two Column Layout */
+        .two-column {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 3rem;
+            margin-top: 3rem;
+        }
+        
+        @media (max-width: 768px) {
+            .two-column {
+                grid-template-columns: 1fr;
+            }
+            .stats-bar {
+                flex-direction: column;
+                gap: 1.5rem;
+            }
+        }
+        
+        /* Cards */
+        .card {
+            background: white;
+            border-radius: 16px;
+            padding: 2rem;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+        }
+        
+        .card h2 {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 1rem;
+            font-size: 1.5rem;
+        }
+        
+        .card p {
+            color: var(--text-light);
+            margin-bottom: 1.5rem;
+        }
+        
+        /* Benefits */
+        .benefits {
+            margin: 4rem 0;
+        }
+        
+        .benefits h2 {
+            text-align: center;
+            font-size: 2rem;
+            margin-bottom: 2rem;
+        }
+        
+        .benefits-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1.5rem;
+        }
+        
+        .benefit-card {
+            background: white;
+            border-radius: 12px;
+            padding: 1.5rem;
+            text-align: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+        }
+        
+        .benefit-icon {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+        }
+        
+        .benefit-card h3 {
+            margin-bottom: 0.5rem;
+            color: var(--text);
+        }
+        
+        .benefit-card p {
+            color: var(--text-light);
+            font-size: 0.9rem;
+        }
+        
+        /* Form */
+        .form-group {
+            margin-bottom: 1rem;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+        }
+        
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            border: 2px solid var(--border);
+            border-radius: 8px;
+            font-size: 1rem;
+            font-family: inherit;
+            transition: border-color 0.2s;
+        }
+        
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+        
+        .form-group textarea {
+            min-height: 100px;
+            resize: vertical;
+        }
+        
+        /* FAQ */
+        .faq {
+            margin: 4rem 0;
+        }
+        
+        .faq h2 {
+            text-align: center;
+            font-size: 2rem;
+            margin-bottom: 2rem;
+        }
+        
+        .faq-item {
+            background: white;
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+        }
+        
+        .faq-item h3 {
+            color: var(--primary);
+            margin-bottom: 0.5rem;
+        }
+        
+        .faq-item p {
+            color: var(--text-light);
+        }
+        
+        /* Footer */
+        footer {
+            background: var(--text);
+            color: white;
+            padding: 2rem;
+            text-align: center;
+            margin-top: 4rem;
+        }
+        
+        footer a {
+            color: #93c5fd;
+        }
+        
+        /* Success message */
+        .success-message {
+            display: none;
+            background: #d1fae5;
+            border: 2px solid var(--secondary);
+            border-radius: 12px;
+            padding: 2rem;
+            text-align: center;
+        }
+        
+        .success-message.active {
+            display: block;
+        }
+        
+        .success-message h3 {
+            color: var(--secondary);
+            margin-bottom: 0.5rem;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="header-content">
+            <a href="/" class="logo">
+                <div class="logo-icon">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <rect x="2" y="8" width="20" height="12" rx="2" fill="white"/>
+                        <rect x="4" y="6" width="16" height="4" rx="1" fill="white" opacity="0.7"/>
+                        <rect x="5" y="12" width="2" height="5" rx="0.5" fill="#2563eb"/>
+                        <rect x="11" y="12" width="2" height="5" rx="0.5" fill="#2563eb"/>
+                        <rect x="17" y="12" width="2" height="5" rx="0.5" fill="#2563eb"/>
+                    </svg>
+                </div>
+                DumpsterMap
+            </a>
+            <nav>
+                <a href="/calculator.html">Size Calculator</a>
+                <a href="/for-providers.html" style="color: var(--primary);">For Providers</a>
+                <a href="/results.html" class="btn btn-primary">Get Quotes</a>
+            </nav>
+        </div>
+    </header>
+
+    <section class="hero">
+        <h1>🚛 Grow Your Dumpster Rental Business</h1>
+        <p>Get found by thousands of customers searching for dumpster rentals. Claim your free listing or sign up today.</p>
+    </section>
+
+    <div class="stats-bar">
+        <div class="stat">
+            <div class="stat-number">8,000+</div>
+            <div class="stat-label">Providers Listed</div>
+        </div>
+        <div class="stat">
+            <div class="stat-number">100+</div>
+            <div class="stat-label">Cities Covered</div>
+        </div>
+        <div class="stat">
+            <div class="stat-number">FREE</div>
+            <div class="stat-label">Basic Listing</div>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="two-column">
+            <!-- Claim Listing -->
+            <div class="card">
+                <h2>🔍 Claim Your Listing</h2>
+                <p>Already see your business on DumpsterMap? Claim your listing to update your information, respond to reviews, and get notified about leads.</p>
+                
+                <div id="claimForm">
+                    <div class="form-group">
+                        <label for="businessName">Business Name</label>
+                        <input type="text" id="businessName" placeholder="Your company name">
+                    </div>
+                    <div class="form-group">
+                        <label for="businessCity">City</label>
+                        <input type="text" id="businessCity" placeholder="City, State">
+                    </div>
+                    <div class="form-group">
+                        <label for="claimEmail">Your Email</label>
+                        <input type="email" id="claimEmail" placeholder="you@company.com">
+                    </div>
+                    <div class="form-group">
+                        <label for="claimPhone">Phone Number</label>
+                        <input type="tel" id="claimPhone" placeholder="(555) 123-4567">
+                    </div>
+                    <button class="btn btn-primary" style="width: 100%;" onclick="submitClaim()">Claim My Listing →</button>
+                </div>
+                <div id="claimSuccess" class="success-message">
+                    <h3>✓ Claim Request Submitted!</h3>
+                    <p>We'll verify your business and send confirmation within 24-48 hours.</p>
+                </div>
+            </div>
+
+            <!-- Add New Business -->
+            <div class="card">
+                <h2>➕ Add Your Business</h2>
+                <p>Not listed yet? Sign up to get your dumpster rental business in front of customers actively searching in your service area.</p>
+                
+                <div id="signupForm">
+                    <div class="form-group">
+                        <label for="newBusinessName">Business Name *</label>
+                        <input type="text" id="newBusinessName" placeholder="Your company name" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="newBusinessAddress">Address *</label>
+                        <input type="text" id="newBusinessAddress" placeholder="123 Main St, City, State ZIP">
+                    </div>
+                    <div class="form-group">
+                        <label for="newBusinessPhone">Phone *</label>
+                        <input type="tel" id="newBusinessPhone" placeholder="(555) 123-4567">
+                    </div>
+                    <div class="form-group">
+                        <label for="newBusinessEmail">Email *</label>
+                        <input type="email" id="newBusinessEmail" placeholder="you@company.com">
+                    </div>
+                    <div class="form-group">
+                        <label for="newBusinessWebsite">Website</label>
+                        <input type="url" id="newBusinessWebsite" placeholder="https://yourcompany.com">
+                    </div>
+                    <div class="form-group">
+                        <label for="serviceAreas">Service Areas</label>
+                        <textarea id="serviceAreas" placeholder="List cities/areas you serve..."></textarea>
+                    </div>
+                    <button class="btn btn-secondary" style="width: 100%;" onclick="submitSignup()">Submit Listing Request →</button>
+                </div>
+                <div id="signupSuccess" class="success-message">
+                    <h3>✓ Listing Request Received!</h3>
+                    <p>We'll review your submission and add your business within 3-5 business days.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Benefits Section -->
+        <section class="benefits">
+            <h2>Why List on DumpsterMap?</h2>
+            <div class="benefits-grid">
+                <div class="benefit-card">
+                    <div class="benefit-icon">📍</div>
+                    <h3>Local Visibility</h3>
+                    <p>Show up when customers search for dumpster rentals in your area</p>
+                </div>
+                <div class="benefit-card">
+                    <div class="benefit-icon">⭐</div>
+                    <h3>Review Showcase</h3>
+                    <p>Display your Google reviews to build trust with potential customers</p>
+                </div>
+                <div class="benefit-card">
+                    <div class="benefit-icon">📱</div>
+                    <h3>Lead Notifications</h3>
+                    <p>Get notified when customers request quotes for your business</p>
+                </div>
+                <div class="benefit-card">
+                    <div class="benefit-icon">📊</div>
+                    <h3>Performance Insights</h3>
+                    <p>Track views, clicks, and quote requests for your listing</p>
+                </div>
+                <div class="benefit-card">
+                    <div class="benefit-icon">✓</div>
+                    <h3>Verified Badge</h3>
+                    <p>Stand out with a verified business badge on your listing</p>
+                </div>
+                <div class="benefit-card">
+                    <div class="benefit-icon">💰</div>
+                    <h3>100% Free</h3>
+                    <p>Basic listings are completely free. Premium features coming soon.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- FAQ Section -->
+        <section class="faq">
+            <h2>Frequently Asked Questions</h2>
+            
+            <div class="faq-item">
+                <h3>How do I know if my business is already listed?</h3>
+                <p>Search for your business on our <a href="/results.html">provider map</a>. If you see your company, you can claim it using the form above. If not, submit a new listing request.</p>
+            </div>
+            
+            <div class="faq-item">
+                <h3>Is listing my business really free?</h3>
+                <p>Yes! Basic listings are completely free. We may offer optional premium features in the future (priority placement, featured listings), but your basic listing will always be free.</p>
+            </div>
+            
+            <div class="faq-item">
+                <h3>How do I get leads from DumpsterMap?</h3>
+                <p>When customers view your listing and request a quote, we'll send their contact information to you via email. You can then follow up directly with the customer.</p>
+            </div>
+            
+            <div class="faq-item">
+                <h3>Can I update my listing information?</h3>
+                <p>Once you claim your listing, you'll be able to update your business information, add photos, and respond to any questions from potential customers.</p>
+            </div>
+            
+            <div class="faq-item">
+                <h3>Where does the review data come from?</h3>
+                <p>We display your Google Business Profile reviews to help customers make informed decisions. Keep your Google reviews strong for the best results!</p>
+            </div>
+        </section>
+    </div>
+
+    <footer>
+        <p>© 2026 DumpsterMap. Connecting customers with local dumpster rental providers.</p>
+        <p style="margin-top: 0.5rem; font-size: 0.875rem;">
+            <a href="/">Home</a> · <a href="/calculator.html">Size Calculator</a> · <a href="/sizes.html">Size Guide</a> · <a href="/for-providers.html">For Providers</a>
+        </p>
+    </footer>
+
+    <script>
+        function submitClaim() {
+            const businessName = document.getElementById('businessName').value;
+            const email = document.getElementById('claimEmail').value;
+            
+            if (!businessName || !email) {
+                alert('Please fill in your business name and email.');
+                return;
+            }
+            
+            // Log claim (in production, send to backend)
+            console.log('Claim submitted:', {
+                businessName,
+                city: document.getElementById('businessCity').value,
+                email,
+                phone: document.getElementById('claimPhone').value
+            });
+            
+            // Show success
+            document.getElementById('claimForm').style.display = 'none';
+            document.getElementById('claimSuccess').classList.add('active');
+        }
+        
+        function submitSignup() {
+            const businessName = document.getElementById('newBusinessName').value;
+            const address = document.getElementById('newBusinessAddress').value;
+            const phone = document.getElementById('newBusinessPhone').value;
+            const email = document.getElementById('newBusinessEmail').value;
+            
+            if (!businessName || !address || !phone || !email) {
+                alert('Please fill in all required fields.');
+                return;
+            }
+            
+            // Log signup (in production, send to backend)
+            console.log('Signup submitted:', {
+                businessName,
+                address,
+                phone,
+                email,
+                website: document.getElementById('newBusinessWebsite').value,
+                serviceAreas: document.getElementById('serviceAreas').value
+            });
+            
+            // Show success
+            document.getElementById('signupForm').style.display = 'none';
+            document.getElementById('signupSuccess').classList.add('active');
+        }
+    </script>
+</body>
+</html>

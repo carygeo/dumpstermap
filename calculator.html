@@ -225,6 +225,9 @@
             text-align: center;
             transition: all 0.3s;
             cursor: pointer;
+            text-decoration: none;
+            color: inherit;
+            display: block;
         }
         .size-card:hover {
             border-color: var(--primary);
@@ -375,11 +378,9 @@
                 DumpsterMap
             </a>
             <nav>
-                <a href="/">Home</a>
-                <a href="/map.html">Find Providers</a>
                 <a href="/calculator.html" style="color: var(--primary);">Size Calculator</a>
                 <a href="/for-providers.html">For Providers</a>
-                <a href="/quote.html" class="btn btn-primary">Get Quotes</a>
+                <a href="/results.html" class="btn btn-primary">Get Quotes</a>
             </nav>
         </div>
     </header>
@@ -558,8 +559,9 @@
         <!-- Size Guide Cards -->
         <section class="size-guide">
             <h2>📏 Dumpster Size Guide</h2>
+            <p style="color: var(--text-light); text-align: center; margin-bottom: 1.5rem;">Click any size for detailed information →</p>
             <div class="size-cards">
-                <div class="size-card" onclick="selectSize(10)">
+                <a href="/sizes.html#10-yard" class="size-card">
                     <div class="size-number">10</div>
                     <div class="size-label">Cubic Yards</div>
                     <div class="size-dims">12'L × 8'W × 3.5'H</div>
@@ -576,9 +578,9 @@
                         <div class="size-price-range">$275 - $400</div>
                         <div class="size-price-label">7-day rental</div>
                     </div>
-                </div>
+                </a>
 
-                <div class="size-card" onclick="selectSize(15)">
+                <a href="/sizes.html#15-yard" class="size-card">
                     <div class="size-number">15</div>
                     <div class="size-label">Cubic Yards</div>
                     <div class="size-dims">14'L × 8'W × 4'H</div>
@@ -595,9 +597,9 @@
                         <div class="size-price-range">$325 - $475</div>
                         <div class="size-price-label">7-day rental</div>
                     </div>
-                </div>
+                </a>
 
-                <div class="size-card recommended" onclick="selectSize(20)">
+                <a href="/sizes.html#20-yard" class="size-card recommended">
                     <div class="size-number">20</div>
                     <div class="size-label">Cubic Yards</div>
                     <div class="size-dims">22'L × 8'W × 4.5'H</div>
@@ -614,9 +616,9 @@
                         <div class="size-price-range">$350 - $550</div>
                         <div class="size-price-label">7-day rental</div>
                     </div>
-                </div>
+                </a>
 
-                <div class="size-card" onclick="selectSize(30)">
+                <a href="/sizes.html#30-yard" class="size-card">
                     <div class="size-number">30</div>
                     <div class="size-label">Cubic Yards</div>
                     <div class="size-dims">22'L × 8'W × 6'H</div>
@@ -633,9 +635,9 @@
                         <div class="size-price-range">$400 - $650</div>
                         <div class="size-price-label">7-day rental</div>
                     </div>
-                </div>
+                </a>
 
-                <div class="size-card" onclick="selectSize(40)">
+                <a href="/sizes.html#40-yard" class="size-card">
                     <div class="size-number">40</div>
                     <div class="size-label">Cubic Yards</div>
                     <div class="size-dims">22'L × 8'W × 8'H</div>
@@ -652,7 +654,7 @@
                         <div class="size-price-range">$450 - $750</div>
                         <div class="size-price-label">7-day rental</div>
                     </div>
-                </div>
+                </a>
             </div>
         </section>
 
