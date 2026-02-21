@@ -86,6 +86,7 @@
             color: white;
             font-size: 1.2rem;
         }
+        
         .logo-icon svg {
             width: 24px;
             height: 24px;
@@ -369,7 +370,15 @@
     <header>
         <div class="header-content">
             <a href="../index.html" class="logo">
-                <div class="logo-icon"><svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M2 8L4 4h16l2 4v2H2V8z"/><path d="M3 10h18v9a1 1 0 01-1 1H4a1 1 0 01-1-1v-9z"/><rect x="5" y="12" width="2" height="5" rx="0.5" fill="#2563eb"/><rect x="11" y="12" width="2" height="5" rx="0.5" fill="#2563eb"/><rect x="17" y="12" width="2" height="5" rx="0.5" fill="#2563eb"/></svg></div>
+                <div class="logo-icon">
+                    <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M2 8L4 4h16l2 4v2H2V8z"/>
+                        <path d="M3 10h18v9a1 1 0 01-1 1H4a1 1 0 01-1-1v-9z"/>
+                        <rect x="5" y="12" width="2" height="5" rx="0.5" fill="#2563eb"/>
+                        <rect x="11" y="12" width="2" height="5" rx="0.5" fill="#2563eb"/>
+                        <rect x="17" y="12" width="2" height="5" rx="0.5" fill="#2563eb"/>
+                    </svg>
+                </div>
                 DumpsterMap
             </a>
             <a href="../index.html" class="btn btn-secondary">New Search</a>
@@ -554,7 +563,7 @@
             try {
                 // Adjust path based on page location
                 const basePath = window.location.pathname.includes('/dumpster-rental/') ? '../' : '';
-                const response = await fetch(basePath + 'data/providers.json');
+                const response = await fetch(basePath + '../data/providers.json');
                 const data = await response.json();
                 providers = data.providers;
                 return providers;
@@ -835,11 +844,15 @@
         
         // Initialize
         async function init() {
+            console.log('[DEBUG] init() starting');
             cityConfig = parseCityFromUrl();
+            console.log('[DEBUG] cityConfig:', cityConfig);
             updatePageContent();
             initMap();
             
+            console.log('[DEBUG] Loading providers...');
             await loadProviders();
+            console.log('[DEBUG] Loaded providers:', providers.length);
             
             // Get coordinates if not provided
             if (!cityConfig.lat || !cityConfig.lng) {
@@ -853,10 +866,14 @@
             // Filter and display
             let localProviders;
             if (cityConfig.city) {
+                console.log('[DEBUG] Filtering by city:', cityConfig.city, cityConfig.state);
                 localProviders = filterProvidersByCity(cityConfig.city, cityConfig.state);
+                console.log('[DEBUG] City filter result:', localProviders.length);
                 // If no exact match, widen to state
                 if (localProviders.length < 5) {
+                    console.log('[DEBUG] Widening to state filter');
                     localProviders = filterProvidersByState(cityConfig.state);
+                    console.log('[DEBUG] State filter result:', localProviders.length);
                 }
             } else if (cityConfig.state) {
                 localProviders = filterProvidersByState(cityConfig.state);
@@ -864,12 +881,15 @@
                 localProviders = providers;
             }
             
+            console.log('[DEBUG] Final localProviders:', localProviders.length);
             updateStats(localProviders);
             addMarkersToMap(localProviders);
             generateNearbyCities(localProviders);
             
             // Render initial cards
+            console.log('[DEBUG] Calling renderProviderCards with', localProviders.slice(0, 100).length, 'providers');
             renderProviderCards(localProviders.slice(0, 100));
+            console.log('[DEBUG] renderProviderCards complete');
             
             // Zoom to city
             if (cityConfig.lat && cityConfig.lng) {

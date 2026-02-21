@@ -843,11 +843,15 @@
         
         // Initialize
         async function init() {
+            console.log('[DEBUG] init() starting');
             cityConfig = parseCityFromUrl();
+            console.log('[DEBUG] cityConfig:', cityConfig);
             updatePageContent();
             initMap();
             
+            console.log('[DEBUG] Loading providers...');
             await loadProviders();
+            console.log('[DEBUG] Loaded providers:', providers.length);
             
             // Get coordinates if not provided
             if (!cityConfig.lat || !cityConfig.lng) {
@@ -861,10 +865,14 @@
             // Filter and display
             let localProviders;
             if (cityConfig.city) {
+                console.log('[DEBUG] Filtering by city:', cityConfig.city, cityConfig.state);
                 localProviders = filterProvidersByCity(cityConfig.city, cityConfig.state);
+                console.log('[DEBUG] City filter result:', localProviders.length);
                 // If no exact match, widen to state
                 if (localProviders.length < 5) {
+                    console.log('[DEBUG] Widening to state filter');
                     localProviders = filterProvidersByState(cityConfig.state);
+                    console.log('[DEBUG] State filter result:', localProviders.length);
                 }
             } else if (cityConfig.state) {
                 localProviders = filterProvidersByState(cityConfig.state);
@@ -872,12 +880,15 @@
                 localProviders = providers;
             }
             
+            console.log('[DEBUG] Final localProviders:', localProviders.length);
             updateStats(localProviders);
             addMarkersToMap(localProviders);
             generateNearbyCities(localProviders);
             
             // Render initial cards
+            console.log('[DEBUG] Calling renderProviderCards with', localProviders.slice(0, 100).length, 'providers');
             renderProviderCards(localProviders.slice(0, 100));
+            console.log('[DEBUG] renderProviderCards complete');
             
             // Zoom to city
             if (cityConfig.lat && cityConfig.lng) {
