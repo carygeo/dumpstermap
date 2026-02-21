@@ -102,6 +102,12 @@ function renderProviderCard(provider) {
     
     // Badges based on rating/reviews (only if they have real reviews)
     const badges = [];
+    
+    // Premium badges (from DumpsterMap partnership)
+    if (provider.verified) badges.push('<span class="badge badge-verified">✅ Verified</span>');
+    if (provider.priority) badges.push('<span class="badge badge-priority">🔝 Featured</span>');
+    
+    // Organic badges based on performance
     if (hasValidRating && rating >= 4.8 && reviewCount >= 50) badges.push('<span class="badge badge-top">⭐ Top Rated</span>');
     if (reviewCount >= 100) badges.push('<span class="badge badge-popular">🔥 Popular</span>');
     
@@ -113,9 +119,10 @@ function renderProviderCard(provider) {
     
     // Provider detail page URL
     const providerUrl = `provider.html?id=${encodeURIComponent(provider.id)}&slug=${encodeURIComponent(provider.slug || '')}`;
+    const priorityClass = provider.priority ? ' priority-card' : '';
     
     return `
-        <div class="provider-card" data-id="${provider.id}" data-category="${provider.category || ''}">
+        <div class="provider-card${priorityClass}" data-id="${provider.id}" data-category="${provider.category || ''}">
             <a href="${providerUrl}" class="provider-header provider-link">
                 <div class="provider-image-container">
                     ${imageHtml}

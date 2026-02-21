@@ -364,6 +364,7 @@
             <nav>
                 <a href="/calculator.html">Size Calculator</a>
                 <a href="/for-providers.html" style="color: var(--primary);">List Your Business</a>
+                <a href="/balance.html">Check Balance</a>
                 <a href="/results.html" class="btn btn-primary">Get Quotes</a>
             </nav>
         </div>
@@ -372,6 +373,7 @@
     <section class="hero">
         <h1>🚛 Grow Your Dumpster Rental Business</h1>
         <p>Get found by thousands of customers searching for dumpster rentals. Claim your free listing or sign up today.</p>
+        <p style="margin-top: 1rem; font-size: 0.95rem;"><a href="/balance.html" style="color: #60a5fa;">Already a partner? Check your credit balance →</a></p>
     </section>
 
     <div class="stats-bar">
@@ -495,17 +497,22 @@
         <!-- Pricing Section -->
         <section class="pricing" id="pricing" style="padding: 4rem 0;">
             <h2 style="text-align: center; font-size: 2rem; margin-bottom: 0.5rem;">Lead Credit Packs</h2>
-            <p style="text-align: center; color: var(--text-light); margin-bottom: 3rem;">Pay only for results. No contracts, no monthly fees.</p>
+            <p style="text-align: center; color: var(--text-light); margin-bottom: 1.5rem;">Pay only for results. No contracts, no monthly fees.</p>
+            
+            <!-- Single Lead CTA -->
+            <div style="text-align: center; margin-bottom: 2.5rem; padding: 1rem; background: #f0f9ff; border-radius: 12px; max-width: 500px; margin-left: auto; margin-right: auto;">
+                <p style="margin: 0; color: #1e40af;">🎯 <strong>Just want to try it?</strong> <a href="https://buy.stripe.com/cNidR9aQ76T46IF78j5Rm04" style="color: #2563eb; font-weight: 600;">Buy a single lead for $40 →</a></p>
+            </div>
             
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem; max-width: 1000px; margin: 0 auto;">
                 <!-- Starter Pack -->
                 <div style="background: white; border-radius: 16px; padding: 2rem; text-align: center; border: 2px solid var(--border); position: relative;">
                     <h3 style="font-size: 1.5rem; margin-bottom: 0.5rem;">Starter</h3>
                     <p style="color: var(--text-light); margin-bottom: 1rem;">Try us out</p>
-                    <div style="font-size: 3rem; font-weight: 800; margin-bottom: 0.5rem;">$250</div>
+                    <div style="font-size: 3rem; font-weight: 800; margin-bottom: 0.5rem;">$200</div>
                     <p style="color: var(--text-light); margin-bottom: 1.5rem;">5 qualified leads</p>
                     <ul style="text-align: left; margin-bottom: 1.5rem; list-style: none;">
-                        <li style="padding: 0.5rem 0; border-bottom: 1px solid var(--border);">✓ $50 per lead</li>
+                        <li style="padding: 0.5rem 0; border-bottom: 1px solid var(--border);">✓ $40 per lead</li>
                         <li style="padding: 0.5rem 0; border-bottom: 1px solid var(--border);">✓ Leads delivered via email</li>
                         <li style="padding: 0.5rem 0; border-bottom: 1px solid var(--border);">✓ Customer name, phone & details</li>
                         <li style="padding: 0.5rem 0;">✓ No expiration on credits</li>
@@ -594,7 +601,7 @@
     <footer>
         <p>© 2026 DumpsterMap.io. Connecting customers with local dumpster rental providers.</p>
         <p style="margin-top: 0.5rem; font-size: 0.875rem;">
-            <a href="/">Home</a> · <a href="/calculator.html">Size Calculator</a> · <a href="/sizes.html">Size Guide</a> · <a href="/for-providers.html">List Your Business</a> · <a href="/contact.html">Contact</a>
+            <a href="/">Home</a> · <a href="/calculator.html">Size Calculator</a> · <a href="/sizes.html">Size Guide</a> · <a href="/for-providers.html">List Your Business</a> · <a href="/balance.html">Check Balance</a> · <a href="/contact.html">Contact</a>
         </p>
         <p style="margin-top: 0.5rem; font-size: 0.875rem;">
             <a href="mailto:partners@dumpstermap.io">partners@dumpstermap.io</a> · <a href="mailto:support@dumpstermap.io">support@dumpstermap.io</a>
@@ -605,6 +612,7 @@
     <script>
         // UPDATE THESE WITH YOUR ACTUAL STRIPE PAYMENT LINK URLs
         const STRIPE_LINKS = {
+            single: 'https://buy.stripe.com/cNidR9aQ76T46IF78j5Rm04',
             starter: 'https://buy.stripe.com/00w14n5vNa5g5EB2S35Rm00',
             pro: 'https://buy.stripe.com/fZu6oH7DVgtE7MJdwH5Rm02',
             premium: 'https://buy.stripe.com/bJefZh0btcdod73eAL5Rm03',

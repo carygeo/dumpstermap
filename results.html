@@ -10,7 +10,7 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.Default.css" />
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        
+
         :root {
             --primary: #2563eb;
             --primary-dark: #1d4ed8;
@@ -22,14 +22,14 @@
             --bg-light: #f9fafb;
             --border: #e5e7eb;
         }
-        
+
         body {
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
             color: var(--text);
             line-height: 1.6;
             background: var(--bg-light);
         }
-        
+
         /* Header */
         header {
             background: var(--bg);
@@ -39,7 +39,7 @@
             top: 0;
             z-index: 100;
         }
-        
+
         .header-content {
             max-width: 1400px;
             margin: 0 auto;
@@ -47,7 +47,7 @@
             justify-content: space-between;
             align-items: center;
         }
-        
+
         .logo {
             font-size: 1.5rem;
             font-weight: 800;
@@ -57,7 +57,7 @@
             align-items: center;
             gap: 0.5rem;
         }
-        
+
         .logo-icon {
             width: 40px;
             height: 40px;
@@ -69,13 +69,13 @@
             color: white;
             font-size: 1.2rem;
         }
-        
+
         .logo-icon svg {
             width: 24px;
             height: 24px;
             fill: white;
         }
-        
+
         .btn {
             padding: 0.75rem 1.5rem;
             border-radius: 8px;
@@ -86,33 +86,33 @@
             border: none;
             font-size: 1rem;
         }
-        
+
         .btn-primary {
             background: var(--primary);
             color: white;
         }
-        
+
         .btn-primary:hover {
             background: var(--primary-dark);
         }
-        
+
         .btn-secondary {
             background: var(--bg-light);
             color: var(--text);
             border: 1px solid var(--border);
         }
-        
+
         .btn-secondary:hover {
             background: var(--border);
         }
-        
+
         /* Results Header */
         .results-header {
             background: var(--bg);
             padding: 1.5rem 2rem;
             border-bottom: 1px solid var(--border);
         }
-        
+
         .results-header-content {
             max-width: 1400px;
             margin: 0 auto;
@@ -122,34 +122,34 @@
             flex-wrap: wrap;
             gap: 1rem;
         }
-        
+
         .results-info h1 {
             font-size: 1.5rem;
             font-weight: 700;
             margin-bottom: 0.25rem;
         }
-        
+
         .results-count {
             color: var(--text-light);
         }
-        
+
         .filters {
             display: flex;
             gap: 1rem;
             align-items: center;
         }
-        
+
         .filter-group {
             display: flex;
             align-items: center;
             gap: 0.5rem;
         }
-        
+
         .filter-group label {
             font-size: 0.875rem;
             color: var(--text-light);
         }
-        
+
         .filter-group select {
             padding: 0.5rem 1rem;
             border: 1px solid var(--border);
@@ -157,7 +157,7 @@
             font-size: 0.875rem;
             background: white;
         }
-        
+
         /* Main Content */
         .main-content {
             max-width: 1800px;
@@ -168,14 +168,14 @@
             gap: 1rem;
             height: calc(100vh - 180px);
         }
-        
+
         #map {
             height: 100%;
             min-height: 500px;
             border-radius: 12px;
             z-index: 1;
         }
-        
+
         .marker-cluster-small,
         .marker-cluster-medium,
         .marker-cluster-large {
@@ -188,7 +188,18 @@
             color: white;
             font-weight: 600;
         }
-        
+
+        /* Priority provider markers - always on top */
+        .priority-marker {
+            z-index: 1000 !important;
+        }
+
+        /* Priority provider card styling */
+        .provider-card.priority-card {
+            background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+            border: 2px solid #3b82f6;
+        }
+
         /* Sidebar Filters */
         .sidebar {
             background: var(--bg);
@@ -198,24 +209,24 @@
             position: sticky;
             top: 100px;
         }
-        
+
         .sidebar h3 {
             font-size: 1rem;
             margin-bottom: 1rem;
             padding-bottom: 0.5rem;
             border-bottom: 1px solid var(--border);
         }
-        
+
         .filter-section {
             margin-bottom: 1.5rem;
         }
-        
+
         .filter-section h4 {
             font-size: 0.875rem;
             font-weight: 600;
             margin-bottom: 0.75rem;
         }
-        
+
         .filter-option {
             display: flex;
             align-items: center;
@@ -223,11 +234,11 @@
             padding: 0.5rem 0;
             cursor: pointer;
         }
-        
+
         .filter-option input {
             accent-color: var(--primary);
         }
-        
+
         .filter-summary {
             font-size: 0.8rem;
             color: var(--text-light);
@@ -235,30 +246,30 @@
             padding-bottom: 0.75rem;
             border-bottom: 1px solid var(--border);
         }
-        
+
         .filter-count {
             font-size: 0.75rem;
             color: var(--text-light);
             margin-left: auto;
         }
-        
+
         .filter-option {
             display: flex;
             align-items: center;
             justify-content: flex-start;
         }
-        
+
         .filter-option span:first-of-type {
             flex: 1;
         }
-        
+
         .active-filters {
             display: flex;
             flex-wrap: wrap;
             gap: 0.5rem;
             margin-bottom: 1rem;
         }
-        
+
         .filter-tag {
             display: inline-flex;
             align-items: center;
@@ -270,7 +281,7 @@
             font-size: 0.75rem;
             font-weight: 500;
         }
-        
+
         .filter-tag button {
             background: none;
             border: none;
@@ -281,27 +292,27 @@
             padding: 0;
             margin-left: 0.25rem;
         }
-        
+
         .price-range {
             display: flex;
             gap: 0.5rem;
             align-items: center;
         }
-        
+
         .price-range input {
             width: 80px;
             padding: 0.5rem;
             border: 1px solid var(--border);
             border-radius: 6px;
         }
-        
+
         /* Results Grid */
         .results-container {
             display: flex;
             flex-direction: column;
             gap: 1.5rem;
         }
-        
+
         .provider-card {
             background: white;
             border-radius: 12px;
@@ -309,42 +320,42 @@
             box-shadow: 0 1px 3px rgba(0,0,0,0.1);
             transition: all 0.3s;
         }
-        
+
         .provider-card:hover {
             transform: translateY(-2px);
             box-shadow: 0 10px 20px rgba(0,0,0,0.1);
         }
-        
+
         .provider-header {
             padding: 1.5rem;
             border-bottom: 1px solid var(--border);
             display: flex;
             gap: 1rem;
         }
-        
+
         .provider-link {
             text-decoration: none;
             color: inherit;
             cursor: pointer;
         }
-        
+
         .provider-link:hover .provider-info h3 {
             color: var(--primary);
         }
-        
+
         .provider-image-container {
             width: 80px;
             height: 80px;
             flex-shrink: 0;
         }
-        
+
         .provider-photo {
             width: 80px;
             height: 80px;
             object-fit: cover;
             border-radius: 8px;
         }
-        
+
         .provider-logo-fallback {
             width: 80px;
             height: 80px;
@@ -357,27 +368,27 @@
             font-size: 1.75rem;
             font-weight: 700;
         }
-        
+
         .rating-value {
             font-weight: 600;
             color: var(--text);
         }
-        
+
         .no-rating {
             color: var(--text-light);
             font-style: italic;
         }
-        
+
         .reviews-link {
             font-size: 0.75rem;
             color: var(--primary);
             text-decoration: none;
         }
-        
+
         .reviews-link:hover {
             text-decoration: underline;
         }
-        
+
         .provider-category {
             font-size: 0.75rem;
             color: var(--text-light);
@@ -387,7 +398,7 @@
             display: inline-block;
             margin-bottom: 0.5rem;
         }
-        
+
         .provider-badges {
             display: flex;
             gap: 0.5rem;
@@ -401,7 +412,9 @@
         }
         .badge-top { background: #fef3c7; color: #92400e; }
         .badge-popular { background: #fee2e2; color: #991b1b; }
-        
+        .badge-verified { background: #d1fae5; color: #065f46; font-weight: 600; }
+        .badge-priority { background: #dbeafe; color: #1e40af; font-weight: 600; }
+
         .provider-category-tag {
             font-size: 0.7rem;
             color: #6366f1;
@@ -411,7 +424,7 @@
             display: inline-block;
             margin-top: 0.25rem;
         }
-        
+
         .provider-features {
             display: flex;
             gap: 1rem;
@@ -420,44 +433,44 @@
             margin-bottom: 0.75rem;
         }
         .feature { display: flex; align-items: center; gap: 0.25rem; }
-        
+
         .btn-quote {
             width: 100%;
             padding: 0.75rem 1rem;
             font-size: 0.9rem;
         }
-        
+
         .provider-info {
             flex: 1;
         }
-        
+
         .provider-info h3 {
             font-size: 1.25rem;
             margin-bottom: 0.25rem;
         }
-        
+
         .provider-location {
             color: var(--text-light);
             font-size: 0.875rem;
         }
-        
+
         .provider-rating {
             display: flex;
             align-items: center;
             gap: 0.5rem;
             margin-top: 0.5rem;
         }
-        
+
         .stars {
             color: var(--accent);
             font-size: 1rem;
         }
-        
+
         .rating-count {
             color: var(--text-light);
             font-size: 0.875rem;
         }
-        
+
         .provider-body {
             padding: 1.5rem;
             display: grid;
@@ -465,19 +478,19 @@
             gap: 1rem;
             align-items: center;
         }
-        
+
         .provider-details {
             display: flex;
             flex-direction: column;
             gap: 0.75rem;
         }
-        
+
         .provider-sizes {
             display: flex;
             gap: 0.5rem;
             flex-wrap: wrap;
         }
-        
+
         .size-tag {
             background: var(--bg-light);
             padding: 0.25rem 0.75rem;
@@ -485,18 +498,18 @@
             font-size: 0.875rem;
             font-weight: 500;
         }
-        
+
         .size-tag.active {
             background: var(--primary);
             color: white;
         }
-        
+
         .provider-features {
             display: flex;
             gap: 1rem;
             flex-wrap: wrap;
         }
-        
+
         .feature {
             display: flex;
             align-items: center;
@@ -504,38 +517,38 @@
             font-size: 0.875rem;
             color: var(--text-light);
         }
-        
+
         .feature-icon {
             color: var(--secondary);
         }
-        
+
         .provider-pricing {
             text-align: right;
         }
-        
+
         .price-label {
             color: var(--text-light);
             font-size: 0.875rem;
         }
-        
+
         .price-value {
             font-size: 2rem;
             font-weight: 800;
             color: var(--secondary);
         }
-        
+
         .provider-actions {
             display: flex;
             gap: 0.75rem;
             margin-top: 1rem;
             grid-column: 1 / -1;
         }
-        
+
         .provider-actions .btn {
             flex: 1;
             text-align: center;
         }
-        
+
         /* No Results */
         .no-results {
             text-align: center;
@@ -543,16 +556,16 @@
             background: white;
             border-radius: 12px;
         }
-        
+
         .no-results h3 {
             font-size: 1.5rem;
             margin-bottom: 0.5rem;
         }
-        
+
         .no-results p {
             color: var(--text-light);
         }
-        
+
         /* Comparison Bar */
         .comparison-bar {
             position: fixed;
@@ -567,42 +580,42 @@
             align-items: center;
             box-shadow: 0 -4px 6px rgba(0,0,0,0.1);
         }
-        
+
         .comparison-bar.active {
             display: flex;
         }
-        
+
         /* Responsive */
         @media (max-width: 968px) {
             .main-content {
                 grid-template-columns: 1fr;
                 height: auto;
             }
-            
+
             #map {
                 min-height: 300px;
                 order: -1;
             }
-            
+
             .sidebar {
                 position: static;
             }
-            
+
             .provider-body {
                 grid-template-columns: 1fr;
             }
-            
+
             .provider-pricing {
                 text-align: left;
             }
         }
-        
+
         @media (max-width: 640px) {
             .results-header-content {
                 flex-direction: column;
                 align-items: flex-start;
             }
-            
+
             .filters {
                 width: 100%;
                 flex-wrap: wrap;
@@ -660,7 +673,7 @@
         <aside class="sidebar">
             <h3>🔍 Filter Results</h3>
             <p class="filter-summary" id="filter-summary">Showing all providers</p>
-            
+
             <div class="filter-section">
                 <h4>Service Type</h4>
                 <label class="filter-option">
@@ -682,7 +695,7 @@
                     <input type="checkbox" data-category="Demolition contractor"> <span>Demolition</span> <span class="filter-count" id="count-demo"></span>
                 </label>
             </div>
-            
+
             <div class="filter-section">
                 <h4>⭐ Minimum Rating</h4>
                 <label class="filter-option">
@@ -698,7 +711,7 @@
                     <input type="radio" name="min-rating" value="4.5"> 4.5+ stars
                 </label>
             </div>
-            
+
             <div class="filter-section">
                 <h4>💬 Minimum Reviews</h4>
                 <label class="filter-option">
@@ -714,14 +727,14 @@
                     <input type="radio" name="min-reviews" value="100"> 100+ reviews
                 </label>
             </div>
-            
+
             <div class="filter-section">
                 <h4>📸 Has Photo</h4>
                 <label class="filter-option">
                     <input type="checkbox" id="filter-has-photo"> Only show providers with photos
                 </label>
             </div>
-            
+
             <button class="btn btn-secondary" id="reset-filters" style="width:100%;margin-top:1rem;">
                 Reset All Filters
             </button>
@@ -735,7 +748,7 @@
                 <p>Please wait while we find haulers in your area.</p>
             </div>
         </div>
-        
+
         <!-- Map -->
         <div id="map"></div>
     </div>
@@ -758,33 +771,33 @@
         let pendingSearchLocation = null;
         let mapReady = false;
         let dataLoaded = false;
-        
+
         function initMap() {
             map = L.map('map').setView([39.8283, -98.5795], 4);
-            
+
             L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
                 attribution: '© OpenStreetMap © CARTO',
                 subdomains: 'abcd',
                 maxZoom: 19
             }).addTo(map);
-            
+
             markers = L.markerClusterGroup({
                 maxClusterRadius: 60,
                 showCoverageOnHover: false,
                 chunkedLoading: true
             });
             map.addLayer(markers);
-            
+
             // Update card list when map moves
             map.on('moveend', updateCardListFromMap);
-            
+
             mapReady = true;
             console.log('Map ready');
-            
+
             // If we have a pending search, do it now
             checkAndNavigate();
         }
-        
+
         // Check if we can navigate to search location
         function checkAndNavigate() {
             if (mapReady && dataLoaded && pendingSearchLocation) {
@@ -793,20 +806,20 @@
                 pendingSearchLocation = null;
             }
         }
-        
+
         // Actually perform the navigation
         async function doNavigate(query) {
             let searchQuery = query.trim();
             if (/^\d{5}$/.test(searchQuery)) {
                 searchQuery = searchQuery + ', United States';
             }
-            
+
             console.log('Geocoding:', searchQuery);
-            
+
             try {
                 const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}&countrycodes=us&limit=1`);
                 const data = await response.json();
-                
+
                 if (data.length > 0) {
                     const lat = parseFloat(data[0].lat);
                     const lng = parseFloat(data[0].lon);
@@ -819,7 +832,7 @@
                 console.error('Geocoding error:', e);
             }
         }
-        
+
         // Current filter state
         let currentFilters = {
             categories: ['all'],
@@ -828,7 +841,7 @@
             hasPhoto: false,
             sortBy: 'rating'
         };
-        
+
         // Get current filter values from DOM
         function readFiltersFromDOM() {
             // Categories
@@ -840,55 +853,55 @@
                     document.querySelectorAll('input[data-category]:checked')
                 ).map(el => el.dataset.category).filter(c => c !== 'all');
             }
-            
+
             // Rating
             const ratingRadio = document.querySelector('input[name="min-rating"]:checked');
             currentFilters.minRating = ratingRadio ? parseFloat(ratingRadio.value) || 0 : 0;
-            
+
             // Reviews
             const reviewsRadio = document.querySelector('input[name="min-reviews"]:checked');
             currentFilters.minReviews = reviewsRadio ? parseInt(reviewsRadio.value) || 0 : 0;
-            
+
             // Photo
             const photoCheckbox = document.getElementById('filter-has-photo');
             currentFilters.hasPhoto = photoCheckbox ? photoCheckbox.checked : false;
-            
+
             // Sort
             const sortSelect = document.getElementById('sort-select');
             currentFilters.sortBy = sortSelect ? sortSelect.value : 'rating';
         }
-        
+
         // Apply filters to a list of providers
         function applyFilters(providerList) {
             return providerList.filter(p => {
                 // Category filter
                 if (!currentFilters.categories.includes('all') && currentFilters.categories.length > 0) {
                     const pCat = (p.category || '').toLowerCase();
-                    const matchesCategory = currentFilters.categories.some(cat => 
+                    const matchesCategory = currentFilters.categories.some(cat =>
                         pCat.includes(cat.toLowerCase()) || cat.toLowerCase().includes(pCat)
                     );
                     if (!matchesCategory) return false;
                 }
-                
+
                 // Rating filter
                 if (currentFilters.minRating > 0) {
                     if (!p.rating || p.rating < currentFilters.minRating) return false;
                 }
-                
+
                 // Reviews filter
                 if (currentFilters.minReviews > 0) {
                     if (!p.reviewCount || p.reviewCount < currentFilters.minReviews) return false;
                 }
-                
+
                 // Photo filter
                 if (currentFilters.hasPhoto) {
                     if (!p.photo && !p.logo) return false;
                 }
-                
+
                 return true;
             });
         }
-        
+
         // Sort providers
         function sortProvidersList(providerList) {
             const sorted = [...providerList];
@@ -903,12 +916,12 @@
                     return sorted;
             }
         }
-        
+
         // Update filter summary text
         function updateFilterSummary(total, filtered) {
             const summary = document.getElementById('filter-summary');
             if (!summary) return;
-            
+
             const activeFilters = [];
             if (!currentFilters.categories.includes('all')) {
                 activeFilters.push(`${currentFilters.categories.length} types`);
@@ -922,37 +935,37 @@
             if (currentFilters.hasPhoto) {
                 activeFilters.push('with photos');
             }
-            
+
             if (activeFilters.length === 0) {
                 summary.textContent = `Showing ${filtered.toLocaleString()} providers`;
             } else {
                 summary.innerHTML = `<strong>${filtered.toLocaleString()}</strong> of ${total.toLocaleString()} match: ${activeFilters.join(', ')}`;
             }
         }
-        
+
         // Filter cards to show only providers visible in current map bounds + filters
         function updateCardListFromMap() {
             if (!map || !allMapProviders.length) return;
-            
+
             readFiltersFromDOM();
-            
+
             const bounds = map.getBounds();
             let visibleProviders = allMapProviders.filter(p => {
                 if (!p.lat || !p.lng) return false;
                 return bounds.contains([p.lat, p.lng]);
             });
-            
+
             const totalInView = visibleProviders.length;
-            
+
             // Apply filters
             visibleProviders = applyFilters(visibleProviders);
-            
+
             // Sort
             visibleProviders = sortProvidersList(visibleProviders);
-            
+
             // Update filter summary
             updateFilterSummary(totalInView, visibleProviders.length);
-            
+
             // Update the card list (max 100 for performance)
             const displayList = visibleProviders.slice(0, 100);
             renderProviderCards(displayList);
@@ -963,19 +976,19 @@
                 countEl.textContent = `${visibleProviders.length.toLocaleString()} providers in view`;
             }
         }
-        
+
         // Update both cards AND map markers when filters change
         function applyFiltersToAll() {
             updateMapMarkers();
             updateCardListFromMap();
         }
-        
+
         // Wire up filter controls
         function initFilters() {
             // Category checkboxes
             const allCheckbox = document.querySelector('input[data-category="all"]');
             const categoryCheckboxes = document.querySelectorAll('input[data-category]:not([data-category="all"])');
-            
+
             if (allCheckbox) {
                 allCheckbox.addEventListener('change', () => {
                     if (allCheckbox.checked) {
@@ -984,7 +997,7 @@
                     applyFiltersToAll();
                 });
             }
-            
+
             categoryCheckboxes.forEach(cb => {
                 cb.addEventListener('change', () => {
                     if (cb.checked && allCheckbox) {
@@ -998,29 +1011,29 @@
                     applyFiltersToAll();
                 });
             });
-            
+
             // Rating radios
             document.querySelectorAll('input[name="min-rating"]').forEach(radio => {
                 radio.addEventListener('change', applyFiltersToAll);
             });
-            
+
             // Reviews radios
             document.querySelectorAll('input[name="min-reviews"]').forEach(radio => {
                 radio.addEventListener('change', applyFiltersToAll);
             });
-            
+
             // Photo checkbox
             const photoCheckbox = document.getElementById('filter-has-photo');
             if (photoCheckbox) {
                 photoCheckbox.addEventListener('change', applyFiltersToAll);
             }
-            
+
             // Sort select (sort only affects cards, not map)
             const sortSelect = document.getElementById('sort-select');
             if (sortSelect) {
                 sortSelect.addEventListener('change', updateCardListFromMap);
             }
-            
+
             // Reset button
             const resetBtn = document.getElementById('reset-filters');
             if (resetBtn) {
@@ -1035,12 +1048,12 @@
                 });
             }
         }
-        
+
         // Render just the provider cards (without re-loading map)
         function renderProviderCards(providerList) {
             const container = document.getElementById('results-container');
             if (!container) return;
-            
+
             if (providerList.length === 0) {
                 container.innerHTML = `
                     <div class="no-results">
@@ -1050,27 +1063,42 @@
                 `;
                 return;
             }
-            
+
             container.innerHTML = providerList.map(p => renderProviderCard(p)).join('');
         }
-        
+
         // Create a marker for a single provider
         function createMarker(p) {
             const rating = p.rating || 0;
             const color = rating >= 4.5 ? '#10b981' : rating >= 4 ? '#3b82f6' : rating >= 3 ? '#f59e0b' : '#6b7280';
-            
-            const icon = L.divIcon({
-                html: `<div style="background:${color};border:2px solid white;border-radius:50%;width:14px;height:14px;box-shadow:0 2px 4px rgba(0,0,0,0.3);"></div>`,
-                className: '',
-                iconSize: [14, 14],
-                iconAnchor: [7, 7]
-            });
-            
+
+            let icon;
+            if (p.priority) {
+                // Priority providers get a visible name label on the map
+                const shortName = p.name.length > 20 ? p.name.substring(0, 18) + '…' : p.name;
+                icon = L.divIcon({
+                    html: `<div style="background:white;border:2px solid #2563eb;border-radius:8px;padding:4px 8px;box-shadow:0 2px 8px rgba(0,0,0,0.25);white-space:nowrap;font-size:12px;font-weight:600;color:#1e40af;display:flex;align-items:center;gap:4px;">
+                        <span style="color:#2563eb;">📍</span>${shortName}${p.verified ? ' ✓' : ''}
+                    </div>`,
+                    className: 'priority-marker',
+                    iconSize: null,
+                    iconAnchor: [12, 12]
+                });
+            } else {
+                // Regular providers get a simple dot
+                icon = L.divIcon({
+                    html: `<div style="background:#3b82f6;border:2px solid white;border-radius:50%;width:16px;height:16px;box-shadow:0 2px 4px rgba(0,0,0,0.3);"></div>`,
+                    className: '',
+                    iconSize: [16, 16],
+                    iconAnchor: [8, 8]
+                });
+            }
+
             const marker = L.marker([p.lat, p.lng], { icon });
             const providerData = JSON.stringify(p).replace(/'/g, "\\'");
             const reviewCount = p.reviewCount || 0;
             const hasValidRating = reviewCount > 0 && rating > 0;
-            const ratingDisplay = hasValidRating 
+            const ratingDisplay = hasValidRating
                 ? `<span style="color:#f59e0b;">⭐ ${rating.toFixed(1)}</span> <span style="color:#6b7280;">(${reviewCount})</span>`
                 : `<span style="color:#6b7280;">New provider</span>`;
             marker.bindPopup(`
@@ -1085,53 +1113,54 @@
             `);
             return marker;
         }
-        
+
         // Load ALL providers onto the map
         function loadAllMarkersOnMap(providerList) {
             if (!markers) return;
             allMapProviders = providerList;
-            
+
             providerList.forEach(p => {
                 if (p.lat && p.lng) {
                     markers.addLayer(createMarker(p));
                 }
             });
-            
+
             dataLoaded = true;
             console.log('Data loaded:', providerList.length, 'providers');
-            
+
             // Check if we can navigate now
             checkAndNavigate();
         }
-        
+
+
         // Update map markers to match current filters
         function updateMapMarkers() {
             if (!markers || !allMapProviders.length) return;
-            
+
             readFiltersFromDOM();
-            
+
             // Clear existing markers
             markers.clearLayers();
-            
+
             // Apply filters to all providers
             const filteredProviders = applyFilters(allMapProviders);
-            
+
             // Add filtered markers back
             filteredProviders.forEach(p => {
                 if (p.lat && p.lng) {
                     markers.addLayer(createMarker(p));
                 }
             });
-            
+
             console.log('Map updated:', filteredProviders.length, 'markers shown');
         }
-        
+
         // Get search location directly from URL (don't rely on app.js)
         function getSearchLocation() {
             const params = new URLSearchParams(window.location.search);
             return params.get('location') || params.get('zip') || '';
         }
-        
+
         // Override renderResults to load ALL providers and set up navigation
         const originalRenderResults = renderResults;
         renderResults = function(providerList) {
@@ -1139,13 +1168,13 @@
             console.log('=== renderResults called ===');
             console.log('Search location from URL:', searchLoc);
             console.log('providerList length:', providerList ? providerList.length : 'null');
-            
+
             // Store search location for later
             if (searchLoc) {
                 pendingSearchLocation = searchLoc;
                 console.log('Set pendingSearchLocation:', pendingSearchLocation);
             }
-            
+
             // Load ALL providers on the map
             if (typeof providers !== 'undefined' && providers.length > 0) {
                 console.log('Loading from global providers:', providers.length);
@@ -1154,13 +1183,13 @@
                 console.log('Loading from providerList');
                 loadAllMarkersOnMap(providerList);
             }
-            
+
             // If no search, show initial cards
             if (!searchLoc) {
                 originalRenderResults(providerList);
             }
         };
-        
+
         // Init map when DOM ready
         document.addEventListener('DOMContentLoaded', () => {
             console.log('=== DOMContentLoaded ===');
@@ -1168,7 +1197,7 @@
             console.log('Search params:', window.location.search);
             initMap();
             initFilters();
-            
+
             // Show search location in UI for debugging
             const params = new URLSearchParams(window.location.search);
             const loc = params.get('location');
@@ -1329,8 +1358,22 @@ function submitQuote(e) {
     e.preventDefault();
     const formData = new FormData(e.target);
     const data = Object.fromEntries(formData);
+    
+    // Add metadata
+    data.type = 'lead';
+    data.source = 'Website - Results Page';
+    data.timestamp = new Date().toISOString();
+    
     console.log('=== LEAD CAPTURED ===', data);
-    // TODO: Send to backend API
+    
+    // Send to Apps Script backend
+    fetch('/api/lead', {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    });
+    
     document.getElementById('quoteForm').style.display = 'none';
     document.getElementById('quoteSuccess').style.display = 'block';
     setTimeout(() => { closeQuoteModal(); e.target.reset(); }, 3000);

@@ -1,0 +1,16 @@
+{
+  "name": "dumpstermap",
+  "version": "1.0.0",
+  "description": "DumpsterMap.io - Find local dumpster rental providers",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "better-sqlite3": "^12.6.2",
+    "express": "^4.18.2",
+    "googleapis": "^171.4.0",
+    "node-fetch": "^3.3.2",
+    "nodemailer": "^8.0.1"
+  }
+}

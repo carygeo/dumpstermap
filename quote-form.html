@@ -302,7 +302,7 @@ function submitQuote(e) {
     data.timestamp = new Date().toISOString();
     
     // Send to Apps Script backend
-    fetch('https://script.google.com/macros/s/AKfycbxRIvl6z4kN8t1RZYUhqfubiRkpy-rOkDYlzwI9CSmpzkbV4aatki254g7h6zTnKmikRQ/exec', {
+    fetch('/api/lead', {
         method: 'POST',
         mode: 'no-cors',
         headers: { 'Content-Type': 'application/json' },
