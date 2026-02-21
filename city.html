@@ -876,6 +876,9 @@
             addMarkersToMap(localProviders);
             generateNearbyCities(localProviders);
             
+            // Render initial cards
+            renderProviderCards(localProviders.slice(0, 100));
+            
             // Zoom to city
             if (cityConfig.lat && cityConfig.lng) {
                 map.flyTo([cityConfig.lat, cityConfig.lng], cityConfig.zoom || 11, { duration: 1 });

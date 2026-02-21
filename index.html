@@ -143,23 +143,37 @@
             left: 0;
             right: 0;
             bottom: 0;
-            background:
+            background: 
                 /* Main grid - like city blocks */
-                linear-gradient(90deg, rgba(255,255,255,0.08) 1px, transparent 1px),
-                linear-gradient(rgba(255,255,255,0.08) 1px, transparent 1px),
-                /* Larger roads */
+                linear-gradient(90deg, rgba(255,255,255,0.06) 1px, transparent 1px),
+                linear-gradient(rgba(255,255,255,0.06) 1px, transparent 1px),
+                /* Major roads - thicker */
                 linear-gradient(90deg, rgba(255,255,255,0.12) 2px, transparent 2px),
-                linear-gradient(rgba(255,255,255,0.12) 2px, transparent 2px);
-            background-size:
+                linear-gradient(rgba(255,255,255,0.12) 2px, transparent 2px),
+                /* Diagonal highway */
+                linear-gradient(45deg, transparent 48%, rgba(255,255,255,0.08) 49%, rgba(255,255,255,0.08) 51%, transparent 52%),
+                linear-gradient(-30deg, transparent 48%, rgba(255,255,255,0.06) 49%, rgba(255,255,255,0.06) 51%, transparent 52%),
+                /* Curved road effect using radial gradients */
+                radial-gradient(ellipse 300px 150px at 20% 30%, transparent 45%, rgba(255,255,255,0.05) 46%, rgba(255,255,255,0.05) 48%, transparent 49%),
+                radial-gradient(ellipse 250px 200px at 80% 70%, transparent 45%, rgba(255,255,255,0.05) 46%, rgba(255,255,255,0.05) 48%, transparent 49%);
+            background-size: 
                 40px 40px,
                 40px 40px,
-                200px 200px,
-                200px 200px;
+                160px 160px,
+                160px 160px,
+                100% 100%,
+                100% 100%,
+                100% 100%,
+                100% 100%;
             background-position:
                 0 0,
                 0 0,
                 -1px -1px,
-                -1px -1px;
+                -1px -1px,
+                0 0,
+                0 0,
+                0 0,
+                0 0;
         }
 
         /* Map pin markers scattered in hero */
@@ -171,16 +185,47 @@
             right: 0;
             bottom: 0;
             background-image:
-                radial-gradient(circle at 15% 20%, rgba(16,185,129,0.4) 4px, transparent 4px),
-                radial-gradient(circle at 85% 15%, rgba(59,130,246,0.4) 5px, transparent 5px),
-                radial-gradient(circle at 10% 80%, rgba(245,158,11,0.3) 4px, transparent 4px),
-                radial-gradient(circle at 90% 75%, rgba(16,185,129,0.35) 5px, transparent 5px),
-                radial-gradient(circle at 25% 60%, rgba(59,130,246,0.3) 3px, transparent 3px),
-                radial-gradient(circle at 75% 40%, rgba(16,185,129,0.3) 4px, transparent 4px),
-                radial-gradient(circle at 50% 85%, rgba(245,158,11,0.25) 3px, transparent 3px),
-                radial-gradient(circle at 5% 45%, rgba(59,130,246,0.25) 3px, transparent 3px),
-                radial-gradient(circle at 95% 50%, rgba(16,185,129,0.3) 4px, transparent 4px);
+                /* Price flags - subtle rectangles with rounded corners effect */
+                linear-gradient(135deg, rgba(16,185,129,0.25) 0%, rgba(16,185,129,0.15) 100%),
+                /* Pin markers */
+                radial-gradient(circle at 15% 20%, rgba(16,185,129,0.5) 6px, transparent 6px),
+                radial-gradient(circle at 85% 15%, rgba(59,130,246,0.5) 7px, transparent 7px),
+                radial-gradient(circle at 10% 80%, rgba(245,158,11,0.4) 5px, transparent 5px),
+                radial-gradient(circle at 90% 75%, rgba(16,185,129,0.45) 6px, transparent 6px),
+                radial-gradient(circle at 25% 60%, rgba(59,130,246,0.4) 5px, transparent 5px),
+                radial-gradient(circle at 75% 40%, rgba(16,185,129,0.4) 6px, transparent 6px),
+                radial-gradient(circle at 50% 85%, rgba(245,158,11,0.35) 5px, transparent 5px),
+                radial-gradient(circle at 5% 45%, rgba(59,130,246,0.35) 5px, transparent 5px),
+                radial-gradient(circle at 95% 50%, rgba(16,185,129,0.4) 6px, transparent 6px),
+                /* Additional subtle pins */
+                radial-gradient(circle at 35% 30%, rgba(255,255,255,0.15) 4px, transparent 4px),
+                radial-gradient(circle at 65% 70%, rgba(255,255,255,0.15) 4px, transparent 4px),
+                radial-gradient(circle at 45% 15%, rgba(255,255,255,0.12) 3px, transparent 3px),
+                radial-gradient(circle at 80% 55%, rgba(255,255,255,0.12) 3px, transparent 3px);
             pointer-events: none;
+        }
+
+        /* Price flag elements */
+        .hero .price-flags {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            pointer-events: none;
+            overflow: hidden;
+        }
+
+        .price-flag {
+            position: absolute;
+            background: rgba(255,255,255,0.12);
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-size: 0.65rem;
+            font-weight: 700;
+            color: rgba(255,255,255,0.7);
+            backdrop-filter: blur(2px);
+            border: 1px solid rgba(255,255,255,0.15);
         }
 
         .hero-content {
@@ -827,6 +872,15 @@
 
     <!-- Hero -->
     <section class="hero">
+        <!-- Floating price flags -->
+        <div class="price-flags">
+            <span class="price-flag" style="top: 15%; left: 8%;">$299</span>
+            <span class="price-flag" style="top: 25%; right: 12%;">$349</span>
+            <span class="price-flag" style="bottom: 30%; left: 5%;">$275</span>
+            <span class="price-flag" style="bottom: 20%; right: 8%;">$325</span>
+            <span class="price-flag" style="top: 45%; left: 3%;">$399</span>
+            <span class="price-flag" style="top: 60%; right: 5%;">$289</span>
+        </div>
         <div class="hero-content">
             <h1>Compare Dumpster Prices.<br>Book in Minutes. Save Money.</h1>
             <p>Find and compare local dumpster rental prices instantly. No phone calls, no hassle, no hidden fees.</p>
