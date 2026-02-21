@@ -121,11 +121,13 @@
 <body>
     <div class="card">
         <h1>🎫 Check Your Credits</h1>
-        <p class="subtitle">Enter your business email to see your balance</p>
+        <p class="subtitle">Enter your business email and phone to verify</p>
         
         <form id="checkForm">
             <label for="email">Business Email</label>
             <input type="email" id="email" placeholder="you@yourcompany.com" required>
+            <label for="phone">Last 4 Digits of Phone</label>
+            <input type="text" id="phone" placeholder="1234" maxlength="4" pattern="[0-9]{4}" required>
             <button type="submit">Check Balance</button>
         </form>
         
@@ -156,12 +158,13 @@
         document.getElementById('checkForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             const email = document.getElementById('email').value.trim();
+            const phone = document.getElementById('phone').value.trim();
             
             document.getElementById('result').style.display = 'none';
             document.getElementById('error').style.display = 'none';
             
             try {
-                const response = await fetch(`${API_URL}?action=balance&email=${encodeURIComponent(email)}`);
+                const response = await fetch(`${API_URL}?action=balance&email=${encodeURIComponent(email)}&phone=${encodeURIComponent(phone)}`);
                 const data = await response.json();
                 
                 if (data.status === 'ok') {
