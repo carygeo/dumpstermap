@@ -554,7 +554,7 @@
             try {
                 // Adjust path based on page location
                 const basePath = window.location.pathname.includes('/dumpster-rental/') ? '../' : '';
-                const response = await fetch(basePath + '../data/providers.json');
+                const response = await fetch(basePath + 'data/providers.json');
                 const data = await response.json();
                 providers = data.providers;
                 return providers;
