@@ -1,0 +1,824 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dumpster Size Calculator | RollOffCompare</title>
+    <meta name="description" content="Calculate the right dumpster size for your project. Estimate weight, compare sizes, and get accurate pricing based on your specific needs.">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --primary: #2563eb;
+            --primary-dark: #1d4ed8;
+            --secondary: #059669;
+            --accent: #f59e0b;
+            --text: #1f2937;
+            --text-light: #6b7280;
+            --bg: #ffffff;
+            --bg-light: #f9fafb;
+            --border: #e5e7eb;
+            --success: #10b981;
+        }
+        body { font-family: 'Inter', -apple-system, sans-serif; color: var(--text); line-height: 1.6; }
+        
+        /* Header */
+        header {
+            background: var(--bg);
+            border-bottom: 1px solid var(--border);
+            padding: 1rem 2rem;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        .header-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .logo {
+            font-size: 1.5rem;
+            font-weight: 800;
+            color: var(--primary);
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .logo-icon {
+            width: 40px;
+            height: 40px;
+            background: var(--primary);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 1.2rem;
+        }
+        nav { display: flex; gap: 2rem; align-items: center; }
+        nav a { color: var(--text); text-decoration: none; font-weight: 500; transition: color 0.2s; }
+        nav a:hover { color: var(--primary); }
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            font-weight: 600;
+            text-decoration: none;
+            transition: all 0.2s;
+            cursor: pointer;
+            border: none;
+            font-size: 1rem;
+        }
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-primary:hover { background: var(--primary-dark); }
+        .btn-outline { background: transparent; color: var(--primary); border: 2px solid var(--primary); }
+        .btn-outline:hover { background: var(--primary); color: white; }
+
+        /* Hero */
+        .hero {
+            background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%);
+            color: white;
+            padding: 4rem 2rem;
+            text-align: center;
+        }
+        .hero h1 { font-size: 2.5rem; font-weight: 800; margin-bottom: 1rem; }
+        .hero p { font-size: 1.2rem; opacity: 0.9; max-width: 600px; margin: 0 auto; }
+
+        /* Main Content */
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 3rem 2rem;
+        }
+
+        /* Calculator Section */
+        .calculator-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 3rem;
+            margin-bottom: 4rem;
+        }
+        @media (max-width: 900px) {
+            .calculator-grid { grid-template-columns: 1fr; }
+        }
+
+        .calc-card {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 2rem;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        }
+        .calc-card h2 {
+            font-size: 1.5rem;
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .calc-card h2 span { font-size: 1.5rem; }
+
+        /* Form Elements */
+        .form-group { margin-bottom: 1.5rem; }
+        .form-group label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: var(--text);
+        }
+        .form-group select,
+        .form-group input {
+            width: 100%;
+            padding: 0.875rem 1rem;
+            border: 2px solid var(--border);
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: border-color 0.2s;
+        }
+        .form-group select:focus,
+        .form-group input:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        /* Result Box */
+        .result-box {
+            background: linear-gradient(135deg, var(--bg-light) 0%, #e0f2fe 100%);
+            border: 2px solid var(--primary);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-top: 1.5rem;
+        }
+        .result-box h3 {
+            color: var(--primary);
+            font-size: 1.1rem;
+            margin-bottom: 1rem;
+        }
+        .result-size {
+            font-size: 3rem;
+            font-weight: 800;
+            color: var(--primary);
+            display: flex;
+            align-items: baseline;
+            gap: 0.5rem;
+        }
+        .result-size span { font-size: 1.5rem; font-weight: 600; }
+        .result-details {
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 1px solid var(--border);
+        }
+        .result-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.5rem 0;
+            color: var(--text-light);
+        }
+        .result-row strong { color: var(--text); }
+
+        /* Weight Calculator */
+        .weight-items { margin-top: 1rem; }
+        .weight-item {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 0.75rem 0;
+            border-bottom: 1px solid var(--border);
+        }
+        .weight-item:last-child { border-bottom: none; }
+        .weight-item-info { flex: 1; }
+        .weight-item-name { font-weight: 600; }
+        .weight-item-weight { font-size: 0.875rem; color: var(--text-light); }
+        .weight-item input {
+            width: 80px;
+            padding: 0.5rem;
+            border: 2px solid var(--border);
+            border-radius: 6px;
+            text-align: center;
+            font-weight: 600;
+        }
+
+        /* Size Guide */
+        .size-guide { margin-top: 4rem; }
+        .size-guide h2 { 
+            font-size: 2rem; 
+            text-align: center; 
+            margin-bottom: 2rem; 
+        }
+        .size-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+        }
+        .size-card {
+            background: var(--bg);
+            border: 2px solid var(--border);
+            border-radius: 16px;
+            padding: 1.5rem;
+            text-align: center;
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+        .size-card:hover {
+            border-color: var(--primary);
+            transform: translateY(-4px);
+            box-shadow: 0 12px 24px rgba(37, 99, 235, 0.15);
+        }
+        .size-card.recommended {
+            border-color: var(--secondary);
+            background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
+        }
+        .size-card.recommended::before {
+            content: '✓ RECOMMENDED';
+            display: block;
+            background: var(--secondary);
+            color: white;
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            display: inline-block;
+        }
+        .size-number {
+            font-size: 3.5rem;
+            font-weight: 800;
+            color: var(--primary);
+            line-height: 1;
+        }
+        .size-label {
+            font-size: 1rem;
+            color: var(--text-light);
+            margin-bottom: 1rem;
+        }
+        .size-dims {
+            font-size: 0.875rem;
+            color: var(--text-light);
+            margin-bottom: 1rem;
+            padding: 0.5rem;
+            background: var(--bg-light);
+            border-radius: 8px;
+        }
+        .size-uses h4 {
+            font-size: 0.875rem;
+            color: var(--text);
+            margin-bottom: 0.5rem;
+        }
+        .size-uses ul {
+            list-style: none;
+            text-align: left;
+            font-size: 0.875rem;
+            color: var(--text-light);
+        }
+        .size-uses li {
+            padding: 0.25rem 0;
+            padding-left: 1.25rem;
+            position: relative;
+        }
+        .size-uses li::before {
+            content: '✓';
+            position: absolute;
+            left: 0;
+            color: var(--secondary);
+            font-weight: bold;
+        }
+        .size-price {
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 1px solid var(--border);
+        }
+        .size-price-range {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--text);
+        }
+        .size-price-label {
+            font-size: 0.75rem;
+            color: var(--text-light);
+        }
+
+        /* Project Type Guide */
+        .project-guide { margin-top: 4rem; }
+        .project-guide h2 { font-size: 2rem; text-align: center; margin-bottom: 2rem; }
+        .project-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: var(--bg);
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        }
+        .project-table th,
+        .project-table td {
+            padding: 1rem;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+        }
+        .project-table th {
+            background: var(--bg-light);
+            font-weight: 600;
+            color: var(--text);
+        }
+        .project-table tr:last-child td { border-bottom: none; }
+        .project-table tr:hover { background: var(--bg-light); }
+
+        /* CTA */
+        .cta-section {
+            background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%);
+            color: white;
+            padding: 4rem 2rem;
+            text-align: center;
+            border-radius: 24px;
+            margin-top: 4rem;
+        }
+        .cta-section h2 { font-size: 2rem; margin-bottom: 1rem; }
+        .cta-section p { opacity: 0.9; margin-bottom: 2rem; max-width: 500px; margin-left: auto; margin-right: auto; }
+        .cta-section .btn { font-size: 1.1rem; padding: 1rem 2rem; }
+
+        /* Footer */
+        footer {
+            background: var(--bg-light);
+            padding: 2rem;
+            text-align: center;
+            color: var(--text-light);
+            font-size: 0.875rem;
+            margin-top: 4rem;
+        }
+
+        @media (max-width: 600px) {
+            .hero h1 { font-size: 1.75rem; }
+            nav { display: none; }
+            .size-cards { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="header-content">
+            <a href="/" class="logo">
+                <div class="logo-icon">🗑️</div>
+                RollOffCompare
+            </a>
+            <nav>
+                <a href="/">Home</a>
+                <a href="/map.html">Find Providers</a>
+                <a href="/calculator.html" style="color: var(--primary);">Size Calculator</a>
+                <a href="/for-providers.html">For Providers</a>
+                <a href="/quote.html" class="btn btn-primary">Get Quotes</a>
+            </nav>
+        </div>
+    </header>
+
+    <section class="hero">
+        <h1>🧮 Dumpster Size Calculator</h1>
+        <p>Not sure what size you need? Use our calculator to find the perfect dumpster for your project.</p>
+    </section>
+
+    <div class="container">
+        <!-- Calculator Grid -->
+        <div class="calculator-grid">
+            <!-- Project-Based Calculator -->
+            <div class="calc-card">
+                <h2><span>📋</span> By Project Type</h2>
+                <p style="color: var(--text-light); margin-bottom: 1.5rem;">Select your project type and we'll recommend the right size.</p>
+                
+                <div class="form-group">
+                    <label for="projectType">What are you working on?</label>
+                    <select id="projectType" onchange="calculateByProject()">
+                        <option value="">Select project type...</option>
+                        <optgroup label="Home Cleanouts">
+                            <option value="garage">Garage Cleanout</option>
+                            <option value="basement">Basement Cleanout</option>
+                            <option value="attic">Attic Cleanout</option>
+                            <option value="whole-house">Whole House Cleanout</option>
+                            <option value="estate">Estate Cleanout</option>
+                        </optgroup>
+                        <optgroup label="Renovation Projects">
+                            <option value="bathroom">Bathroom Remodel</option>
+                            <option value="kitchen">Kitchen Remodel</option>
+                            <option value="flooring">Flooring Removal</option>
+                            <option value="deck">Deck Removal</option>
+                            <option value="addition">Room Addition</option>
+                        </optgroup>
+                        <optgroup label="Roofing">
+                            <option value="roof-small">Roof Tear-Off (1,500 sq ft)</option>
+                            <option value="roof-medium">Roof Tear-Off (2,500 sq ft)</option>
+                            <option value="roof-large">Roof Tear-Off (3,500+ sq ft)</option>
+                        </optgroup>
+                        <optgroup label="Landscaping">
+                            <option value="yard-debris">Yard Debris / Storm Cleanup</option>
+                            <option value="tree-removal">Tree Removal</option>
+                            <option value="landscaping">Major Landscaping</option>
+                        </optgroup>
+                        <optgroup label="Construction">
+                            <option value="new-construction">New Construction Debris</option>
+                            <option value="demolition-small">Small Demolition</option>
+                            <option value="demolition-large">Large Demolition</option>
+                        </optgroup>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="homeSize">Home/Project Size</label>
+                    <select id="homeSize" onchange="calculateByProject()">
+                        <option value="small">Small (under 1,500 sq ft)</option>
+                        <option value="medium" selected>Medium (1,500 - 2,500 sq ft)</option>
+                        <option value="large">Large (2,500 - 3,500 sq ft)</option>
+                        <option value="xlarge">Very Large (3,500+ sq ft)</option>
+                    </select>
+                </div>
+
+                <div id="projectResult" class="result-box" style="display: none;">
+                    <h3>Recommended Dumpster Size</h3>
+                    <div class="result-size" id="projectSizeResult">20<span>yard</span></div>
+                    <div class="result-details">
+                        <div class="result-row">
+                            <span>Typical Capacity</span>
+                            <strong id="projectCapacity">6-8 pickup truck loads</strong>
+                        </div>
+                        <div class="result-row">
+                            <span>Weight Limit</span>
+                            <strong id="projectWeight">4,000 lbs included</strong>
+                        </div>
+                        <div class="result-row">
+                            <span>Estimated Price</span>
+                            <strong id="projectPrice">$350 - $500</strong>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Weight-Based Calculator -->
+            <div class="calc-card">
+                <h2><span>⚖️</span> By Material Weight</h2>
+                <p style="color: var(--text-light); margin-bottom: 1.5rem;">Add up what you're throwing away to calculate total weight.</p>
+                
+                <div class="weight-items" id="weightItems">
+                    <div class="weight-item">
+                        <div class="weight-item-info">
+                            <div class="weight-item-name">Furniture pieces</div>
+                            <div class="weight-item-weight">~75 lbs each</div>
+                        </div>
+                        <input type="number" min="0" value="0" data-weight="75" onchange="calculateWeight()">
+                    </div>
+                    <div class="weight-item">
+                        <div class="weight-item-info">
+                            <div class="weight-item-name">Mattresses</div>
+                            <div class="weight-item-weight">~100 lbs each</div>
+                        </div>
+                        <input type="number" min="0" value="0" data-weight="100" onchange="calculateWeight()">
+                    </div>
+                    <div class="weight-item">
+                        <div class="weight-item-info">
+                            <div class="weight-item-name">Appliances</div>
+                            <div class="weight-item-weight">~150 lbs each</div>
+                        </div>
+                        <input type="number" min="0" value="0" data-weight="150" onchange="calculateWeight()">
+                    </div>
+                    <div class="weight-item">
+                        <div class="weight-item-info">
+                            <div class="weight-item-name">Bags of debris (33 gal)</div>
+                            <div class="weight-item-weight">~30 lbs each</div>
+                        </div>
+                        <input type="number" min="0" value="0" data-weight="30" onchange="calculateWeight()">
+                    </div>
+                    <div class="weight-item">
+                        <div class="weight-item-info">
+                            <div class="weight-item-name">Boxes (packed)</div>
+                            <div class="weight-item-weight">~35 lbs each</div>
+                        </div>
+                        <input type="number" min="0" value="0" data-weight="35" onchange="calculateWeight()">
+                    </div>
+                    <div class="weight-item">
+                        <div class="weight-item-info">
+                            <div class="weight-item-name">Drywall sheets</div>
+                            <div class="weight-item-weight">~60 lbs each</div>
+                        </div>
+                        <input type="number" min="0" value="0" data-weight="60" onchange="calculateWeight()">
+                    </div>
+                    <div class="weight-item">
+                        <div class="weight-item-info">
+                            <div class="weight-item-name">Lumber (2x4, 8ft)</div>
+                            <div class="weight-item-weight">~10 lbs each</div>
+                        </div>
+                        <input type="number" min="0" value="0" data-weight="10" onchange="calculateWeight()">
+                    </div>
+                    <div class="weight-item">
+                        <div class="weight-item-info">
+                            <div class="weight-item-name">Concrete/Brick (cu ft)</div>
+                            <div class="weight-item-weight">~150 lbs per cu ft</div>
+                        </div>
+                        <input type="number" min="0" value="0" data-weight="150" onchange="calculateWeight()">
+                    </div>
+                    <div class="weight-item">
+                        <div class="weight-item-info">
+                            <div class="weight-item-name">Shingles (bundles)</div>
+                            <div class="weight-item-weight">~80 lbs per bundle</div>
+                        </div>
+                        <input type="number" min="0" value="0" data-weight="80" onchange="calculateWeight()">
+                    </div>
+                </div>
+
+                <div id="weightResult" class="result-box">
+                    <h3>Weight Estimate</h3>
+                    <div class="result-size" id="weightTotal">0<span>lbs</span></div>
+                    <div class="result-details">
+                        <div class="result-row">
+                            <span>Recommended Size</span>
+                            <strong id="weightSizeRec">10 yard</strong>
+                        </div>
+                        <div class="result-row">
+                            <span>Weight Allowance</span>
+                            <strong id="weightAllowance">2,000 lbs included</strong>
+                        </div>
+                        <div class="result-row">
+                            <span>Overage Cost</span>
+                            <strong id="weightOverage">$0 (within limit)</strong>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Size Guide Cards -->
+        <section class="size-guide">
+            <h2>📏 Dumpster Size Guide</h2>
+            <div class="size-cards">
+                <div class="size-card" onclick="selectSize(10)">
+                    <div class="size-number">10</div>
+                    <div class="size-label">Cubic Yards</div>
+                    <div class="size-dims">12'L × 8'W × 3.5'H</div>
+                    <div class="size-uses">
+                        <h4>Best For:</h4>
+                        <ul>
+                            <li>Garage cleanout</li>
+                            <li>Small bathroom remodel</li>
+                            <li>Deck removal (small)</li>
+                            <li>250 sq ft flooring</li>
+                        </ul>
+                    </div>
+                    <div class="size-price">
+                        <div class="size-price-range">$275 - $400</div>
+                        <div class="size-price-label">7-day rental</div>
+                    </div>
+                </div>
+
+                <div class="size-card" onclick="selectSize(15)">
+                    <div class="size-number">15</div>
+                    <div class="size-label">Cubic Yards</div>
+                    <div class="size-dims">14'L × 8'W × 4'H</div>
+                    <div class="size-uses">
+                        <h4>Best For:</h4>
+                        <ul>
+                            <li>Basement cleanout</li>
+                            <li>Kitchen remodel</li>
+                            <li>Roof (1,500 sq ft)</li>
+                            <li>500 sq ft flooring</li>
+                        </ul>
+                    </div>
+                    <div class="size-price">
+                        <div class="size-price-range">$325 - $475</div>
+                        <div class="size-price-label">7-day rental</div>
+                    </div>
+                </div>
+
+                <div class="size-card recommended" onclick="selectSize(20)">
+                    <div class="size-number">20</div>
+                    <div class="size-label">Cubic Yards</div>
+                    <div class="size-dims">22'L × 8'W × 4.5'H</div>
+                    <div class="size-uses">
+                        <h4>Best For:</h4>
+                        <ul>
+                            <li>Whole house cleanout</li>
+                            <li>Major renovation</li>
+                            <li>Roof (2,500 sq ft)</li>
+                            <li>Deck removal (large)</li>
+                        </ul>
+                    </div>
+                    <div class="size-price">
+                        <div class="size-price-range">$350 - $550</div>
+                        <div class="size-price-label">7-day rental</div>
+                    </div>
+                </div>
+
+                <div class="size-card" onclick="selectSize(30)">
+                    <div class="size-number">30</div>
+                    <div class="size-label">Cubic Yards</div>
+                    <div class="size-dims">22'L × 8'W × 6'H</div>
+                    <div class="size-uses">
+                        <h4>Best For:</h4>
+                        <ul>
+                            <li>Estate cleanout</li>
+                            <li>New construction</li>
+                            <li>Large roof (3,500+ sq ft)</li>
+                            <li>Major demolition</li>
+                        </ul>
+                    </div>
+                    <div class="size-price">
+                        <div class="size-price-range">$400 - $650</div>
+                        <div class="size-price-label">7-day rental</div>
+                    </div>
+                </div>
+
+                <div class="size-card" onclick="selectSize(40)">
+                    <div class="size-number">40</div>
+                    <div class="size-label">Cubic Yards</div>
+                    <div class="size-dims">22'L × 8'W × 8'H</div>
+                    <div class="size-uses">
+                        <h4>Best For:</h4>
+                        <ul>
+                            <li>Commercial projects</li>
+                            <li>Full demolition</li>
+                            <li>Large construction</li>
+                            <li>Industrial cleanout</li>
+                        </ul>
+                    </div>
+                    <div class="size-price">
+                        <div class="size-price-range">$450 - $750</div>
+                        <div class="size-price-label">7-day rental</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Project Reference Table -->
+        <section class="project-guide">
+            <h2>📊 Project Size Reference</h2>
+            <table class="project-table">
+                <thead>
+                    <tr>
+                        <th>Project Type</th>
+                        <th>Recommended Size</th>
+                        <th>Typical Weight</th>
+                        <th>Rental Days</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Single room cleanout</td>
+                        <td>10 yard</td>
+                        <td>1,000 - 2,000 lbs</td>
+                        <td>3-5 days</td>
+                    </tr>
+                    <tr>
+                        <td>Garage cleanout</td>
+                        <td>10-15 yard</td>
+                        <td>1,500 - 3,000 lbs</td>
+                        <td>3-7 days</td>
+                    </tr>
+                    <tr>
+                        <td>Bathroom remodel</td>
+                        <td>10 yard</td>
+                        <td>1,000 - 2,000 lbs</td>
+                        <td>5-7 days</td>
+                    </tr>
+                    <tr>
+                        <td>Kitchen remodel</td>
+                        <td>15-20 yard</td>
+                        <td>2,000 - 4,000 lbs</td>
+                        <td>7-10 days</td>
+                    </tr>
+                    <tr>
+                        <td>Roof (2,000 sq ft)</td>
+                        <td>20 yard</td>
+                        <td>3,000 - 5,000 lbs</td>
+                        <td>3-5 days</td>
+                    </tr>
+                    <tr>
+                        <td>Whole house cleanout</td>
+                        <td>20-30 yard</td>
+                        <td>3,000 - 6,000 lbs</td>
+                        <td>7-14 days</td>
+                    </tr>
+                    <tr>
+                        <td>New construction (home)</td>
+                        <td>30-40 yard</td>
+                        <td>4,000 - 8,000 lbs</td>
+                        <td>30+ days</td>
+                    </tr>
+                    <tr>
+                        <td>Concrete/brick disposal</td>
+                        <td>10 yard (heavy debris)</td>
+                        <td>8,000 - 10,000 lbs</td>
+                        <td>3-5 days</td>
+                    </tr>
+                </tbody>
+            </table>
+        </section>
+
+        <!-- CTA Section -->
+        <section class="cta-section">
+            <h2>Ready to Get Your Dumpster?</h2>
+            <p>Compare prices from verified local providers and get the best deal on your rental.</p>
+            <a href="/quote.html" class="btn btn-primary" style="background: white; color: var(--primary);">Get Free Quotes →</a>
+        </section>
+    </div>
+
+    <footer>
+        <p>&copy; 2026 RollOffCompare. Helping you find the right dumpster at the right price.</p>
+    </footer>
+
+    <script>
+        // Project type recommendations
+        const projectRecommendations = {
+            'garage': { size: 10, capacity: '3-4 pickup truck loads', weight: '2,000 lbs', price: '$275 - $400' },
+            'basement': { size: 15, capacity: '4-6 pickup truck loads', weight: '3,000 lbs', price: '$325 - $475' },
+            'attic': { size: 10, capacity: '3-4 pickup truck loads', weight: '2,000 lbs', price: '$275 - $400' },
+            'whole-house': { size: 20, capacity: '6-8 pickup truck loads', weight: '4,000 lbs', price: '$350 - $550' },
+            'estate': { size: 30, capacity: '9-12 pickup truck loads', weight: '6,000 lbs', price: '$400 - $650' },
+            'bathroom': { size: 10, capacity: '3-4 pickup truck loads', weight: '2,000 lbs', price: '$275 - $400' },
+            'kitchen': { size: 15, capacity: '4-6 pickup truck loads', weight: '3,000 lbs', price: '$325 - $475' },
+            'flooring': { size: 10, capacity: '3-4 pickup truck loads', weight: '2,000 lbs', price: '$275 - $400' },
+            'deck': { size: 15, capacity: '4-6 pickup truck loads', weight: '3,000 lbs', price: '$325 - $475' },
+            'addition': { size: 20, capacity: '6-8 pickup truck loads', weight: '4,000 lbs', price: '$350 - $550' },
+            'roof-small': { size: 15, capacity: '4-6 pickup truck loads', weight: '4,000 lbs', price: '$325 - $475' },
+            'roof-medium': { size: 20, capacity: '6-8 pickup truck loads', weight: '5,000 lbs', price: '$350 - $550' },
+            'roof-large': { size: 30, capacity: '9-12 pickup truck loads', weight: '7,000 lbs', price: '$400 - $650' },
+            'yard-debris': { size: 10, capacity: '3-4 pickup truck loads', weight: '1,500 lbs', price: '$275 - $400' },
+            'tree-removal': { size: 15, capacity: '4-6 pickup truck loads', weight: '2,000 lbs', price: '$325 - $475' },
+            'landscaping': { size: 20, capacity: '6-8 pickup truck loads', weight: '3,000 lbs', price: '$350 - $550' },
+            'new-construction': { size: 30, capacity: '9-12 pickup truck loads', weight: '5,000 lbs', price: '$400 - $650' },
+            'demolition-small': { size: 20, capacity: '6-8 pickup truck loads', weight: '4,000 lbs', price: '$350 - $550' },
+            'demolition-large': { size: 40, capacity: '12-16 pickup truck loads', weight: '8,000 lbs', price: '$450 - $750' }
+        };
+
+        const sizeMultipliers = {
+            'small': 0.8,
+            'medium': 1,
+            'large': 1.25,
+            'xlarge': 1.5
+        };
+
+        function calculateByProject() {
+            const projectType = document.getElementById('projectType').value;
+            const homeSize = document.getElementById('homeSize').value;
+            const resultBox = document.getElementById('projectResult');
+            
+            if (!projectType) {
+                resultBox.style.display = 'none';
+                return;
+            }
+
+            const rec = projectRecommendations[projectType];
+            const multiplier = sizeMultipliers[homeSize];
+            
+            // Calculate adjusted size
+            let adjustedSize = Math.round(rec.size * multiplier / 5) * 5;
+            adjustedSize = Math.max(10, Math.min(40, adjustedSize)); // Clamp to valid sizes
+
+            resultBox.style.display = 'block';
+            document.getElementById('projectSizeResult').innerHTML = `${adjustedSize}<span>yard</span>`;
+            document.getElementById('projectCapacity').textContent = rec.capacity;
+            document.getElementById('projectWeight').textContent = `${rec.weight} included`;
+            document.getElementById('projectPrice').textContent = rec.price;
+        }
+
+        function calculateWeight() {
+            const inputs = document.querySelectorAll('#weightItems input');
+            let totalWeight = 0;
+            
+            inputs.forEach(input => {
+                const qty = parseInt(input.value) || 0;
+                const weight = parseInt(input.dataset.weight) || 0;
+                totalWeight += qty * weight;
+            });
+
+            document.getElementById('weightTotal').innerHTML = `${totalWeight.toLocaleString()}<span>lbs</span>`;
+
+            // Determine recommended size based on weight
+            let recSize, allowance, overage;
+            if (totalWeight <= 2000) {
+                recSize = '10 yard';
+                allowance = '2,000 lbs included';
+                overage = totalWeight <= 2000 ? '$0 (within limit)' : `~$${Math.round((totalWeight - 2000) * 0.05)} overage`;
+            } else if (totalWeight <= 3000) {
+                recSize = '15 yard';
+                allowance = '3,000 lbs included';
+                overage = totalWeight <= 3000 ? '$0 (within limit)' : `~$${Math.round((totalWeight - 3000) * 0.05)} overage`;
+            } else if (totalWeight <= 4000) {
+                recSize = '20 yard';
+                allowance = '4,000 lbs included';
+                overage = totalWeight <= 4000 ? '$0 (within limit)' : `~$${Math.round((totalWeight - 4000) * 0.05)} overage`;
+            } else if (totalWeight <= 6000) {
+                recSize = '30 yard';
+                allowance = '6,000 lbs included';
+                overage = totalWeight <= 6000 ? '$0 (within limit)' : `~$${Math.round((totalWeight - 6000) * 0.05)} overage`;
+            } else {
+                recSize = '40 yard';
+                allowance = '8,000 lbs included';
+                overage = totalWeight <= 8000 ? '$0 (within limit)' : `~$${Math.round((totalWeight - 8000) * 0.05)} overage`;
+            }
+
+            document.getElementById('weightSizeRec').textContent = recSize;
+            document.getElementById('weightAllowance').textContent = allowance;
+            document.getElementById('weightOverage').textContent = overage;
+        }
+
+        function selectSize(size) {
+            window.location.href = `/quote.html?size=${size}`;
+        }
+    </script>
+</body>
+</html>

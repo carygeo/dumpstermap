@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dumpster Rental Results | RollOffCompare</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        :root {
+            --primary: #2563eb;
+            --primary-dark: #1d4ed8;
+            --secondary: #059669;
+            --accent: #f59e0b;
+            --text: #1f2937;
+            --text-light: #6b7280;
+            --bg: #ffffff;
+            --bg-light: #f9fafb;
+            --border: #e5e7eb;
+        }
+        
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            color: var(--text);
+            line-height: 1.6;
+            background: var(--bg-light);
+        }
+        
+        /* Header */
+        header {
+            background: var(--bg);
+            border-bottom: 1px solid var(--border);
+            padding: 1rem 2rem;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        
+        .header-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .logo {
+            font-size: 1.5rem;
+            font-weight: 800;
+            color: var(--primary);
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .logo-icon {
+            width: 40px;
+            height: 40px;
+            background: var(--primary);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 1.2rem;
+        }
+        
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            font-weight: 600;
+            text-decoration: none;
+            transition: all 0.2s;
+            cursor: pointer;
+            border: none;
+            font-size: 1rem;
+        }
+        
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: var(--primary-dark);
+        }
+        
+        .btn-secondary {
+            background: var(--bg-light);
+            color: var(--text);
+            border: 1px solid var(--border);
+        }
+        
+        .btn-secondary:hover {
+            background: var(--border);
+        }
+        
+        /* Results Header */
+        .results-header {
+            background: var(--bg);
+            padding: 1.5rem 2rem;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .results-header-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+        
+        .results-info h1 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 0.25rem;
+        }
+        
+        .results-count {
+            color: var(--text-light);
+        }
+        
+        .filters {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+        
+        .filter-group {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .filter-group label {
+            font-size: 0.875rem;
+            color: var(--text-light);
+        }
+        
+        .filter-group select {
+            padding: 0.5rem 1rem;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-size: 0.875rem;
+            background: white;
+        }
+        
+        /* Main Content */
+        .main-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+            display: grid;
+            grid-template-columns: 280px 1fr;
+            gap: 2rem;
+        }
+        
+        /* Sidebar Filters */
+        .sidebar {
+            background: var(--bg);
+            border-radius: 12px;
+            padding: 1.5rem;
+            height: fit-content;
+            position: sticky;
+            top: 100px;
+        }
+        
+        .sidebar h3 {
+            font-size: 1rem;
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .filter-section {
+            margin-bottom: 1.5rem;
+        }
+        
+        .filter-section h4 {
+            font-size: 0.875rem;
+            font-weight: 600;
+            margin-bottom: 0.75rem;
+        }
+        
+        .filter-option {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 0;
+            cursor: pointer;
+        }
+        
+        .filter-option input {
+            accent-color: var(--primary);
+        }
+        
+        .price-range {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+        }
+        
+        .price-range input {
+            width: 80px;
+            padding: 0.5rem;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+        }
+        
+        /* Results Grid */
+        .results-container {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+        
+        .provider-card {
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            transition: all 0.3s;
+        }
+        
+        .provider-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+        }
+        
+        .provider-header {
+            padding: 1.5rem;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            gap: 1rem;
+        }
+        
+        .provider-logo {
+            width: 64px;
+            height: 64px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+        
+        .provider-info {
+            flex: 1;
+        }
+        
+        .provider-info h3 {
+            font-size: 1.25rem;
+            margin-bottom: 0.25rem;
+        }
+        
+        .provider-location {
+            color: var(--text-light);
+            font-size: 0.875rem;
+        }
+        
+        .provider-rating {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-top: 0.5rem;
+        }
+        
+        .stars {
+            color: var(--accent);
+            font-size: 1rem;
+        }
+        
+        .rating-count {
+            color: var(--text-light);
+            font-size: 0.875rem;
+        }
+        
+        .provider-body {
+            padding: 1.5rem;
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 1rem;
+            align-items: center;
+        }
+        
+        .provider-details {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+        
+        .provider-sizes {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+        
+        .size-tag {
+            background: var(--bg-light);
+            padding: 0.25rem 0.75rem;
+            border-radius: 999px;
+            font-size: 0.875rem;
+            font-weight: 500;
+        }
+        
+        .size-tag.active {
+            background: var(--primary);
+            color: white;
+        }
+        
+        .provider-features {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+        
+        .feature {
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+            font-size: 0.875rem;
+            color: var(--text-light);
+        }
+        
+        .feature-icon {
+            color: var(--secondary);
+        }
+        
+        .provider-pricing {
+            text-align: right;
+        }
+        
+        .price-label {
+            color: var(--text-light);
+            font-size: 0.875rem;
+        }
+        
+        .price-value {
+            font-size: 2rem;
+            font-weight: 800;
+            color: var(--secondary);
+        }
+        
+        .provider-actions {
+            display: flex;
+            gap: 0.75rem;
+            margin-top: 1rem;
+            grid-column: 1 / -1;
+        }
+        
+        .provider-actions .btn {
+            flex: 1;
+            text-align: center;
+        }
+        
+        /* No Results */
+        .no-results {
+            text-align: center;
+            padding: 4rem 2rem;
+            background: white;
+            border-radius: 12px;
+        }
+        
+        .no-results h3 {
+            font-size: 1.5rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        .no-results p {
+            color: var(--text-light);
+        }
+        
+        /* Comparison Bar */
+        .comparison-bar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: var(--bg);
+            border-top: 1px solid var(--border);
+            padding: 1rem 2rem;
+            display: none;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 -4px 6px rgba(0,0,0,0.1);
+        }
+        
+        .comparison-bar.active {
+            display: flex;
+        }
+        
+        /* Responsive */
+        @media (max-width: 968px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+            
+            .sidebar {
+                position: static;
+            }
+            
+            .provider-body {
+                grid-template-columns: 1fr;
+            }
+            
+            .provider-pricing {
+                text-align: left;
+            }
+        }
+        
+        @media (max-width: 640px) {
+            .results-header-content {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            
+            .filters {
+                width: 100%;
+                flex-wrap: wrap;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header>
+        <div class="header-content">
+            <a href="index.html" class="logo">
+                <div class="logo-icon">🗑️</div>
+                RollOffCompare
+            </a>
+            <a href="index.html" class="btn btn-secondary">New Search</a>
+        </div>
+    </header>
+
+    <!-- Results Header -->
+    <div class="results-header">
+        <div class="results-header-content">
+            <div class="results-info">
+                <h1>Dumpster Rentals Near <span id="zip-display">34102</span></h1>
+                <p class="results-count" id="results-count">Loading...</p>
+            </div>
+            <div class="filters">
+                <div class="filter-group">
+                    <label>Sort by:</label>
+                    <select id="sort-select">
+                        <option value="rating">Top Rated</option>
+                        <option value="price-low">Price: Low to High</option>
+                        <option value="price-high">Price: High to Low</option>
+                        <option value="reviews">Most Reviews</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label>Size:</label>
+                    <select id="size-filter">
+                        <option value="all">All Sizes</option>
+                        <option value="10">10 Yard</option>
+                        <option value="15">15 Yard</option>
+                        <option value="20">20 Yard</option>
+                        <option value="30">30 Yard</option>
+                        <option value="40">40 Yard</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <h3>Filter Results</h3>
+            
+            <div class="filter-section">
+                <h4>Features</h4>
+                <label class="filter-option">
+                    <input type="checkbox" checked> Same-day delivery
+                </label>
+                <label class="filter-option">
+                    <input type="checkbox" checked> No hidden fees
+                </label>
+                <label class="filter-option">
+                    <input type="checkbox"> Online booking
+                </label>
+                <label class="filter-option">
+                    <input type="checkbox"> Recycling included
+                </label>
+            </div>
+            
+            <div class="filter-section">
+                <h4>Price Range</h4>
+                <div class="price-range">
+                    <input type="number" placeholder="Min" value="200">
+                    <span>to</span>
+                    <input type="number" placeholder="Max" value="600">
+                </div>
+            </div>
+            
+            <div class="filter-section">
+                <h4>Rating</h4>
+                <label class="filter-option">
+                    <input type="checkbox" checked> 4+ stars
+                </label>
+                <label class="filter-option">
+                    <input type="checkbox"> 3+ stars
+                </label>
+            </div>
+            
+            <div class="filter-section">
+                <h4>Verification</h4>
+                <label class="filter-option">
+                    <input type="checkbox" checked> Licensed
+                </label>
+                <label class="filter-option">
+                    <input type="checkbox" checked> Insured
+                </label>
+                <label class="filter-option">
+                    <input type="checkbox"> BBB Accredited
+                </label>
+            </div>
+        </aside>
+
+        <!-- Results -->
+        <div id="results-container" class="results-container">
+            <!-- Results will be rendered here by JavaScript -->
+            <div class="no-results">
+                <h3>Loading providers...</h3>
+                <p>Please wait while we find haulers in your area.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Comparison Bar (hidden by default) -->
+    <div class="comparison-bar">
+        <div>
+            <strong>Compare:</strong> 0 providers selected
+        </div>
+        <button class="btn btn-primary" disabled>Compare Selected</button>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

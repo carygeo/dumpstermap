@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DumpsterMap.io - Compare Dumpster Rental Prices Near You</title>
+    <meta name="description" content="Find and compare dumpster rental prices from 13,000+ verified providers. Interactive map, instant quotes, no hidden fees.">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.Default.css" />
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --primary: #10b981;
+            --primary-dark: #059669;
+            --secondary: #3b82f6;
+            --accent: #f59e0b;
+            --text: #1f2937;
+            --text-light: #6b7280;
+            --bg: #ffffff;
+            --bg-light: #f9fafb;
+            --bg-dark: #0f172a;
+            --border: #e5e7eb;
+        }
+        html, body { height: 100%; }
+        body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; color: var(--text); }
+        
+        /* Header */
+        header {
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            padding: 0.75rem 1.5rem;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+            height: 64px;
+            border-bottom: 1px solid #334155;
+        }
+        .header-content { max-width: 100%; display: flex; justify-content: space-between; align-items: center; height: 100%; }
+        .logo {
+            font-size: 1.5rem;
+            font-weight: 800;
+            color: white;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+        .logo-icon {
+            width: 36px;
+            height: 36px;
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 1.25rem;
+        }
+        .logo span { color: var(--primary); }
+        
+        .search-bar {
+            display: flex;
+            gap: 0.5rem;
+            flex: 1;
+            max-width: 500px;
+            margin: 0 2rem;
+        }
+        .search-bar input {
+            flex: 1;
+            padding: 0.6rem 1rem;
+            border: 2px solid #334155;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            background: #1e293b;
+            color: white;
+            transition: border-color 0.2s;
+        }
+        .search-bar input:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+        .search-bar input::placeholder { color: #64748b; }
+        
+        .header-stats {
+            display: flex;
+            gap: 1.5rem;
+            color: #94a3b8;
+            font-size: 0.875rem;
+        }
+        .stat-value { color: var(--primary); font-weight: 700; }
+        
+        .btn {
+            padding: 0.6rem 1.25rem;
+            border-radius: 8px;
+            font-weight: 600;
+            text-decoration: none;
+            transition: all 0.2s;
+            cursor: pointer;
+            border: none;
+            font-size: 0.875rem;
+        }
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-primary:hover { background: var(--primary-dark); }
+        
+        /* Main Layout */
+        .main-container { display: flex; height: calc(100vh - 64px); margin-top: 64px; }
+        
+        /* Sidebar */
+        .sidebar {
+            width: 400px;
+            height: 100%;
+            overflow-y: auto;
+            background: var(--bg);
+            border-right: 1px solid var(--border);
+        }
+        .sidebar-header {
+            padding: 1rem;
+            border-bottom: 1px solid var(--border);
+            background: var(--bg-light);
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+        .sidebar-header h2 { font-size: 1.1rem; margin-bottom: 0.25rem; }
+        .results-count { color: var(--primary); font-weight: 700; }
+        
+        /* Filters */
+        .filters {
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid var(--border);
+            background: white;
+        }
+        .filter-row { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 0.5rem; }
+        .filter-group { display: flex; flex-direction: column; gap: 0.25rem; flex: 1; min-width: 90px; }
+        .filter-group label { font-size: 0.7rem; font-weight: 600; color: var(--text-light); text-transform: uppercase; }
+        .filter-group select { padding: 0.4rem; border: 1px solid var(--border); border-radius: 6px; font-size: 0.8rem; }
+        
+        .rating-filters { display: flex; gap: 0.5rem; margin-top: 0.5rem; }
+        .rating-btn {
+            padding: 0.35rem 0.75rem;
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 500;
+            cursor: pointer;
+            background: white;
+            transition: all 0.2s;
+        }
+        .rating-btn:hover { border-color: var(--primary); }
+        .rating-btn.active { background: var(--primary); color: white; border-color: var(--primary); }
+        
+        /* Provider Cards */
+        .provider-list { padding: 0.5rem; }
+        
+        .provider-card {
+            background: white;
+            border: 2px solid var(--border);
+            border-radius: 12px;
+            padding: 1rem;
+            margin-bottom: 0.75rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .provider-card:hover { border-color: var(--primary); box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+        .provider-card.active { border-color: var(--primary); background: #ecfdf5; }
+        
+        .provider-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.5rem; }
+        .provider-name { font-size: 1rem; font-weight: 600; color: var(--text); }
+        .provider-rating { display: flex; align-items: center; gap: 0.25rem; }
+        .rating-stars { color: var(--accent); font-size: 0.875rem; }
+        .rating-value { font-weight: 600; font-size: 0.875rem; }
+        .rating-count { color: var(--text-light); font-size: 0.75rem; }
+        
+        .provider-location { color: var(--text-light); font-size: 0.875rem; margin-bottom: 0.5rem; }
+        
+        .provider-badges { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 0.75rem; }
+        .badge {
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            font-weight: 600;
+        }
+        .badge-verified { background: #dcfce7; color: #166534; }
+        .badge-top { background: #fef3c7; color: #92400e; }
+        .badge-website { background: #dbeafe; color: #1e40af; }
+        
+        .provider-actions { display: flex; gap: 0.5rem; padding-top: 0.75rem; border-top: 1px solid var(--border); }
+        .btn-sm { padding: 0.4rem 0.75rem; font-size: 0.75rem; flex: 1; text-align: center; }
+        .btn-outline { background: white; border: 1px solid var(--border); color: var(--text); }
+        .btn-outline:hover { border-color: var(--primary); color: var(--primary); }
+        
+        /* Map */
+        .map-container { flex: 1; height: 100%; }
+        #map { width: 100%; height: 100%; }
+        
+        /* Custom Clusters */
+        .marker-cluster-small,
+        .marker-cluster-medium,
+        .marker-cluster-large {
+            background: rgba(16, 185, 129, 0.6);
+        }
+        .marker-cluster-small div,
+        .marker-cluster-medium div,
+        .marker-cluster-large div {
+            background: var(--primary);
+            color: white;
+            font-weight: 600;
+        }
+        
+        /* Custom Popup */
+        .leaflet-popup-content-wrapper {
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+        }
+        .popup-content { min-width: 220px; }
+        .popup-name { font-weight: 600; font-size: 1rem; margin-bottom: 0.25rem; }
+        .popup-location { color: var(--text-light); font-size: 0.875rem; margin-bottom: 0.5rem; }
+        .popup-rating { margin-bottom: 0.75rem; }
+        .popup-actions { display: flex; gap: 0.5rem; }
+        .popup-btn {
+            padding: 0.4rem 0.75rem;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-decoration: none;
+            flex: 1;
+            text-align: center;
+        }
+        .popup-btn-call { background: var(--primary); color: white; }
+        .popup-btn-web { background: var(--bg-light); color: var(--text); border: 1px solid var(--border); }
+        
+        /* Loading */
+        .loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            z-index: 500;
+            background: white;
+            padding: 2rem;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+        }
+        .loading.hidden { display: none; }
+        .spinner {
+            width: 48px;
+            height: 48px;
+            border: 4px solid var(--border);
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 1rem;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            .sidebar { width: 100%; position: fixed; bottom: 0; height: 40vh; z-index: 999; }
+            .map-container { height: 60vh; }
+            .main-container { flex-direction: column; }
+            .header-stats { display: none; }
+            .search-bar { margin: 0 1rem; max-width: none; }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="header-content">
+            <a href="/" class="logo">
+                <div class="logo-icon">🗑️</div>
+                Dumpster<span>Map</span>.io
+            </a>
+            <div class="search-bar">
+                <input type="text" id="searchInput" placeholder="Enter ZIP code or city...">
+                <button class="btn btn-primary" onclick="searchLocation()">Search</button>
+            </div>
+            <div class="header-stats">
+                <span><span class="stat-value" id="totalProviders">0</span> providers</span>
+                <span><span class="stat-value">50</span> states</span>
+            </div>
+        </div>
+    </header>
+    
+    <main class="main-container">
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h2>🗺️ Providers Near You</h2>
+                <p>Showing <span class="results-count" id="visibleCount">0</span> of <span id="totalCount">0</span></p>
+            </div>
+            
+            <div class="filters">
+                <div class="filter-row">
+                    <div class="filter-group">
+                        <label>Min Rating</label>
+                        <select id="ratingFilter" onchange="applyFilters()">
+                            <option value="0">Any</option>
+                            <option value="3">3+ ⭐</option>
+                            <option value="4">4+ ⭐</option>
+                            <option value="4.5">4.5+ ⭐</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label>Reviews</label>
+                        <select id="reviewFilter" onchange="applyFilters()">
+                            <option value="0">Any</option>
+                            <option value="10">10+</option>
+                            <option value="50">50+</option>
+                            <option value="100">100+</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label>Sort By</label>
+                        <select id="sortFilter" onchange="applyFilters()">
+                            <option value="rating">Highest Rated</option>
+                            <option value="reviews">Most Reviews</option>
+                            <option value="name">Name A-Z</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="provider-list" id="providerList">
+                <!-- Provider cards render here -->
+            </div>
+        </aside>
+        
+        <div class="map-container">
+            <div id="map"></div>
+            <div class="loading" id="loading">
+                <div class="spinner"></div>
+                <div>Loading <strong>13,000+</strong> providers...</div>
+            </div>
+        </div>
+    </main>
+    
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet.markercluster@1.4.1/dist/leaflet.markercluster.js"></script>
+    <script>
+        let map, markers;
+        let allProviders = [];
+        let filteredProviders = [];
+        let activeCard = null;
+        
+        // Initialize map with dark tiles
+        function initMap() {
+            map = L.map('map').setView([39.8283, -98.5795], 4);
+            
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+                attribution: '© OpenStreetMap © CARTO',
+                subdomains: 'abcd',
+                maxZoom: 19
+            }).addTo(map);
+            
+            markers = L.markerClusterGroup({
+                maxClusterRadius: 50,
+                spiderfyOnMaxZoom: true,
+                showCoverageOnHover: false,
+                zoomToBoundsOnClick: true,
+                chunkedLoading: true
+            });
+            map.addLayer(markers);
+        }
+        
+        // Create marker with rating-based color
+        function createMarker(provider) {
+            const rating = provider.rating || 0;
+            const color = rating >= 4.5 ? '#10b981' : rating >= 4 ? '#3b82f6' : rating >= 3 ? '#f59e0b' : '#6b7280';
+            
+            const icon = L.divIcon({
+                html: `<div style="background:${color};border:2px solid white;border-radius:50%;width:20px;height:20px;box-shadow:0 2px 6px rgba(0,0,0,0.3);"></div>`,
+                className: 'custom-marker',
+                iconSize: [20, 20],
+                iconAnchor: [10, 10]
+            });
+            
+            const marker = L.marker([provider.latitude, provider.longitude], { icon });
+            
+            const phone = provider.phone || '';
+            const website = provider.website || '';
+            const stars = '⭐'.repeat(Math.min(5, Math.round(rating)));
+            
+            marker.bindPopup(`
+                <div class="popup-content">
+                    <div class="popup-name">${provider.name}</div>
+                    <div class="popup-location">📍 ${provider.city}, ${provider.state}</div>
+                    <div class="popup-rating">${stars} ${rating.toFixed(1)} (${provider.reviews || 0} reviews)</div>
+                    <div class="popup-actions">
+                        ${phone ? `<a href="tel:${phone}" class="popup-btn popup-btn-call">📞 Call</a>` : ''}
+                        ${website ? `<a href="${website}" target="_blank" class="popup-btn popup-btn-web">🌐 Website</a>` : ''}
+                    </div>
+                </div>
+            `);
+            
+            return marker;
+        }
+        
+        // Create provider card HTML
+        function createProviderCard(provider, index) {
+            const rating = provider.rating || 0;
+            const reviews = provider.reviews || 0;
+            const stars = '⭐'.repeat(Math.min(5, Math.round(rating)));
+            
+            const badges = [];
+            if (rating >= 4.5 && reviews >= 20) badges.push('<span class="badge badge-top">⭐ Top Rated</span>');
+            if (provider.website) badges.push('<span class="badge badge-website">🌐 Website</span>');
+            
+            return `
+                <div class="provider-card" data-index="${index}" data-lat="${provider.latitude}" data-lng="${provider.longitude}">
+                    <div class="provider-header">
+                        <div class="provider-name">${provider.name}</div>
+                        <div class="provider-rating">
+                            <span class="rating-value">${rating.toFixed(1)}</span>
+                            <span class="rating-count">(${reviews})</span>
+                        </div>
+                    </div>
+                    <div class="provider-location">📍 ${provider.city}, ${provider.state}</div>
+                    ${badges.length ? `<div class="provider-badges">${badges.join('')}</div>` : ''}
+                    <div class="provider-actions">
+                        ${provider.phone ? `<a href="tel:${provider.phone}" class="btn btn-sm btn-primary">📞 Call</a>` : ''}
+                        ${provider.website ? `<a href="${provider.website}" target="_blank" class="btn btn-sm btn-outline">🌐 Website</a>` : ''}
+                    </div>
+                </div>
+            `;
+        }
+        
+        // Apply filters and update display
+        function applyFilters() {
+            const minRating = parseFloat(document.getElementById('ratingFilter').value);
+            const minReviews = parseInt(document.getElementById('reviewFilter').value);
+            const sortBy = document.getElementById('sortFilter').value;
+            
+            filteredProviders = allProviders.filter(p => {
+                if ((p.rating || 0) < minRating) return false;
+                if ((p.reviews || 0) < minReviews) return false;
+                return true;
+            });
+            
+            // Sort
+            filteredProviders.sort((a, b) => {
+                if (sortBy === 'rating') return (b.rating || 0) - (a.rating || 0);
+                if (sortBy === 'reviews') return (b.reviews || 0) - (a.reviews || 0);
+                if (sortBy === 'name') return (a.name || '').localeCompare(b.name || '');
+                return 0;
+            });
+            
+            updateDisplay();
+        }
+        
+        // Update markers and list
+        function updateDisplay() {
+            // Update markers
+            markers.clearLayers();
+            filteredProviders.forEach(p => {
+                if (p.latitude && p.longitude) {
+                    markers.addLayer(createMarker(p));
+                }
+            });
+            
+            // Update list (show top 100 for performance)
+            const listHtml = filteredProviders.slice(0, 100).map((p, i) => createProviderCard(p, i)).join('');
+            document.getElementById('providerList').innerHTML = listHtml;
+            document.getElementById('visibleCount').textContent = filteredProviders.length.toLocaleString();
+        }
+        
+        // Search location
+        function searchLocation() {
+            const query = document.getElementById('searchInput').value.trim();
+            if (!query) return;
+            
+            // Simple geocoding via Nominatim
+            fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&countrycodes=us`)
+                .then(r => r.json())
+                .then(data => {
+                    if (data.length > 0) {
+                        const { lat, lon } = data[0];
+                        map.setView([lat, lon], 11);
+                    }
+                });
+        }
+        
+        // Load data
+        async function loadData() {
+            try {
+                const response = await fetch('data/providers.json');
+                allProviders = await response.json();
+                
+                document.getElementById('totalProviders').textContent = allProviders.length.toLocaleString();
+                document.getElementById('totalCount').textContent = allProviders.length.toLocaleString();
+                
+                filteredProviders = [...allProviders];
+                applyFilters();
+                
+                document.getElementById('loading').classList.add('hidden');
+            } catch (error) {
+                console.error('Error:', error);
+                document.getElementById('loading').innerHTML = '<div style="color:#ef4444;">Error loading data. Please refresh.</div>';
+            }
+        }
+        
+        // Card click handler
+        document.addEventListener('click', (e) => {
+            const card = e.target.closest('.provider-card');
+            if (card && !e.target.closest('a')) {
+                const lat = parseFloat(card.dataset.lat);
+                const lng = parseFloat(card.dataset.lng);
+                
+                if (activeCard) activeCard.classList.remove('active');
+                card.classList.add('active');
+                activeCard = card;
+                
+                if (lat && lng) map.setView([lat, lng], 14);
+            }
+        });
+        
+        // Enter key search
+        document.getElementById('searchInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') searchLocation();
+        });
+        
+        // Init
+        document.addEventListener('DOMContentLoaded', () => {
+            initMap();
+            loadData();
+        });
+    </script>
+</body>
+</html>

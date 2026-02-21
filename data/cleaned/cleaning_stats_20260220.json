@@ -1,0 +1,812 @@
+{
+  "total_raw": 10249,
+  "removed": {
+    "junk_removal_only:junk removal": 226,
+    "junk_removal_only:junk king": 82,
+    "national_chain:gfl environmental": 52,
+    "national_chain:republic services": 207,
+    "missing_contact": 73,
+    "national_chain:waste management": 76,
+    "non_dumpster:septic": 30,
+    "non_dumpster:mini storage": 16,
+    "non_dumpster:self storage": 37,
+    "national_chain:waste connections": 81,
+    "non_dumpster:portable toilet": 66,
+    "non_dumpster:movers": 10,
+    "non_dumpster:porta potty": 8,
+    "non_dumpster:moving company": 86,
+    "junk_removal_only:1-800-got-junk": 12,
+    "national_chain:waste pro": 36,
+    "big_box_retailer:home depot": 66,
+    "junk_removal_only:junkluggers": 19,
+    "closed_permanently": 20,
+    "big_box_retailer:lowe's": 39,
+    "non_dumpster:u-haul": 16,
+    "junk_removal_only:college hunks": 1,
+    "national_chain:waste industries": 12,
+    "national_chain:casella": 72,
+    "big_box_retailer:menards": 6,
+    "national_chain:advanced disposal": 2,
+    "national_chain:rumpke": 21,
+    "big_box_retailer:ace hardware": 2,
+    "junk_removal_only:junk hauling": 1,
+    "non_dumpster:penske": 1,
+    "big_box_retailer:northern tool": 1,
+    "big_box_retailer:lowes": 1
+  },
+  "total_after_filter": 8871,
+  "duplicates_removed": 2741,
+  "total_clean": 6130,
+  "by_state": {
+    "Alabama": {
+      "raw": 138,
+      "kept": 119,
+      "removed": {
+        "junk_removal_only:junk removal": 2,
+        "junk_removal_only:junk king": 2,
+        "national_chain:gfl environmental": 1,
+        "national_chain:republic services": 5,
+        "missing_contact": 1,
+        "national_chain:waste management": 1,
+        "non_dumpster:septic": 1,
+        "non_dumpster:mini storage": 1,
+        "non_dumpster:self storage": 1,
+        "national_chain:waste connections": 2,
+        "non_dumpster:portable toilet": 2
+      }
+    },
+    "Alaska": {
+      "raw": 38,
+      "kept": 35,
+      "removed": {
+        "national_chain:waste management": 1,
+        "missing_contact": 1,
+        "non_dumpster:movers": 1
+      }
+    },
+    "Arizona": {
+      "raw": 127,
+      "kept": 107,
+      "removed": {
+        "non_dumpster:portable toilet": 3,
+        "junk_removal_only:junk king": 1,
+        "non_dumpster:porta potty": 1,
+        "junk_removal_only:junk removal": 7,
+        "national_chain:waste connections": 3,
+        "national_chain:republic services": 3,
+        "national_chain:waste management": 1,
+        "non_dumpster:moving company": 1
+      }
+    },
+    "Arkansas": {
+      "raw": 111,
+      "kept": 100,
+      "removed": {
+        "national_chain:republic services": 2,
+        "junk_removal_only:junk removal": 1,
+        "junk_removal_only:junk king": 1,
+        "junk_removal_only:1-800-got-junk": 1,
+        "national_chain:waste pro": 2,
+        "national_chain:waste connections": 1,
+        "national_chain:waste management": 2,
+        "non_dumpster:portable toilet": 1
+      }
+    },
+    "California": {
+      "raw": 733,
+      "kept": 625,
+      "removed": {
+        "junk_removal_only:junk king": 19,
+        "non_dumpster:moving company": 7,
+        "national_chain:republic services": 13,
+        "junk_removal_only:junk removal": 36,
+        "missing_contact": 5,
+        "big_box_retailer:home depot": 8,
+        "national_chain:waste management": 5,
+        "junk_removal_only:junkluggers": 1,
+        "closed_permanently": 5,
+        "non_dumpster:portable toilet": 3,
+        "non_dumpster:self storage": 1,
+        "big_box_retailer:lowe's": 1,
+        "non_dumpster:u-haul": 1,
+        "non_dumpster:septic": 1,
+        "junk_removal_only:college hunks": 1,
+        "national_chain:waste industries": 1
+      }
+    },
+    "Colorado": {
+      "raw": 173,
+      "kept": 153,
+      "removed": {
+        "junk_removal_only:junk king": 3,
+        "junk_removal_only:junk removal": 4,
+        "national_chain:republic services": 3,
+        "national_chain:waste connections": 3,
+        "junk_removal_only:junkluggers": 1,
+        "non_dumpster:septic": 1,
+        "non_dumpster:portable toilet": 1,
+        "junk_removal_only:1-800-got-junk": 2,
+        "missing_contact": 1,
+        "non_dumpster:moving company": 1
+      }
+    },
+    "Connecticut": {
+      "raw": 205,
+      "kept": 191,
+      "removed": {
+        "national_chain:waste management": 1,
+        "junk_removal_only:junk king": 2,
+        "non_dumpster:moving company": 1,
+        "national_chain:casella": 2,
+        "non_dumpster:self storage": 1,
+        "junk_removal_only:junkluggers": 1,
+        "non_dumpster:septic": 2,
+        "non_dumpster:portable toilet": 1,
+        "national_chain:waste connections": 1,
+        "closed_permanently": 1,
+        "junk_removal_only:junk removal": 1
+      }
+    },
+    "Delaware": {
+      "raw": 270,
+      "kept": 242,
+      "removed": {
+        "non_dumpster:porta potty": 1,
+        "junk_removal_only:junk removal": 9,
+        "national_chain:waste industries": 1,
+        "non_dumpster:septic": 1,
+        "national_chain:waste management": 2,
+        "junk_removal_only:junkluggers": 1,
+        "non_dumpster:moving company": 4,
+        "national_chain:republic services": 3,
+        "missing_contact": 1,
+        "national_chain:casella": 2,
+        "junk_removal_only:junk king": 1,
+        "national_chain:waste connections": 1,
+        "non_dumpster:u-haul": 1
+      }
+    },
+    "Florida": {
+      "raw": 1083,
+      "kept": 907,
+      "removed": {
+        "national_chain:waste connections": 12,
+        "junk_removal_only:junk removal": 43,
+        "national_chain:republic services": 12,
+        "non_dumpster:moving company": 12,
+        "junk_removal_only:1-800-got-junk": 1,
+        "big_box_retailer:home depot": 15,
+        "non_dumpster:porta potty": 2,
+        "national_chain:waste pro": 16,
+        "national_chain:waste management": 10,
+        "missing_contact": 9,
+        "non_dumpster:self storage": 5,
+        "non_dumpster:portable toilet": 6,
+        "national_chain:gfl environmental": 3,
+        "non_dumpster:u-haul": 4,
+        "big_box_retailer:lowe's": 10,
+        "junk_removal_only:junk king": 5,
+        "non_dumpster:mini storage": 2,
+        "closed_permanently": 4,
+        "non_dumpster:septic": 5
+      }
+    },
+    "Georgia": {
+      "raw": 225,
+      "kept": 202,
+      "removed": {
+        "national_chain:waste connections": 2,
+        "national_chain:republic services": 5,
+        "non_dumpster:self storage": 2,
+        "junk_removal_only:junk king": 2,
+        "junk_removal_only:junkluggers": 1,
+        "national_chain:gfl environmental": 2,
+        "national_chain:waste management": 2,
+        "non_dumpster:portable toilet": 3,
+        "non_dumpster:moving company": 1,
+        "missing_contact": 1,
+        "junk_removal_only:junk removal": 1,
+        "non_dumpster:septic": 1
+      }
+    },
+    "Hawaii": {
+      "raw": 69,
+      "kept": 58,
+      "removed": {
+        "junk_removal_only:junk removal": 1,
+        "junk_removal_only:1-800-got-junk": 1,
+        "national_chain:waste pro": 1,
+        "missing_contact": 2,
+        "big_box_retailer:home depot": 3,
+        "non_dumpster:movers": 1,
+        "big_box_retailer:lowe's": 2
+      }
+    },
+    "Idaho": {
+      "raw": 87,
+      "kept": 71,
+      "removed": {
+        "junk_removal_only:junk king": 1,
+        "junk_removal_only:1-800-got-junk": 1,
+        "junk_removal_only:junk removal": 3,
+        "missing_contact": 1,
+        "national_chain:republic services": 7,
+        "national_chain:waste management": 1,
+        "non_dumpster:self storage": 1,
+        "junk_removal_only:junkluggers": 1
+      }
+    },
+    "Illinois": {
+      "raw": 168,
+      "kept": 152,
+      "removed": {
+        "national_chain:republic services": 6,
+        "junk_removal_only:junk king": 1,
+        "national_chain:gfl environmental": 5,
+        "junk_removal_only:junk removal": 1,
+        "missing_contact": 1,
+        "big_box_retailer:menards": 1,
+        "national_chain:advanced disposal": 1
+      }
+    },
+    "Indiana": {
+      "raw": 218,
+      "kept": 189,
+      "removed": {
+        "junk_removal_only:junk removal": 6,
+        "national_chain:rumpke": 4,
+        "national_chain:waste management": 3,
+        "national_chain:republic services": 8,
+        "non_dumpster:self storage": 1,
+        "junk_removal_only:junkluggers": 1,
+        "national_chain:gfl environmental": 2,
+        "missing_contact": 2,
+        "non_dumpster:portable toilet": 2
+      }
+    },
+    "Iowa": {
+      "raw": 174,
+      "kept": 158,
+      "removed": {
+        "national_chain:waste connections": 2,
+        "junk_removal_only:junk king": 2,
+        "non_dumpster:moving company": 2,
+        "junk_removal_only:junk removal": 5,
+        "national_chain:waste management": 1,
+        "national_chain:republic services": 2,
+        "non_dumpster:portable toilet": 1,
+        "non_dumpster:mini storage": 1
+      }
+    },
+    "Kansas": {
+      "raw": 145,
+      "kept": 126,
+      "removed": {
+        "national_chain:waste connections": 2,
+        "junk_removal_only:junk king": 1,
+        "junk_removal_only:junk removal": 3,
+        "non_dumpster:portable toilet": 2,
+        "non_dumpster:septic": 2,
+        "national_chain:waste management": 2,
+        "non_dumpster:mini storage": 1,
+        "national_chain:republic services": 2,
+        "missing_contact": 1,
+        "national_chain:gfl environmental": 3
+      }
+    },
+    "Kentucky": {
+      "raw": 165,
+      "kept": 127,
+      "removed": {
+        "junk_removal_only:junk king": 2,
+        "non_dumpster:porta potty": 1,
+        "national_chain:republic services": 9,
+        "national_chain:rumpke": 10,
+        "national_chain:waste connections": 5,
+        "non_dumpster:self storage": 1,
+        "big_box_retailer:lowe's": 3,
+        "junk_removal_only:junk removal": 2,
+        "non_dumpster:moving company": 2,
+        "missing_contact": 2,
+        "non_dumpster:portable toilet": 1
+      }
+    },
+    "Louisiana": {
+      "raw": 82,
+      "kept": 71,
+      "removed": {
+        "national_chain:waste management": 3,
+        "junk_removal_only:junk king": 1,
+        "national_chain:waste connections": 1,
+        "national_chain:waste pro": 2,
+        "national_chain:republic services": 2,
+        "missing_contact": 1,
+        "big_box_retailer:lowe's": 1
+      }
+    },
+    "Maine": {
+      "raw": 72,
+      "kept": 49,
+      "removed": {
+        "national_chain:casella": 19,
+        "junk_removal_only:junk removal": 1,
+        "missing_contact": 1,
+        "junk_removal_only:1-800-got-junk": 1,
+        "non_dumpster:portable toilet": 1
+      }
+    },
+    "Maryland": {
+      "raw": 211,
+      "kept": 194,
+      "removed": {
+        "junk_removal_only:junk removal": 7,
+        "national_chain:waste management": 1,
+        "non_dumpster:porta potty": 1,
+        "missing_contact": 1,
+        "national_chain:waste connections": 1,
+        "non_dumpster:moving company": 3,
+        "junk_removal_only:junkluggers": 1,
+        "non_dumpster:u-haul": 2
+      }
+    },
+    "Massachusetts": {
+      "raw": 508,
+      "kept": 439,
+      "removed": {
+        "junk_removal_only:junk king": 5,
+        "junk_removal_only:junk removal": 13,
+        "national_chain:waste management": 4,
+        "national_chain:casella": 8,
+        "national_chain:republic services": 8,
+        "non_dumpster:portable toilet": 3,
+        "non_dumpster:moving company": 10,
+        "national_chain:waste connections": 1,
+        "junk_removal_only:junkluggers": 1,
+        "national_chain:waste industries": 1,
+        "missing_contact": 4,
+        "big_box_retailer:ace hardware": 1,
+        "non_dumpster:u-haul": 4,
+        "big_box_retailer:home depot": 3,
+        "non_dumpster:movers": 1,
+        "non_dumpster:self storage": 2
+      }
+    },
+    "Michigan": {
+      "raw": 494,
+      "kept": 427,
+      "removed": {
+        "junk_removal_only:junk removal": 9,
+        "non_dumpster:portable toilet": 2,
+        "national_chain:gfl environmental": 13,
+        "national_chain:republic services": 10,
+        "non_dumpster:moving company": 7,
+        "missing_contact": 3,
+        "non_dumpster:self storage": 2,
+        "big_box_retailer:home depot": 10,
+        "national_chain:waste industries": 1,
+        "junk_removal_only:junk king": 1,
+        "junk_removal_only:1-800-got-junk": 1,
+        "national_chain:waste management": 1,
+        "big_box_retailer:lowe's": 1,
+        "big_box_retailer:menards": 2,
+        "junk_removal_only:junk hauling": 1,
+        "non_dumpster:mini storage": 1,
+        "junk_removal_only:junkluggers": 1,
+        "national_chain:waste connections": 1
+      }
+    },
+    "Minnesota": {
+      "raw": 286,
+      "kept": 255,
+      "removed": {
+        "national_chain:waste management": 1,
+        "junk_removal_only:junk king": 4,
+        "national_chain:republic services": 8,
+        "non_dumpster:mini storage": 1,
+        "national_chain:waste connections": 1,
+        "junk_removal_only:junk removal": 4,
+        "non_dumpster:septic": 1,
+        "non_dumpster:moving company": 5,
+        "missing_contact": 3,
+        "closed_permanently": 1,
+        "non_dumpster:u-haul": 2
+      }
+    },
+    "Mississippi": {
+      "raw": 123,
+      "kept": 100,
+      "removed": {
+        "non_dumpster:portable toilet": 2,
+        "national_chain:waste pro": 10,
+        "national_chain:waste management": 2,
+        "national_chain:waste connections": 1,
+        "national_chain:republic services": 7,
+        "big_box_retailer:home depot": 1
+      }
+    },
+    "Missouri": {
+      "raw": 191,
+      "kept": 171,
+      "removed": {
+        "national_chain:republic services": 11,
+        "non_dumpster:moving company": 1,
+        "non_dumpster:portable toilet": 1,
+        "national_chain:waste connections": 2,
+        "big_box_retailer:lowe's": 1,
+        "national_chain:waste management": 2,
+        "national_chain:gfl environmental": 1,
+        "national_chain:waste industries": 1
+      }
+    },
+    "Montana": {
+      "raw": 83,
+      "kept": 59,
+      "removed": {
+        "junk_removal_only:junk removal": 2,
+        "national_chain:republic services": 11,
+        "non_dumpster:penske": 1,
+        "non_dumpster:mini storage": 1,
+        "non_dumpster:movers": 1,
+        "non_dumpster:u-haul": 1,
+        "big_box_retailer:lowe's": 3,
+        "big_box_retailer:home depot": 2,
+        "big_box_retailer:ace hardware": 1,
+        "non_dumpster:portable toilet": 1
+      }
+    },
+    "Nebraska": {
+      "raw": 117,
+      "kept": 104,
+      "removed": {
+        "national_chain:waste connections": 6,
+        "non_dumpster:movers": 1,
+        "non_dumpster:septic": 2,
+        "national_chain:waste management": 2,
+        "non_dumpster:mini storage": 1,
+        "missing_contact": 1
+      }
+    },
+    "Nevada": {
+      "raw": 108,
+      "kept": 90,
+      "removed": {
+        "junk_removal_only:junk removal": 5,
+        "junk_removal_only:junk king": 1,
+        "national_chain:republic services": 4,
+        "non_dumpster:mini storage": 2,
+        "non_dumpster:septic": 1,
+        "national_chain:waste management": 1,
+        "junk_removal_only:1-800-got-junk": 1,
+        "non_dumpster:portable toilet": 2,
+        "missing_contact": 1
+      }
+    },
+    "New Hampshire": {
+      "raw": 207,
+      "kept": 180,
+      "removed": {
+        "non_dumpster:porta potty": 1,
+        "national_chain:casella": 9,
+        "non_dumpster:self storage": 1,
+        "non_dumpster:movers": 1,
+        "non_dumpster:moving company": 1,
+        "missing_contact": 1,
+        "big_box_retailer:home depot": 1,
+        "big_box_retailer:lowe's": 1,
+        "junk_removal_only:junk removal": 4,
+        "junk_removal_only:junk king": 2,
+        "junk_removal_only:junkluggers": 1,
+        "national_chain:waste management": 2,
+        "national_chain:republic services": 1,
+        "closed_permanently": 1
+      }
+    },
+    "New Jersey": {
+      "raw": 274,
+      "kept": 242,
+      "removed": {
+        "junk_removal_only:junk removal": 7,
+        "national_chain:waste management": 4,
+        "non_dumpster:porta potty": 1,
+        "missing_contact": 2,
+        "national_chain:waste connections": 1,
+        "non_dumpster:movers": 1,
+        "non_dumpster:moving company": 4,
+        "big_box_retailer:lowe's": 3,
+        "big_box_retailer:home depot": 4,
+        "junk_removal_only:junkluggers": 2,
+        "national_chain:waste industries": 1,
+        "non_dumpster:portable toilet": 2
+      }
+    },
+    "New Mexico": {
+      "raw": 65,
+      "kept": 48,
+      "removed": {
+        "junk_removal_only:junk removal": 2,
+        "junk_removal_only:junk king": 1,
+        "non_dumpster:moving company": 1,
+        "non_dumpster:self storage": 2,
+        "national_chain:republic services": 1,
+        "national_chain:waste management": 1,
+        "non_dumpster:mini storage": 1,
+        "big_box_retailer:home depot": 3,
+        "big_box_retailer:lowe's": 2,
+        "non_dumpster:septic": 1,
+        "missing_contact": 2
+      }
+    },
+    "New York": {
+      "raw": 151,
+      "kept": 142,
+      "removed": {
+        "junk_removal_only:junk removal": 3,
+        "non_dumpster:moving company": 2,
+        "national_chain:waste connections": 1,
+        "national_chain:casella": 1,
+        "missing_contact": 1,
+        "national_chain:waste management": 1
+      }
+    },
+    "North Carolina": {
+      "raw": 141,
+      "kept": 110,
+      "removed": {
+        "national_chain:waste connections": 4,
+        "junk_removal_only:junk removal": 3,
+        "junk_removal_only:junkluggers": 1,
+        "national_chain:gfl environmental": 3,
+        "non_dumpster:septic": 2,
+        "non_dumpster:moving company": 1,
+        "national_chain:republic services": 3,
+        "non_dumpster:self storage": 2,
+        "non_dumpster:mini storage": 1,
+        "national_chain:waste pro": 1,
+        "non_dumpster:portable toilet": 2,
+        "national_chain:waste management": 1,
+        "national_chain:waste industries": 4,
+        "non_dumpster:movers": 1,
+        "big_box_retailer:northern tool": 1,
+        "big_box_retailer:lowe's": 1
+      }
+    },
+    "North Dakota": {
+      "raw": 119,
+      "kept": 104,
+      "removed": {
+        "non_dumpster:portable toilet": 2,
+        "missing_contact": 2,
+        "big_box_retailer:menards": 3,
+        "big_box_retailer:lowe's": 3,
+        "big_box_retailer:home depot": 2,
+        "closed_permanently": 3
+      }
+    },
+    "Ohio": {
+      "raw": 229,
+      "kept": 213,
+      "removed": {
+        "junk_removal_only:junk king": 2,
+        "national_chain:rumpke": 7,
+        "junk_removal_only:junk removal": 1,
+        "national_chain:waste management": 1,
+        "national_chain:republic services": 3,
+        "closed_permanently": 1,
+        "non_dumpster:moving company": 1
+      }
+    },
+    "Oklahoma": {
+      "raw": 140,
+      "kept": 111,
+      "removed": {
+        "national_chain:waste connections": 5,
+        "junk_removal_only:junk king": 1,
+        "national_chain:republic services": 6,
+        "national_chain:gfl environmental": 5,
+        "junk_removal_only:junk removal": 3,
+        "big_box_retailer:home depot": 6,
+        "junk_removal_only:junkluggers": 1,
+        "non_dumpster:self storage": 2
+      }
+    },
+    "Oregon": {
+      "raw": 107,
+      "kept": 84,
+      "removed": {
+        "non_dumpster:septic": 1,
+        "junk_removal_only:1-800-got-junk": 1,
+        "national_chain:republic services": 12,
+        "junk_removal_only:junk removal": 4,
+        "non_dumpster:self storage": 2,
+        "junk_removal_only:junk king": 1,
+        "non_dumpster:portable toilet": 1,
+        "big_box_retailer:home depot": 1
+      }
+    },
+    "Pennsylvania": {
+      "raw": 252,
+      "kept": 230,
+      "removed": {
+        "national_chain:republic services": 4,
+        "big_box_retailer:lowe's": 2,
+        "non_dumpster:portable toilet": 4,
+        "national_chain:casella": 4,
+        "non_dumpster:self storage": 2,
+        "non_dumpster:mini storage": 1,
+        "missing_contact": 3,
+        "junk_removal_only:junk removal": 1,
+        "national_chain:waste connections": 1
+      }
+    },
+    "Rhode Island": {
+      "raw": 174,
+      "kept": 157,
+      "removed": {
+        "junk_removal_only:junk king": 1,
+        "junk_removal_only:junk removal": 6,
+        "non_dumpster:self storage": 1,
+        "national_chain:waste management": 1,
+        "non_dumpster:septic": 2,
+        "missing_contact": 1,
+        "national_chain:casella": 1,
+        "national_chain:republic services": 1,
+        "non_dumpster:moving company": 3
+      }
+    },
+    "South Carolina": {
+      "raw": 307,
+      "kept": 259,
+      "removed": {
+        "junk_removal_only:junk king": 4,
+        "national_chain:gfl environmental": 5,
+        "national_chain:waste industries": 1,
+        "national_chain:republic services": 8,
+        "junk_removal_only:junk removal": 5,
+        "non_dumpster:movers": 1,
+        "non_dumpster:self storage": 3,
+        "national_chain:waste connections": 3,
+        "non_dumpster:portable toilet": 2,
+        "non_dumpster:moving company": 10,
+        "big_box_retailer:lowes": 1,
+        "junk_removal_only:1-800-got-junk": 2,
+        "national_chain:waste management": 2,
+        "big_box_retailer:home depot": 1
+      }
+    },
+    "South Dakota": {
+      "raw": 82,
+      "kept": 71,
+      "removed": {
+        "national_chain:waste management": 1,
+        "junk_removal_only:junk king": 1,
+        "non_dumpster:portable toilet": 4,
+        "junk_removal_only:junk removal": 1,
+        "non_dumpster:self storage": 1,
+        "non_dumpster:moving company": 2,
+        "non_dumpster:mini storage": 1
+      }
+    },
+    "Tennessee": {
+      "raw": 474,
+      "kept": 402,
+      "removed": {
+        "national_chain:waste connections": 11,
+        "junk_removal_only:junkluggers": 1,
+        "junk_removal_only:junk king": 3,
+        "junk_removal_only:junk removal": 7,
+        "national_chain:republic services": 9,
+        "national_chain:waste management": 2,
+        "national_chain:gfl environmental": 2,
+        "missing_contact": 7,
+        "national_chain:waste pro": 3,
+        "non_dumpster:portable toilet": 5,
+        "non_dumpster:self storage": 3,
+        "non_dumpster:moving company": 4,
+        "big_box_retailer:home depot": 5,
+        "big_box_retailer:lowe's": 3,
+        "non_dumpster:septic": 2,
+        "non_dumpster:u-haul": 1,
+        "closed_permanently": 4
+      }
+    },
+    "Texas": {
+      "raw": 183,
+      "kept": 165,
+      "removed": {
+        "national_chain:waste connections": 5,
+        "non_dumpster:portable toilet": 3,
+        "national_chain:republic services": 2,
+        "junk_removal_only:junk removal": 3,
+        "national_chain:waste management": 2,
+        "non_dumpster:self storage": 1,
+        "missing_contact": 1,
+        "national_chain:waste pro": 1
+      }
+    },
+    "Utah": {
+      "raw": 74,
+      "kept": 68,
+      "removed": {
+        "national_chain:waste connections": 1,
+        "junk_removal_only:junk king": 2,
+        "non_dumpster:movers": 1,
+        "national_chain:waste management": 1,
+        "national_chain:republic services": 1
+      }
+    },
+    "Vermont": {
+      "raw": 156,
+      "kept": 120,
+      "removed": {
+        "national_chain:casella": 26,
+        "national_chain:waste management": 4,
+        "junk_removal_only:junk removal": 2,
+        "junk_removal_only:junkluggers": 1,
+        "junk_removal_only:junk king": 1,
+        "non_dumpster:septic": 1,
+        "missing_contact": 1
+      }
+    },
+    "Virginia": {
+      "raw": 223,
+      "kept": 195,
+      "removed": {
+        "junk_removal_only:junk king": 4,
+        "junk_removal_only:junk removal": 3,
+        "junk_removal_only:junkluggers": 2,
+        "big_box_retailer:home depot": 1,
+        "national_chain:waste management": 2,
+        "missing_contact": 9,
+        "non_dumpster:portable toilet": 1,
+        "national_chain:republic services": 5,
+        "national_chain:gfl environmental": 1
+      }
+    },
+    "Washington": {
+      "raw": 66,
+      "kept": 57,
+      "removed": {
+        "junk_removal_only:junk king": 3,
+        "national_chain:republic services": 2,
+        "junk_removal_only:junk removal": 2,
+        "big_box_retailer:lowe's": 1,
+        "national_chain:waste management": 1
+      }
+    },
+    "West Virginia": {
+      "raw": 181,
+      "kept": 168,
+      "removed": {
+        "national_chain:republic services": 7,
+        "non_dumpster:mini storage": 1,
+        "non_dumpster:septic": 1,
+        "big_box_retailer:lowe's": 1,
+        "junk_removal_only:junk king": 1,
+        "non_dumpster:portable toilet": 1,
+        "junk_removal_only:junk removal": 1
+      }
+    },
+    "Wisconsin": {
+      "raw": 183,
+      "kept": 171,
+      "removed": {
+        "junk_removal_only:junk removal": 1,
+        "national_chain:gfl environmental": 6,
+        "national_chain:republic services": 1,
+        "national_chain:waste industries": 1,
+        "non_dumpster:portable toilet": 1,
+        "national_chain:advanced disposal": 1,
+        "national_chain:waste management": 1
+      }
+    },
+    "Wyoming": {
+      "raw": 57,
+      "kept": 53,
+      "removed": {
+        "junk_removal_only:junk removal": 1,
+        "national_chain:waste connections": 1,
+        "non_dumpster:septic": 2
+      }
+    }
+  }
+}

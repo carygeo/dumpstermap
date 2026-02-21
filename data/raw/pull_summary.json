@@ -1,0 +1,220 @@
+{
+  "started": "2026-02-20T19:16:34.719221",
+  "states": {
+    "Alabama": {
+      "count": 138,
+      "timestamp": "2026-02-20T19:17:45.363222",
+      "status": "success"
+    },
+    "Alaska": {
+      "count": 38,
+      "timestamp": "2026-02-20T19:18:10.239304",
+      "status": "success"
+    },
+    "Arizona": {
+      "count": 127,
+      "timestamp": "2026-02-20T19:19:40.110505",
+      "status": "success"
+    },
+    "Arkansas": {
+      "count": 111,
+      "timestamp": "2026-02-20T19:20:24.626693",
+      "status": "success"
+    },
+    "California": {
+      "count": 89,
+      "timestamp": "2026-02-20T19:21:24.103099",
+      "status": "success"
+    },
+    "Colorado": {
+      "count": 173,
+      "timestamp": "2026-02-20T19:23:13.708221",
+      "status": "success"
+    },
+    "Connecticut": {
+      "count": 205,
+      "timestamp": "2026-02-20T19:25:03.375010",
+      "status": "success"
+    },
+    "Delaware": {
+      "count": 270,
+      "timestamp": "2026-02-20T19:26:09.777424",
+      "status": "success"
+    },
+    "Florida": {
+      "count": 204,
+      "timestamp": "2026-02-20T19:28:30.265444",
+      "status": "success"
+    },
+    "Georgia": {
+      "count": 225,
+      "timestamp": "2026-02-20T19:30:00.447147",
+      "status": "success"
+    },
+    "Hawaii": {
+      "count": 69,
+      "timestamp": "2026-02-20T19:30:58.270463",
+      "status": "success"
+    },
+    "Idaho": {
+      "count": 87,
+      "timestamp": "2026-02-20T19:32:12.710284",
+      "status": "success"
+    },
+    "Illinois": {
+      "count": 168,
+      "timestamp": "2026-02-20T19:33:41.628148",
+      "status": "success"
+    },
+    "Indiana": {
+      "count": 218,
+      "timestamp": "2026-02-20T19:35:48.634060",
+      "status": "success"
+    },
+    "Iowa": {
+      "count": 174,
+      "timestamp": "2026-02-20T19:37:02.536070",
+      "status": "success"
+    },
+    "Kansas": {
+      "count": 145,
+      "timestamp": "2026-02-20T19:38:35.311047",
+      "status": "success"
+    },
+    "Kentucky": {
+      "count": 165,
+      "timestamp": "2026-02-20T19:40:08.144005",
+      "status": "success"
+    },
+    "Louisiana": {
+      "count": 82,
+      "timestamp": "2026-02-20T19:40:50.345652",
+      "status": "success"
+    },
+    "Maine": {
+      "count": 72,
+      "timestamp": "2026-02-20T19:41:32.381171",
+      "status": "success"
+    },
+    "Maryland": {
+      "count": 211,
+      "timestamp": "2026-02-20T19:42:33.249159",
+      "status": "success"
+    },
+    "Massachusetts": {
+      "count": 289,
+      "timestamp": "2026-02-20T19:44:08.439400",
+      "status": "success"
+    },
+    "Michigan": {
+      "count": 250,
+      "timestamp": "2026-02-20T19:45:57.174220",
+      "status": "success"
+    },
+    "Minnesota": {
+      "count": 213,
+      "timestamp": "2026-02-20T19:47:31.226661",
+      "status": "success"
+    },
+    "Mississippi": {
+      "count": 130,
+      "timestamp": "2026-02-20T19:49:01.933008",
+      "status": "success"
+    },
+    "Missouri": {
+      "count": 191,
+      "timestamp": "2026-02-20T19:50:34.346029",
+      "status": "success"
+    },
+    "Montana": {
+      "count": 83,
+      "timestamp": "2026-02-20T19:51:30.612217",
+      "status": "success"
+    },
+    "Nebraska": {
+      "count": 117,
+      "timestamp": "2026-02-20T19:53:14.675089",
+      "status": "success"
+    },
+    "Nevada": {
+      "count": 108,
+      "timestamp": "2026-02-20T19:55:48.026652",
+      "status": "success"
+    },
+    "New Hampshire": {
+      "count": 207,
+      "timestamp": "2026-02-20T19:57:21.118742",
+      "status": "success"
+    },
+    "New Jersey": {
+      "count": 274,
+      "timestamp": "2026-02-20T20:00:04.386528",
+      "status": "success"
+    },
+    "New Mexico": {
+      "count": 65,
+      "timestamp": "2026-02-20T20:01:35.369529",
+      "status": "success"
+    },
+    "New York": {
+      "count": 151,
+      "timestamp": "2026-02-20T20:03:07.843942",
+      "status": "success"
+    },
+    "North Carolina": {
+      "count": 141,
+      "timestamp": "2026-02-20T20:04:05.989325",
+      "status": "success"
+    },
+    "North Dakota": {
+      "count": 119,
+      "timestamp": "2026-02-20T20:04:48.312831",
+      "status": "success"
+    },
+    "Ohio": {
+      "count": 229,
+      "timestamp": "2026-02-20T20:06:59.138217",
+      "status": "success"
+    },
+    "Oklahoma": {
+      "count": 140,
+      "timestamp": "2026-02-20T20:08:19.722945",
+      "status": "success"
+    },
+    "Oregon": {
+      "count": 107,
+      "timestamp": "2026-02-20T20:09:53.772963",
+      "status": "success"
+    },
+    "Pennsylvania": {
+      "count": 252,
+      "timestamp": "2026-02-20T20:11:13.862327",
+      "status": "success"
+    },
+    "Rhode Island": {
+      "count": 174,
+      "timestamp": "2026-02-20T20:12:42.160176",
+      "status": "success"
+    },
+    "South Carolina": {
+      "count": 307,
+      "timestamp": "2026-02-20T20:22:48.878070",
+      "status": "success",
+      "enhanced": true
+    },
+    "South Dakota": {
+      "count": 82,
+      "timestamp": "2026-02-20T20:23:34.136040",
+      "status": "success",
+      "enhanced": false
+    },
+    "Tennessee": {
+      "count": 474,
+      "timestamp": "2026-02-20T20:30:29.808124",
+      "status": "success",
+      "enhanced": true
+    }
+  },
+  "total_records": 7074,
+  "last_updated": "2026-02-20T20:30:29.808144"
+}
