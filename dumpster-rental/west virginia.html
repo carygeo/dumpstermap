@@ -226,11 +226,16 @@
         }
         
         .provider-card {
-            background: white;
+            background: white !important;
             border-radius: 12px;
             overflow: hidden;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
             transition: all 0.3s;
+            border: 1px solid #e5e7eb;
+            padding: 0;
+            margin-bottom: 1rem;
+            display: block !important;
+            min-height: 100px;
         }
         
         .provider-card:hover {
@@ -266,7 +271,7 @@
         }
         
         .provider-info { flex: 1; }
-        .provider-info h3 { font-size: 1.25rem; margin-bottom: 0.25rem; }
+        .provider-info h3 { font-size: 1.25rem; margin-bottom: 0.25rem; color: #1f2937 !important; }
         .provider-location { color: var(--text-light); font-size: 0.875rem; }
         .provider-rating { display: flex; align-items: center; gap: 0.5rem; margin-top: 0.5rem; }
         .stars { color: var(--accent); font-size: 1rem; }
