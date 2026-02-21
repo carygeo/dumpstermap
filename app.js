@@ -82,25 +82,27 @@ function getProviderImage(provider) {
 // Render provider card - NO direct contact, use quote form
 function renderProviderCard(provider) {
     const image = getProviderImage(provider);
-    const rating = provider.rating || 0;
     const reviewCount = provider.reviewCount || 0;
+    // Only show rating if there are actual reviews
+    const hasValidRating = reviewCount > 0 && provider.rating;
+    const rating = hasValidRating ? provider.rating : 0;
     
     const imageHtml = image 
         ? `<img src="${image}" alt="${provider.name}" class="provider-photo" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
            <div class="provider-logo-fallback" style="display:none;">${(provider.name || '?').charAt(0)}</div>`
         : `<div class="provider-logo-fallback">${(provider.name || '?').charAt(0)}</div>`;
     
-    const ratingHtml = rating > 0 
+    const ratingHtml = hasValidRating 
         ? `<div class="provider-rating">
                <span class="stars">${getStarsHtml(rating)}</span>
                <span class="rating-value">${rating.toFixed(1)}</span>
                <span class="rating-count">(${reviewCount.toLocaleString()} reviews)</span>
            </div>`
-        : `<div class="provider-rating"><span class="no-rating">No reviews yet</span></div>`;
+        : `<div class="provider-rating"><span class="no-rating">New provider</span></div>`;
     
-    // Badges based on rating/reviews
+    // Badges based on rating/reviews (only if they have real reviews)
     const badges = [];
-    if (rating >= 4.8 && reviewCount >= 50) badges.push('<span class="badge badge-top">⭐ Top Rated</span>');
+    if (hasValidRating && rating >= 4.8 && reviewCount >= 50) badges.push('<span class="badge badge-top">⭐ Top Rated</span>');
     if (reviewCount >= 100) badges.push('<span class="badge badge-popular">🔥 Popular</span>');
     
     // Store provider data for quote form (JSON escaped)

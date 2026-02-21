@@ -788,11 +788,16 @@
                     const marker = L.marker([p.lat, p.lng], { icon });
                     // Don't reveal provider details - capture the lead instead
                     const providerData = JSON.stringify(p).replace(/'/g, "\\'");
+                    const reviewCount = p.reviewCount || 0;
+                    const hasValidRating = reviewCount > 0 && rating > 0;
+                    const ratingDisplay = hasValidRating 
+                        ? `<span style="color:#f59e0b;">⭐ ${rating.toFixed(1)}</span> <span style="color:#6b7280;">(${reviewCount})</span>`
+                        : `<span style="color:#6b7280;">New provider</span>`;
                     marker.bindPopup(`
                         <div style="text-align:center;min-width:150px;">
                             <strong>${p.name}</strong><br>
                             <span style="color:#6b7280;">📍 ${p.city}, ${p.state}</span><br>
-                            <span style="color:#f59e0b;">⭐ ${rating.toFixed(1)}</span> <span style="color:#6b7280;">(${p.reviewCount || 0})</span><br>
+                            ${ratingDisplay}<br>
                             <button onclick='openQuoteModal(${providerData})' style="margin-top:8px;padding:8px 16px;background:#2563eb;color:white;border:none;border-radius:6px;cursor:pointer;font-weight:600;">
                                 Get Quote
                             </button>
