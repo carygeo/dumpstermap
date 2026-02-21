@@ -296,11 +296,18 @@ function submitQuote(e) {
     const formData = new FormData(form);
     const data = Object.fromEntries(formData);
     
-    // Log the lead (in production, send to your backend)
-    console.log('=== LEAD CAPTURED ===', data);
+    // Add metadata
+    data.type = 'lead';
+    data.source = 'Website - Quote Modal';
+    data.timestamp = new Date().toISOString();
     
-    // TODO: Send to backend API
-    // fetch('/api/leads', { method: 'POST', body: JSON.stringify(data) });
+    // Send to Apps Script backend
+    fetch('https://script.google.com/macros/s/AKfycbxRIvl6z4kN8t1RZYUhqfubiRkpy-rOkDYlzwI9CSmpzkbV4aatki254g7h6zTnKmikRQ/exec', {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    });
     
     // Show success
     document.getElementById('quoteForm').style.display = 'none';
