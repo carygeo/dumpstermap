@@ -625,9 +625,12 @@
     <script src="https://unpkg.com/leaflet.markercluster@1.4.1/dist/leaflet.markercluster.js"></script>
     <script src="app.js"></script>
     <script>
-        // Initialize map with ALL providers
+        // Global state
         let map, markers;
         let allMapProviders = [];
+        let pendingSearchLocation = null;
+        let mapReady = false;
+        let dataLoaded = false;
         
         function initMap() {
             map = L.map('map').setView([39.8283, -98.5795], 4);
@@ -641,14 +644,53 @@
             markers = L.markerClusterGroup({
                 maxClusterRadius: 60,
                 showCoverageOnHover: false,
-                chunkedLoading: true,
-                chunkInterval: 100,
-                chunkDelay: 10
+                chunkedLoading: true
             });
             map.addLayer(markers);
             
             // Update card list when map moves
             map.on('moveend', updateCardListFromMap);
+            
+            mapReady = true;
+            console.log('Map ready');
+            
+            // If we have a pending search, do it now
+            checkAndNavigate();
+        }
+        
+        // Check if we can navigate to search location
+        function checkAndNavigate() {
+            if (mapReady && dataLoaded && pendingSearchLocation) {
+                console.log('Both ready, navigating to:', pendingSearchLocation);
+                doNavigate(pendingSearchLocation);
+                pendingSearchLocation = null;
+            }
+        }
+        
+        // Actually perform the navigation
+        async function doNavigate(query) {
+            let searchQuery = query.trim();
+            if (/^\d{5}$/.test(searchQuery)) {
+                searchQuery = searchQuery + ', United States';
+            }
+            
+            console.log('Geocoding:', searchQuery);
+            
+            try {
+                const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}&countrycodes=us&limit=1`);
+                const data = await response.json();
+                
+                if (data.length > 0) {
+                    const lat = parseFloat(data[0].lat);
+                    const lng = parseFloat(data[0].lon);
+                    console.log('Flying to:', lat, lng, data[0].display_name);
+                    map.flyTo([lat, lng], 11, { duration: 1.5 });
+                } else {
+                    console.log('No geocode results for:', query);
+                }
+            } catch (e) {
+                console.error('Geocoding error:', e);
+            }
         }
         
         // Filter cards to show only providers visible in current map bounds
@@ -725,58 +767,32 @@
                     markers.addLayer(marker);
                 }
             });
+            
+            dataLoaded = true;
+            console.log('Data loaded:', providerList.length, 'providers');
+            
+            // Check if we can navigate now
+            checkAndNavigate();
         }
         
-        // Geocode and navigate to searched location
-        async function navigateToLocation(query) {
-            if (!query) return false;
-            
-            // For ZIP codes, add "USA" for better geocoding
-            let searchQuery = query.trim();
-            if (/^\d{5}$/.test(searchQuery)) {
-                searchQuery = searchQuery + ', United States';
-            }
-            
-            console.log('Geocoding:', searchQuery);
-            
-            try {
-                const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}&countrycodes=us&limit=1`);
-                const data = await response.json();
-                console.log('Geocode result:', data);
-                
-                if (data.length > 0) {
-                    const lat = parseFloat(data[0].lat);
-                    const lng = parseFloat(data[0].lon);
-                    console.log('Setting view to:', lat, lng);
-                    
-                    // Use flyTo for smoother animation and ensure it completes
-                    map.flyTo([lat, lng], 11, { duration: 1 });
-                    return true;
-                }
-            } catch (e) {
-                console.error('Geocoding error:', e);
-            }
-            return false;
-        }
-        
-        // Override renderResults to load ALL providers on map, then navigate
+        // Override renderResults to load ALL providers and set up navigation
         const originalRenderResults = renderResults;
         renderResults = function(providerList) {
-            // Load ALL providers on the map first
+            // Store search location for later
+            if (window.searchLocation) {
+                pendingSearchLocation = window.searchLocation;
+                console.log('Pending search:', pendingSearchLocation);
+            }
+            
+            // Load ALL providers on the map
             if (typeof providers !== 'undefined' && providers.length > 0) {
                 loadAllMarkersOnMap(providers);
             } else {
                 loadAllMarkersOnMap(providerList);
             }
             
-            // Navigate to searched location if provided
-            // Use setTimeout to ensure map is fully ready
-            if (window.searchLocation) {
-                setTimeout(() => {
-                    navigateToLocation(window.searchLocation);
-                }, 500);
-            } else {
-                // No search, show initial cards
+            // If no search, show initial cards
+            if (!window.searchLocation) {
                 originalRenderResults(providerList);
             }
         };
