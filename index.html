@@ -3,529 +3,1066 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DumpsterMap.io - Compare Dumpster Rental Prices Near You</title>
-    <meta name="description" content="Find and compare dumpster rental prices from 13,000+ verified providers. Interactive map, instant quotes, no hidden fees.">
+    <title>DumpsterMap | Compare Dumpster Rental Prices Near You</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.css" />
-    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.Default.css" />
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
         :root {
-            --primary: #10b981;
-            --primary-dark: #059669;
-            --secondary: #3b82f6;
+            --primary: #2563eb;
+            --primary-dark: #1d4ed8;
+            --secondary: #059669;
             --accent: #f59e0b;
             --text: #1f2937;
             --text-light: #6b7280;
             --bg: #ffffff;
             --bg-light: #f9fafb;
-            --bg-dark: #0f172a;
+            --bg-dark: #111827;
             --border: #e5e7eb;
         }
-        html, body { height: 100%; }
-        body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; color: var(--text); }
+        
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            color: var(--text);
+            line-height: 1.6;
+        }
         
         /* Header */
         header {
-            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
-            padding: 0.75rem 1.5rem;
-            position: fixed;
+            background: var(--bg);
+            border-bottom: 1px solid var(--border);
+            padding: 1rem 2rem;
+            position: sticky;
             top: 0;
-            left: 0;
-            right: 0;
-            z-index: 1000;
-            height: 64px;
-            border-bottom: 1px solid #334155;
+            z-index: 100;
         }
-        .header-content { max-width: 100%; display: flex; justify-content: space-between; align-items: center; height: 100%; }
+        
+        .header-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
         .logo {
             font-size: 1.5rem;
             font-weight: 800;
-            color: white;
+            color: var(--primary);
             text-decoration: none;
             display: flex;
             align-items: center;
-            gap: 0.75rem;
+            gap: 0.5rem;
         }
+        
         .logo-icon {
-            width: 36px;
-            height: 36px;
-            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            width: 40px;
+            height: 40px;
+            background: var(--primary);
             border-radius: 8px;
             display: flex;
             align-items: center;
             justify-content: center;
             color: white;
-            font-size: 1.25rem;
+            font-size: 1.2rem;
         }
-        .logo span { color: var(--primary); }
         
-        .search-bar {
+        nav {
             display: flex;
-            gap: 0.5rem;
-            flex: 1;
-            max-width: 500px;
-            margin: 0 2rem;
+            gap: 2rem;
+            align-items: center;
         }
-        .search-bar input {
-            flex: 1;
-            padding: 0.6rem 1rem;
-            border: 2px solid #334155;
-            border-radius: 8px;
-            font-size: 0.9rem;
-            background: #1e293b;
-            color: white;
-            transition: border-color 0.2s;
-        }
-        .search-bar input:focus {
-            outline: none;
-            border-color: var(--primary);
-        }
-        .search-bar input::placeholder { color: #64748b; }
         
-        .header-stats {
-            display: flex;
-            gap: 1.5rem;
-            color: #94a3b8;
-            font-size: 0.875rem;
+        nav a {
+            color: var(--text);
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.2s;
         }
-        .stat-value { color: var(--primary); font-weight: 700; }
+        
+        nav a:hover {
+            color: var(--primary);
+        }
         
         .btn {
-            padding: 0.6rem 1.25rem;
+            padding: 0.75rem 1.5rem;
             border-radius: 8px;
             font-weight: 600;
             text-decoration: none;
             transition: all 0.2s;
             cursor: pointer;
             border: none;
-            font-size: 0.875rem;
+            font-size: 1rem;
         }
-        .btn-primary { background: var(--primary); color: white; }
-        .btn-primary:hover { background: var(--primary-dark); }
         
-        /* Main Layout */
-        .main-container { display: flex; height: calc(100vh - 64px); margin-top: 64px; }
-        
-        /* Sidebar */
-        .sidebar {
-            width: 400px;
-            height: 100%;
-            overflow-y: auto;
-            background: var(--bg);
-            border-right: 1px solid var(--border);
+        .btn-primary {
+            background: var(--primary);
+            color: white;
         }
-        .sidebar-header {
-            padding: 1rem;
-            border-bottom: 1px solid var(--border);
+        
+        .btn-primary:hover {
+            background: var(--primary-dark);
+            transform: translateY(-1px);
+        }
+        
+        .btn-secondary {
             background: var(--bg-light);
-            position: sticky;
-            top: 0;
-            z-index: 10;
-        }
-        .sidebar-header h2 { font-size: 1.1rem; margin-bottom: 0.25rem; }
-        .results-count { color: var(--primary); font-weight: 700; }
-        
-        /* Filters */
-        .filters {
-            padding: 0.75rem 1rem;
-            border-bottom: 1px solid var(--border);
-            background: white;
-        }
-        .filter-row { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 0.5rem; }
-        .filter-group { display: flex; flex-direction: column; gap: 0.25rem; flex: 1; min-width: 90px; }
-        .filter-group label { font-size: 0.7rem; font-weight: 600; color: var(--text-light); text-transform: uppercase; }
-        .filter-group select { padding: 0.4rem; border: 1px solid var(--border); border-radius: 6px; font-size: 0.8rem; }
-        
-        .rating-filters { display: flex; gap: 0.5rem; margin-top: 0.5rem; }
-        .rating-btn {
-            padding: 0.35rem 0.75rem;
+            color: var(--text);
             border: 1px solid var(--border);
-            border-radius: 20px;
-            font-size: 0.75rem;
-            font-weight: 500;
-            cursor: pointer;
-            background: white;
-            transition: all 0.2s;
         }
-        .rating-btn:hover { border-color: var(--primary); }
-        .rating-btn.active { background: var(--primary); color: white; border-color: var(--primary); }
         
-        /* Provider Cards */
-        .provider-list { padding: 0.5rem; }
+        .btn-secondary:hover {
+            background: var(--border);
+        }
+        
+        /* Hero Section */
+        .hero {
+            background: linear-gradient(135deg, #1e3a5f 0%, #2563eb 100%);
+            padding: 5rem 2rem;
+            text-align: center;
+            color: white;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.05'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+            opacity: 0.5;
+        }
+        
+        .hero-content {
+            max-width: 800px;
+            margin: 0 auto;
+            position: relative;
+            z-index: 1;
+        }
+        
+        .hero h1 {
+            font-size: 3rem;
+            font-weight: 800;
+            margin-bottom: 1rem;
+            line-height: 1.2;
+        }
+        
+        .hero p {
+            font-size: 1.25rem;
+            opacity: 0.9;
+            margin-bottom: 2rem;
+        }
+        
+        /* Search Box */
+        .search-box {
+            background: white;
+            border-radius: 16px;
+            padding: 1.5rem;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+            max-width: 700px;
+            margin: 0 auto;
+        }
+        
+        .search-row {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+        
+        .search-field {
+            flex: 1;
+            min-width: 200px;
+        }
+        
+        .search-field label {
+            display: block;
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: var(--text);
+            margin-bottom: 0.5rem;
+        }
+        
+        .search-field input,
+        .search-field select {
+            width: 100%;
+            padding: 1rem;
+            border: 2px solid var(--border);
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: border-color 0.2s;
+        }
+        
+        .search-field input:focus,
+        .search-field select:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+        
+        .search-btn {
+            padding: 1rem 2rem;
+            background: var(--secondary);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 1.1rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s;
+            align-self: flex-end;
+        }
+        
+        .search-btn:hover {
+            background: #047857;
+            transform: translateY(-2px);
+        }
+        
+        /* Trust Bar */
+        .trust-bar {
+            background: var(--bg-light);
+            padding: 2rem;
+            text-align: center;
+        }
+        
+        .trust-items {
+            max-width: 1000px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: center;
+            gap: 3rem;
+            flex-wrap: wrap;
+        }
+        
+        .trust-item {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+        
+        .trust-icon {
+            width: 48px;
+            height: 48px;
+            background: var(--primary);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 1.25rem;
+        }
+        
+        .trust-text {
+            text-align: left;
+        }
+        
+        .trust-number {
+            font-size: 1.5rem;
+            font-weight: 800;
+            color: var(--text);
+        }
+        
+        .trust-label {
+            font-size: 0.875rem;
+            color: var(--text-light);
+        }
+        
+        /* How It Works */
+        .how-it-works {
+            padding: 5rem 2rem;
+            background: white;
+        }
+        
+        .section-header {
+            text-align: center;
+            max-width: 600px;
+            margin: 0 auto 3rem;
+        }
+        
+        .section-header h2 {
+            font-size: 2.5rem;
+            font-weight: 800;
+            margin-bottom: 1rem;
+        }
+        
+        .section-header p {
+            color: var(--text-light);
+            font-size: 1.1rem;
+        }
+        
+        .steps {
+            max-width: 1000px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 2rem;
+        }
+        
+        .step {
+            text-align: center;
+            padding: 2rem;
+        }
+        
+        .step-number {
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 1.5rem;
+            font-weight: 800;
+            margin: 0 auto 1.5rem;
+        }
+        
+        .step h3 {
+            font-size: 1.25rem;
+            margin-bottom: 0.75rem;
+        }
+        
+        .step p {
+            color: var(--text-light);
+        }
+        
+        /* Featured Providers */
+        .providers {
+            padding: 5rem 2rem;
+            background: var(--bg-light);
+        }
+        
+        .provider-grid {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 1.5rem;
+        }
         
         .provider-card {
             background: white;
-            border: 2px solid var(--border);
             border-radius: 12px;
-            padding: 1rem;
-            margin-bottom: 0.75rem;
-            cursor: pointer;
-            transition: all 0.2s;
+            overflow: hidden;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s;
         }
-        .provider-card:hover { border-color: var(--primary); box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
-        .provider-card.active { border-color: var(--primary); background: #ecfdf5; }
         
-        .provider-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.5rem; }
-        .provider-name { font-size: 1rem; font-weight: 600; color: var(--text); }
-        .provider-rating { display: flex; align-items: center; gap: 0.25rem; }
-        .rating-stars { color: var(--accent); font-size: 0.875rem; }
-        .rating-value { font-weight: 600; font-size: 0.875rem; }
-        .rating-count { color: var(--text-light); font-size: 0.75rem; }
-        
-        .provider-location { color: var(--text-light); font-size: 0.875rem; margin-bottom: 0.5rem; }
-        
-        .provider-badges { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 0.75rem; }
-        .badge {
-            padding: 0.2rem 0.5rem;
-            border-radius: 4px;
-            font-size: 0.7rem;
-            font-weight: 600;
+        .provider-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
         }
-        .badge-verified { background: #dcfce7; color: #166534; }
-        .badge-top { background: #fef3c7; color: #92400e; }
-        .badge-website { background: #dbeafe; color: #1e40af; }
         
-        .provider-actions { display: flex; gap: 0.5rem; padding-top: 0.75rem; border-top: 1px solid var(--border); }
-        .btn-sm { padding: 0.4rem 0.75rem; font-size: 0.75rem; flex: 1; text-align: center; }
-        .btn-outline { background: white; border: 1px solid var(--border); color: var(--text); }
-        .btn-outline:hover { border-color: var(--primary); color: var(--primary); }
-        
-        /* Map */
-        .map-container { flex: 1; height: 100%; }
-        #map { width: 100%; height: 100%; }
-        
-        /* Custom Clusters */
-        .marker-cluster-small,
-        .marker-cluster-medium,
-        .marker-cluster-large {
-            background: rgba(16, 185, 129, 0.6);
+        .provider-header {
+            padding: 1.5rem;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            gap: 1rem;
         }
-        .marker-cluster-small div,
-        .marker-cluster-medium div,
-        .marker-cluster-large div {
+        
+        .provider-logo {
+            width: 64px;
+            height: 64px;
+            background: var(--bg-light);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+        }
+        
+        .provider-info h3 {
+            font-size: 1.1rem;
+            margin-bottom: 0.25rem;
+        }
+        
+        .provider-location {
+            color: var(--text-light);
+            font-size: 0.875rem;
+        }
+        
+        .provider-rating {
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+            margin-top: 0.5rem;
+        }
+        
+        .stars {
+            color: var(--accent);
+        }
+        
+        .rating-count {
+            color: var(--text-light);
+            font-size: 0.875rem;
+        }
+        
+        .provider-body {
+            padding: 1.5rem;
+        }
+        
+        .provider-sizes {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            margin-bottom: 1rem;
+        }
+        
+        .size-tag {
+            background: var(--bg-light);
+            padding: 0.25rem 0.75rem;
+            border-radius: 999px;
+            font-size: 0.875rem;
+            font-weight: 500;
+        }
+        
+        .provider-price {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+        
+        .price-label {
+            color: var(--text-light);
+            font-size: 0.875rem;
+        }
+        
+        .price-value {
+            font-size: 1.5rem;
+            font-weight: 800;
+            color: var(--secondary);
+        }
+        
+        .provider-features {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1rem;
+            flex-wrap: wrap;
+        }
+        
+        .feature {
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+            font-size: 0.875rem;
+            color: var(--text-light);
+        }
+        
+        .feature-icon {
+            color: var(--secondary);
+        }
+        
+        .provider-actions {
+            display: flex;
+            gap: 0.75rem;
+        }
+        
+        .provider-actions .btn {
+            flex: 1;
+            text-align: center;
+        }
+        
+        /* Testimonials */
+        .testimonials {
+            padding: 5rem 2rem;
+            background: white;
+        }
+        
+        .testimonial-grid {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+        }
+        
+        .testimonial {
+            background: var(--bg-light);
+            padding: 2rem;
+            border-radius: 12px;
+            border-left: 4px solid var(--primary);
+        }
+        
+        .testimonial-stars {
+            color: var(--accent);
+            margin-bottom: 1rem;
+        }
+        
+        .testimonial-text {
+            font-size: 1rem;
+            margin-bottom: 1.5rem;
+            font-style: italic;
+        }
+        
+        .testimonial-author {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        
+        .author-avatar {
+            width: 48px;
+            height: 48px;
             background: var(--primary);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
             color: white;
             font-weight: 600;
         }
         
-        /* Custom Popup */
-        .leaflet-popup-content-wrapper {
-            border-radius: 12px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
-        }
-        .popup-content { min-width: 220px; }
-        .popup-name { font-weight: 600; font-size: 1rem; margin-bottom: 0.25rem; }
-        .popup-location { color: var(--text-light); font-size: 0.875rem; margin-bottom: 0.5rem; }
-        .popup-rating { margin-bottom: 0.75rem; }
-        .popup-actions { display: flex; gap: 0.5rem; }
-        .popup-btn {
-            padding: 0.4rem 0.75rem;
-            border-radius: 6px;
-            font-size: 0.75rem;
+        .author-name {
             font-weight: 600;
-            text-decoration: none;
-            flex: 1;
-            text-align: center;
         }
-        .popup-btn-call { background: var(--primary); color: white; }
-        .popup-btn-web { background: var(--bg-light); color: var(--text); border: 1px solid var(--border); }
         
-        /* Loading */
-        .loading {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            text-align: center;
-            z-index: 500;
+        .author-detail {
+            font-size: 0.875rem;
+            color: var(--text-light);
+        }
+        
+        /* Size Guide */
+        .size-guide {
+            padding: 5rem 2rem;
+            background: var(--bg-light);
+        }
+        
+        .size-cards {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+        }
+        
+        .size-card {
             background: white;
-            padding: 2rem;
             border-radius: 12px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+            padding: 1.5rem;
+            text-align: center;
+            border: 2px solid var(--border);
+            transition: all 0.3s;
         }
-        .loading.hidden { display: none; }
-        .spinner {
-            width: 48px;
-            height: 48px;
-            border: 4px solid var(--border);
-            border-top-color: var(--primary);
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin: 0 auto 1rem;
+        
+        .size-card:hover {
+            border-color: var(--primary);
         }
-        @keyframes spin { to { transform: rotate(360deg); } }
+        
+        .size-visual {
+            height: 80px;
+            background: var(--bg-light);
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            padding-bottom: 0.5rem;
+        }
+        
+        .dumpster-icon {
+            background: var(--primary);
+            border-radius: 4px;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+        }
+        
+        .size-card:nth-child(1) .dumpster-icon { width: 40px; height: 30px; font-size: 0.7rem; }
+        .size-card:nth-child(2) .dumpster-icon { width: 50px; height: 35px; font-size: 0.75rem; }
+        .size-card:nth-child(3) .dumpster-icon { width: 60px; height: 40px; font-size: 0.8rem; }
+        .size-card:nth-child(4) .dumpster-icon { width: 70px; height: 50px; font-size: 0.85rem; }
+        .size-card:nth-child(5) .dumpster-icon { width: 80px; height: 60px; font-size: 0.9rem; }
+        
+        .size-name {
+            font-size: 1.25rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+        
+        .size-dimensions {
+            font-size: 0.875rem;
+            color: var(--text-light);
+            margin-bottom: 0.5rem;
+        }
+        
+        .size-use {
+            font-size: 0.875rem;
+            color: var(--text-light);
+            margin-bottom: 1rem;
+        }
+        
+        .size-price {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--secondary);
+        }
+        
+        /* CTA Section */
+        .cta {
+            background: linear-gradient(135deg, var(--bg-dark) 0%, #374151 100%);
+            padding: 5rem 2rem;
+            text-align: center;
+            color: white;
+        }
+        
+        .cta h2 {
+            font-size: 2.5rem;
+            font-weight: 800;
+            margin-bottom: 1rem;
+        }
+        
+        .cta p {
+            font-size: 1.25rem;
+            opacity: 0.9;
+            margin-bottom: 2rem;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        
+        .cta .btn-primary {
+            font-size: 1.25rem;
+            padding: 1rem 2.5rem;
+        }
+        
+        /* Footer */
+        footer {
+            background: var(--bg-dark);
+            color: white;
+            padding: 3rem 2rem 1.5rem;
+        }
+        
+        .footer-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+        
+        .footer-section h4 {
+            font-size: 1rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+        }
+        
+        .footer-section a {
+            display: block;
+            color: #9ca3af;
+            text-decoration: none;
+            padding: 0.25rem 0;
+            transition: color 0.2s;
+        }
+        
+        .footer-section a:hover {
+            color: white;
+        }
+        
+        .footer-bottom {
+            border-top: 1px solid #374151;
+            padding-top: 1.5rem;
+            text-align: center;
+            color: #9ca3af;
+            font-size: 0.875rem;
+        }
         
         /* Responsive */
         @media (max-width: 768px) {
-            .sidebar { width: 100%; position: fixed; bottom: 0; height: 40vh; z-index: 999; }
-            .map-container { height: 60vh; }
-            .main-container { flex-direction: column; }
-            .header-stats { display: none; }
-            .search-bar { margin: 0 1rem; max-width: none; }
+            .hero h1 {
+                font-size: 2rem;
+            }
+            
+            nav {
+                display: none;
+            }
+            
+            .search-row {
+                flex-direction: column;
+            }
+            
+            .search-btn {
+                width: 100%;
+            }
+            
+            .trust-items {
+                flex-direction: column;
+                gap: 1.5rem;
+            }
+            
+            .section-header h2 {
+                font-size: 1.75rem;
+            }
         }
     </style>
 </head>
 <body>
+    <!-- Header -->
     <header>
         <div class="header-content">
-            <a href="/" class="logo">
+            <a href="#" class="logo">
                 <div class="logo-icon">🗑️</div>
-                Dumpster<span>Map</span>.io
+                DumpsterMap
             </a>
-            <div class="search-bar">
-                <input type="text" id="searchInput" placeholder="Enter ZIP code or city...">
-                <button class="btn btn-primary" onclick="searchLocation()">Search</button>
-            </div>
-            <div class="header-stats">
-                <span><span class="stat-value" id="totalProviders">0</span> providers</span>
-                <span><span class="stat-value">50</span> states</span>
-            </div>
+            <nav>
+                <a href="/map.html">Find Providers</a>
+                <a href="/calculator.html">Size Calculator</a>
+                <a href="/for-providers.html">For Providers</a>
+                <a href="/quote.html" class="btn btn-primary">Get Free Quotes</a>
+            </nav>
         </div>
     </header>
-    
-    <main class="main-container">
-        <aside class="sidebar">
-            <div class="sidebar-header">
-                <h2>🗺️ Providers Near You</h2>
-                <p>Showing <span class="results-count" id="visibleCount">0</span> of <span id="totalCount">0</span></p>
-            </div>
+
+    <!-- Hero -->
+    <section class="hero">
+        <div class="hero-content">
+            <h1>Compare Dumpster Prices.<br>Book in Minutes. Save Money.</h1>
+            <p>Find and compare local dumpster rental prices instantly. No phone calls, no hassle, no hidden fees.</p>
             
-            <div class="filters">
-                <div class="filter-row">
-                    <div class="filter-group">
-                        <label>Min Rating</label>
-                        <select id="ratingFilter" onchange="applyFilters()">
-                            <option value="0">Any</option>
-                            <option value="3">3+ ⭐</option>
-                            <option value="4">4+ ⭐</option>
-                            <option value="4.5">4.5+ ⭐</option>
+            <div class="search-box">
+                <div class="search-row">
+                    <div class="search-field">
+                        <label>Your Location</label>
+                        <input type="text" id="zip-input" placeholder="Enter ZIP code (e.g., 34102)">
+                    </div>
+                    <div class="search-field">
+                        <label>Project Type</label>
+                        <select>
+                            <option>Select project type...</option>
+                            <option>Home Renovation</option>
+                            <option>Roofing Project</option>
+                            <option>Estate Cleanout</option>
+                            <option>Construction</option>
+                            <option>Yard Waste</option>
+                            <option>Moving/Junk Removal</option>
                         </select>
                     </div>
-                    <div class="filter-group">
-                        <label>Reviews</label>
-                        <select id="reviewFilter" onchange="applyFilters()">
-                            <option value="0">Any</option>
-                            <option value="10">10+</option>
-                            <option value="50">50+</option>
-                            <option value="100">100+</option>
-                        </select>
-                    </div>
-                    <div class="filter-group">
-                        <label>Sort By</label>
-                        <select id="sortFilter" onchange="applyFilters()">
-                            <option value="rating">Highest Rated</option>
-                            <option value="reviews">Most Reviews</option>
-                            <option value="name">Name A-Z</option>
-                        </select>
-                    </div>
+                    <button class="search-btn">Compare Prices →</button>
                 </div>
-            </div>
-            
-            <div class="provider-list" id="providerList">
-                <!-- Provider cards render here -->
-            </div>
-        </aside>
-        
-        <div class="map-container">
-            <div id="map"></div>
-            <div class="loading" id="loading">
-                <div class="spinner"></div>
-                <div>Loading <strong>13,000+</strong> providers...</div>
             </div>
         </div>
-    </main>
-    
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script src="https://unpkg.com/leaflet.markercluster@1.4.1/dist/leaflet.markercluster.js"></script>
-    <script>
-        let map, markers;
-        let allProviders = [];
-        let filteredProviders = [];
-        let activeCard = null;
-        
-        // Initialize map with dark tiles
-        function initMap() {
-            map = L.map('map').setView([39.8283, -98.5795], 4);
-            
-            L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-                attribution: '© OpenStreetMap © CARTO',
-                subdomains: 'abcd',
-                maxZoom: 19
-            }).addTo(map);
-            
-            markers = L.markerClusterGroup({
-                maxClusterRadius: 50,
-                spiderfyOnMaxZoom: true,
-                showCoverageOnHover: false,
-                zoomToBoundsOnClick: true,
-                chunkedLoading: true
-            });
-            map.addLayer(markers);
-        }
-        
-        // Create marker with rating-based color
-        function createMarker(provider) {
-            const rating = provider.rating || 0;
-            const color = rating >= 4.5 ? '#10b981' : rating >= 4 ? '#3b82f6' : rating >= 3 ? '#f59e0b' : '#6b7280';
-            
-            const icon = L.divIcon({
-                html: `<div style="background:${color};border:2px solid white;border-radius:50%;width:20px;height:20px;box-shadow:0 2px 6px rgba(0,0,0,0.3);"></div>`,
-                className: 'custom-marker',
-                iconSize: [20, 20],
-                iconAnchor: [10, 10]
-            });
-            
-            const marker = L.marker([provider.latitude, provider.longitude], { icon });
-            
-            const phone = provider.phone || '';
-            const website = provider.website || '';
-            const stars = '⭐'.repeat(Math.min(5, Math.round(rating)));
-            
-            marker.bindPopup(`
-                <div class="popup-content">
-                    <div class="popup-name">${provider.name}</div>
-                    <div class="popup-location">📍 ${provider.city}, ${provider.state}</div>
-                    <div class="popup-rating">${stars} ${rating.toFixed(1)} (${provider.reviews || 0} reviews)</div>
-                    <div class="popup-actions">
-                        ${phone ? `<a href="tel:${phone}" class="popup-btn popup-btn-call">📞 Call</a>` : ''}
-                        ${website ? `<a href="${website}" target="_blank" class="popup-btn popup-btn-web">🌐 Website</a>` : ''}
-                    </div>
+    </section>
+
+    <!-- Trust Bar -->
+    <section class="trust-bar">
+        <div class="trust-items">
+            <div class="trust-item">
+                <div class="trust-icon">🚛</div>
+                <div class="trust-text">
+                    <div class="trust-number">10,000+</div>
+                    <div class="trust-label">Verified Haulers</div>
                 </div>
-            `);
-            
-            return marker;
-        }
-        
-        // Create provider card HTML
-        function createProviderCard(provider, index) {
-            const rating = provider.rating || 0;
-            const reviews = provider.reviews || 0;
-            const stars = '⭐'.repeat(Math.min(5, Math.round(rating)));
-            
-            const badges = [];
-            if (rating >= 4.5 && reviews >= 20) badges.push('<span class="badge badge-top">⭐ Top Rated</span>');
-            if (provider.website) badges.push('<span class="badge badge-website">🌐 Website</span>');
-            
-            return `
-                <div class="provider-card" data-index="${index}" data-lat="${provider.latitude}" data-lng="${provider.longitude}">
-                    <div class="provider-header">
-                        <div class="provider-name">${provider.name}</div>
+            </div>
+            <div class="trust-item">
+                <div class="trust-icon">⭐</div>
+                <div class="trust-text">
+                    <div class="trust-number">50,000+</div>
+                    <div class="trust-label">Customer Reviews</div>
+                </div>
+            </div>
+            <div class="trust-item">
+                <div class="trust-icon">💰</div>
+                <div class="trust-text">
+                    <div class="trust-number">$127</div>
+                    <div class="trust-label">Avg. Savings</div>
+                </div>
+            </div>
+            <div class="trust-item">
+                <div class="trust-icon">✓</div>
+                <div class="trust-text">
+                    <div class="trust-number">100%</div>
+                    <div class="trust-label">Free Service</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- How It Works -->
+    <section class="how-it-works">
+        <div class="section-header">
+            <h2>How It Works</h2>
+            <p>Get quotes from multiple local haulers in under 5 minutes. No phone calls needed.</p>
+        </div>
+        <div class="steps">
+            <div class="step">
+                <div class="step-number">1</div>
+                <h3>Tell Us About Your Project</h3>
+                <p>Enter your ZIP code and select your project type. We'll match you with haulers in your area.</p>
+            </div>
+            <div class="step">
+                <div class="step-number">2</div>
+                <h3>Compare Prices & Reviews</h3>
+                <p>See transparent pricing, real customer reviews, and availability from multiple providers.</p>
+            </div>
+            <div class="step">
+                <div class="step-number">3</div>
+                <h3>Book Your Dumpster</h3>
+                <p>Choose the best option and book online or request a call. Your dumpster arrives on schedule.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Featured Providers -->
+    <section class="providers">
+        <div class="section-header">
+            <h2>Top-Rated Haulers Near You</h2>
+            <p>Compare prices and reviews from verified local providers</p>
+        </div>
+        <div class="provider-grid">
+            <!-- Provider 1 -->
+            <div class="provider-card">
+                <div class="provider-header">
+                    <div class="provider-logo">🚛</div>
+                    <div class="provider-info">
+                        <h3>ABC Dumpster Services</h3>
+                        <div class="provider-location">📍 Naples, FL</div>
                         <div class="provider-rating">
-                            <span class="rating-value">${rating.toFixed(1)}</span>
-                            <span class="rating-count">(${reviews})</span>
+                            <span class="stars">★★★★★</span>
+                            <span class="rating-count">(127 reviews)</span>
                         </div>
                     </div>
-                    <div class="provider-location">📍 ${provider.city}, ${provider.state}</div>
-                    ${badges.length ? `<div class="provider-badges">${badges.join('')}</div>` : ''}
+                </div>
+                <div class="provider-body">
+                    <div class="provider-sizes">
+                        <span class="size-tag">10 yd</span>
+                        <span class="size-tag">15 yd</span>
+                        <span class="size-tag">20 yd</span>
+                        <span class="size-tag">30 yd</span>
+                    </div>
+                    <div class="provider-price">
+                        <span class="price-label">Starting at</span>
+                        <span class="price-value">$299</span>
+                    </div>
+                    <div class="provider-features">
+                        <span class="feature"><span class="feature-icon">✓</span> Same-day delivery</span>
+                        <span class="feature"><span class="feature-icon">✓</span> No hidden fees</span>
+                    </div>
                     <div class="provider-actions">
-                        ${provider.phone ? `<a href="tel:${provider.phone}" class="btn btn-sm btn-primary">📞 Call</a>` : ''}
-                        ${provider.website ? `<a href="${provider.website}" target="_blank" class="btn btn-sm btn-outline">🌐 Website</a>` : ''}
+                        <a href="#" class="btn btn-primary">Get Quote</a>
+                        <a href="#" class="btn btn-secondary">View Profile</a>
                     </div>
                 </div>
-            `;
-        }
-        
-        // Apply filters and update display
-        function applyFilters() {
-            const minRating = parseFloat(document.getElementById('ratingFilter').value);
-            const minReviews = parseInt(document.getElementById('reviewFilter').value);
-            const sortBy = document.getElementById('sortFilter').value;
+            </div>
             
-            filteredProviders = allProviders.filter(p => {
-                if ((p.rating || 0) < minRating) return false;
-                if ((p.reviews || 0) < minReviews) return false;
-                return true;
-            });
+            <!-- Provider 2 -->
+            <div class="provider-card">
+                <div class="provider-header">
+                    <div class="provider-logo">♻️</div>
+                    <div class="provider-info">
+                        <h3>Green Waste Solutions</h3>
+                        <div class="provider-location">📍 Fort Myers, FL</div>
+                        <div class="provider-rating">
+                            <span class="stars">★★★★★</span>
+                            <span class="rating-count">(89 reviews)</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="provider-body">
+                    <div class="provider-sizes">
+                        <span class="size-tag">10 yd</span>
+                        <span class="size-tag">20 yd</span>
+                        <span class="size-tag">30 yd</span>
+                        <span class="size-tag">40 yd</span>
+                    </div>
+                    <div class="provider-price">
+                        <span class="price-label">Starting at</span>
+                        <span class="price-value">$275</span>
+                    </div>
+                    <div class="provider-features">
+                        <span class="feature"><span class="feature-icon">✓</span> Eco-friendly</span>
+                        <span class="feature"><span class="feature-icon">✓</span> 7-day rental</span>
+                    </div>
+                    <div class="provider-actions">
+                        <a href="#" class="btn btn-primary">Get Quote</a>
+                        <a href="#" class="btn btn-secondary">View Profile</a>
+                    </div>
+                </div>
+            </div>
             
-            // Sort
-            filteredProviders.sort((a, b) => {
-                if (sortBy === 'rating') return (b.rating || 0) - (a.rating || 0);
-                if (sortBy === 'reviews') return (b.reviews || 0) - (a.reviews || 0);
-                if (sortBy === 'name') return (a.name || '').localeCompare(b.name || '');
-                return 0;
-            });
-            
-            updateDisplay();
-        }
-        
-        // Update markers and list
-        function updateDisplay() {
-            // Update markers
-            markers.clearLayers();
-            filteredProviders.forEach(p => {
-                if (p.latitude && p.longitude) {
-                    markers.addLayer(createMarker(p));
-                }
-            });
-            
-            // Update list (show top 100 for performance)
-            const listHtml = filteredProviders.slice(0, 100).map((p, i) => createProviderCard(p, i)).join('');
-            document.getElementById('providerList').innerHTML = listHtml;
-            document.getElementById('visibleCount').textContent = filteredProviders.length.toLocaleString();
-        }
-        
-        // Search location
-        function searchLocation() {
-            const query = document.getElementById('searchInput').value.trim();
-            if (!query) return;
-            
-            // Simple geocoding via Nominatim
-            fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&countrycodes=us`)
-                .then(r => r.json())
-                .then(data => {
-                    if (data.length > 0) {
-                        const { lat, lon } = data[0];
-                        map.setView([lat, lon], 11);
-                    }
-                });
-        }
-        
-        // Load data
-        async function loadData() {
-            try {
-                const response = await fetch('data/providers.json');
-                allProviders = await response.json();
-                
-                document.getElementById('totalProviders').textContent = allProviders.length.toLocaleString();
-                document.getElementById('totalCount').textContent = allProviders.length.toLocaleString();
-                
-                filteredProviders = [...allProviders];
-                applyFilters();
-                
-                document.getElementById('loading').classList.add('hidden');
-            } catch (error) {
-                console.error('Error:', error);
-                document.getElementById('loading').innerHTML = '<div style="color:#ef4444;">Error loading data. Please refresh.</div>';
-            }
-        }
-        
-        // Card click handler
-        document.addEventListener('click', (e) => {
-            const card = e.target.closest('.provider-card');
-            if (card && !e.target.closest('a')) {
-                const lat = parseFloat(card.dataset.lat);
-                const lng = parseFloat(card.dataset.lng);
-                
-                if (activeCard) activeCard.classList.remove('active');
-                card.classList.add('active');
-                activeCard = card;
-                
-                if (lat && lng) map.setView([lat, lng], 14);
-            }
-        });
-        
-        // Enter key search
-        document.getElementById('searchInput').addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') searchLocation();
-        });
-        
-        // Init
-        document.addEventListener('DOMContentLoaded', () => {
-            initMap();
-            loadData();
-        });
-    </script>
+            <!-- Provider 3 -->
+            <div class="provider-card">
+                <div class="provider-header">
+                    <div class="provider-logo">🏗️</div>
+                    <div class="provider-info">
+                        <h3>Pro Haul Dumpsters</h3>
+                        <div class="provider-location">📍 Cape Coral, FL</div>
+                        <div class="provider-rating">
+                            <span class="stars">★★★★☆</span>
+                            <span class="rating-count">(64 reviews)</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="provider-body">
+                    <div class="provider-sizes">
+                        <span class="size-tag">15 yd</span>
+                        <span class="size-tag">20 yd</span>
+                        <span class="size-tag">30 yd</span>
+                    </div>
+                    <div class="provider-price">
+                        <span class="price-label">Starting at</span>
+                        <span class="price-value">$259</span>
+                    </div>
+                    <div class="provider-features">
+                        <span class="feature"><span class="feature-icon">✓</span> Best price guarantee</span>
+                        <span class="feature"><span class="feature-icon">✓</span> Next-day delivery</span>
+                    </div>
+                    <div class="provider-actions">
+                        <a href="#" class="btn btn-primary">Get Quote</a>
+                        <a href="#" class="btn btn-secondary">View Profile</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Testimonials -->
+    <section class="testimonials">
+        <div class="section-header">
+            <h2>What Customers Are Saying</h2>
+            <p>Real reviews from people who found the perfect dumpster through us</p>
+        </div>
+        <div class="testimonial-grid">
+            <div class="testimonial">
+                <div class="testimonial-stars">★★★★★</div>
+                <p class="testimonial-text">"Saved me hours of phone calls. I compared 5 different haulers in my area and found one $150 cheaper than my usual guy. The whole process took maybe 10 minutes."</p>
+                <div class="testimonial-author">
+                    <div class="author-avatar">MR</div>
+                    <div>
+                        <div class="author-name">Mike Rodriguez</div>
+                        <div class="author-detail">Homeowner • Kitchen Renovation</div>
+                    </div>
+                </div>
+            </div>
+            <div class="testimonial">
+                <div class="testimonial-stars">★★★★★</div>
+                <p class="testimonial-text">"As a contractor, I rent dumpsters weekly. This site made it easy to find reliable haulers in new areas. The price transparency is a game-changer."</p>
+                <div class="testimonial-author">
+                    <div class="author-avatar">SJ</div>
+                    <div>
+                        <div class="author-name">Sarah Johnson</div>
+                        <div class="author-detail">General Contractor</div>
+                    </div>
+                </div>
+            </div>
+            <div class="testimonial">
+                <div class="testimonial-stars">★★★★★</div>
+                <p class="testimonial-text">"We were cleaning out my mom's house after she passed. Having all the options in one place made an overwhelming task so much easier. Highly recommend."</p>
+                <div class="testimonial-author">
+                    <div class="author-avatar">DL</div>
+                    <div>
+                        <div class="author-name">David Lee</div>
+                        <div class="author-detail">Estate Cleanout</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Size Guide -->
+    <section class="size-guide">
+        <div class="section-header">
+            <h2>Dumpster Size Guide</h2>
+            <p>Not sure what size you need? Here's a quick reference.</p>
+        </div>
+        <div class="size-cards">
+            <div class="size-card">
+                <div class="size-visual">
+                    <div class="dumpster-icon">10</div>
+                </div>
+                <div class="size-name">10 Yard</div>
+                <div class="size-dimensions">12' × 8' × 3.5'</div>
+                <div class="size-use">Small cleanout, 1 room</div>
+                <div class="size-price">$250 - $400</div>
+            </div>
+            <div class="size-card">
+                <div class="size-visual">
+                    <div class="dumpster-icon">15</div>
+                </div>
+                <div class="size-name">15 Yard</div>
+                <div class="size-dimensions">16' × 8' × 4'</div>
+                <div class="size-use">Single room reno</div>
+                <div class="size-price">$300 - $450</div>
+            </div>
+            <div class="size-card">
+                <div class="size-visual">
+                    <div class="dumpster-icon">20</div>
+                </div>
+                <div class="size-name">20 Yard</div>
+                <div class="size-dimensions">22' × 8' × 4.5'</div>
+                <div class="size-use">Multi-room, roofing</div>
+                <div class="size-price">$350 - $500</div>
+            </div>
+            <div class="size-card">
+                <div class="size-visual">
+                    <div class="dumpster-icon">30</div>
+                </div>
+                <div class="size-name">30 Yard</div>
+                <div class="size-dimensions">22' × 8' × 6'</div>
+                <div class="size-use">Large reno, construction</div>
+                <div class="size-price">$400 - $600</div>
+            </div>
+            <div class="size-card">
+                <div class="size-visual">
+                    <div class="dumpster-icon">40</div>
+                </div>
+                <div class="size-name">40 Yard</div>
+                <div class="size-dimensions">22' × 8' × 8'</div>
+                <div class="size-use">Major construction, demo</div>
+                <div class="size-price">$450 - $700</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA -->
+    <section class="cta">
+        <h2>Ready to Compare Prices?</h2>
+        <p>Join thousands of homeowners and contractors who save time and money with DumpsterMap.</p>
+        <a href="#" class="btn btn-primary">Get Free Quotes Now →</a>
+    </section>
+
+    <!-- Footer -->
+    <footer>
+        <div class="footer-content">
+            <div class="footer-section">
+                <h4>DumpsterMap</h4>
+                <a href="#">About Us</a>
+                <a href="#">How It Works</a>
+                <a href="#">For Haulers</a>
+                <a href="#">Contact</a>
+            </div>
+            <div class="footer-section">
+                <h4>Resources</h4>
+                <a href="#">Size Guide</a>
+                <a href="#">Pricing Guide</a>
+                <a href="#">FAQs</a>
+                <a href="#">Blog</a>
+            </div>
+            <div class="footer-section">
+                <h4>Popular Cities</h4>
+                <a href="#">Miami, FL</a>
+                <a href="#">Tampa, FL</a>
+                <a href="#">Orlando, FL</a>
+                <a href="#">Jacksonville, FL</a>
+            </div>
+            <div class="footer-section">
+                <h4>Legal</h4>
+                <a href="#">Privacy Policy</a>
+                <a href="#">Terms of Service</a>
+                <a href="#">Cookie Policy</a>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            © 2026 DumpsterMap. All rights reserved. Compare prices. Save money. Skip the phone calls.
+        </div>
+    </footer>
+<script src="app.js"></script>
 </body>
 </html>

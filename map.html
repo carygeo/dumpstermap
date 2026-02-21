@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Find Dumpster Rentals Near You | Map View | DumpsterMap</title>
+    <meta name="description" content="Find dumpster rental companies near you on an interactive map. Compare prices and get quotes from local haulers.">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --primary: #2563eb;
+            --primary-dark: #1d4ed8;
+            --secondary: #059669;
+            --accent: #f59e0b;
+            --text: #1f2937;
+            --text-light: #6b7280;
+            --bg: #ffffff;
+            --bg-light: #f9fafb;
+            --bg-dark: #111827;
+            --border: #e5e7eb;
+        }
+        html, body { height: 100%; }
+        body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; color: var(--text); }
+        
+        /* Header */
+        header { background: var(--bg); border-bottom: 1px solid var(--border); padding: 0.75rem 1.5rem; position: fixed; top: 0; left: 0; right: 0; z-index: 1000; height: 60px; }
+        .header-content { max-width: 100%; display: flex; justify-content: space-between; align-items: center; }
+        .logo { font-size: 1.25rem; font-weight: 800; color: var(--primary); text-decoration: none; display: flex; align-items: center; gap: 0.5rem; }
+        .logo-icon { width: 32px; height: 32px; background: var(--primary); border-radius: 6px; display: flex; align-items: center; justify-content: center; color: white; font-size: 1rem; }
+        
+        .search-bar { display: flex; gap: 0.5rem; flex: 1; max-width: 500px; margin: 0 2rem; }
+        .search-bar input, .search-bar select { padding: 0.5rem 0.75rem; border: 2px solid var(--border); border-radius: 6px; font-size: 0.875rem; }
+        .search-bar input { flex: 1; }
+        .search-bar select { width: 120px; }
+        
+        .btn { padding: 0.5rem 1rem; border-radius: 6px; font-weight: 600; text-decoration: none; transition: all 0.2s; cursor: pointer; border: none; font-size: 0.875rem; }
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-primary:hover { background: var(--primary-dark); }
+        
+        /* Main Layout */
+        .main-container { display: flex; height: calc(100vh - 60px); margin-top: 60px; }
+        
+        /* Sidebar */
+        .sidebar { width: 420px; height: 100%; overflow-y: auto; background: var(--bg); border-right: 1px solid var(--border); }
+        .sidebar-header { padding: 1rem; border-bottom: 1px solid var(--border); background: var(--bg-light); position: sticky; top: 0; z-index: 10; }
+        .sidebar-header h2 { font-size: 1rem; margin-bottom: 0.25rem; }
+        .sidebar-header p { font-size: 0.875rem; color: var(--text-light); }
+        .results-count { font-weight: 600; color: var(--primary); }
+        
+        /* Filters */
+        .filters { padding: 0.75rem 1rem; border-bottom: 1px solid var(--border); background: white; position: sticky; top: 0; z-index: 11; }
+        .filter-toggle-btn { display: none; width: 100%; padding: 0.5rem; background: var(--bg-light); border: 1px solid var(--border); border-radius: 6px; font-size: 0.875rem; font-weight: 600; cursor: pointer; margin-bottom: 0.5rem; }
+        .filter-toggle-btn:hover { background: var(--border); }
+        .filter-content { }
+        .filter-row { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 0.5rem; }
+        .filter-group { display: flex; flex-direction: column; gap: 0.25rem; flex: 1; min-width: 100px; }
+        .filter-group label { font-size: 0.7rem; font-weight: 600; color: var(--text-light); text-transform: uppercase; }
+        .filter-group select, .filter-group input { padding: 0.4rem; border: 1px solid var(--border); border-radius: 6px; font-size: 0.8rem; }
+        .filter-group select:focus, .filter-group input:focus { outline: none; border-color: var(--primary); }
+        .filter-toggles { display: flex; gap: 1rem; align-items: center; }
+        .toggle-label { display: flex; align-items: center; gap: 0.5rem; font-size: 0.75rem; cursor: pointer; }
+        .toggle-label input { width: 14px; height: 14px; cursor: pointer; }
+        .sort-row { display: flex; justify-content: space-between; align-items: center; }
+        .sort-row select { padding: 0.35rem 0.5rem; font-size: 0.75rem; border: 1px solid var(--border); border-radius: 4px; }
+        
+        .provider-list { padding: 0.5rem; }
+        
+        .provider-card { background: white; border: 2px solid var(--border); border-radius: 10px; padding: 1rem; margin-bottom: 0.75rem; cursor: pointer; transition: all 0.2s; }
+        .provider-card:hover { border-color: var(--primary); box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+        .provider-card.active { border-color: var(--primary); background: #eff6ff; }
+        
+        .provider-card-header { display: flex; gap: 1rem; margin-bottom: 0.75rem; }
+        .provider-img { width: 80px; height: 60px; border-radius: 6px; object-fit: cover; background: var(--bg-light); }
+        .provider-title { flex: 1; }
+        .provider-title h3 { font-size: 1rem; margin-bottom: 0.25rem; }
+        .provider-title h3 a { color: var(--text); text-decoration: none; }
+        .provider-title h3 a:hover { color: var(--primary); }
+        .rating { color: var(--accent); font-size: 0.875rem; font-weight: 600; }
+        .rating-count { color: var(--text-light); font-weight: 400; }
+        
+        .provider-meta { display: flex; gap: 1rem; font-size: 0.75rem; color: var(--text-light); margin-bottom: 0.5rem; flex-wrap: wrap; }
+        .provider-badges { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 0.75rem; }
+        .badge { padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.7rem; font-weight: 600; }
+        .badge-verified { background: #dcfce7; color: #166534; }
+        .badge-featured { background: #fef3c7; color: #92400e; }
+        
+        .provider-price { display: flex; justify-content: space-between; align-items: center; padding-top: 0.75rem; border-top: 1px solid var(--border); }
+        .price-info { }
+        .price-label { font-size: 0.75rem; color: var(--text-light); }
+        .price-value { font-size: 1.25rem; font-weight: 700; color: var(--secondary); }
+        .btn-sm { padding: 0.4rem 0.75rem; font-size: 0.75rem; }
+        
+        /* Map */
+        .map-container { flex: 1; height: 100%; }
+        #map { width: 100%; height: 100%; }
+        
+        /* Custom markers */
+        .custom-marker { background: var(--primary); color: white; padding: 4px 8px; border-radius: 4px; font-weight: 700; font-size: 12px; white-space: nowrap; box-shadow: 0 2px 6px rgba(0,0,0,0.3); }
+        .custom-marker.active { background: var(--secondary); transform: scale(1.1); }
+        
+        .leaflet-popup-content-wrapper { border-radius: 8px; }
+        .leaflet-popup-content { margin: 12px; }
+        .popup-title { font-weight: 700; font-size: 14px; margin-bottom: 4px; }
+        .popup-rating { color: var(--accent); font-size: 12px; }
+        .popup-price { color: var(--secondary); font-weight: 700; margin-top: 4px; }
+        
+        /* Mobile */
+        @media (max-width: 768px) {
+            .main-container { flex-direction: column-reverse; }
+            .sidebar { width: 100%; height: 60%; }
+            .map-container { height: 40%; }
+            .search-bar { display: none; }
+            .filter-toggle-btn { display: block; }
+            .filter-content { display: none; }
+            .filter-content.expanded { display: block; }
+            .filters { padding: 0.5rem 0.75rem; }
+            .filter-row { flex-direction: row; flex-wrap: wrap; gap: 0.4rem; }
+            .filter-group { flex: 1 1 45%; min-width: 45%; }
+            .filter-group select { padding: 0.35rem; font-size: 0.75rem; }
+            .filter-group label { font-size: 0.65rem; }
+            .sort-row { flex-direction: row; gap: 0.5rem; align-items: center; margin-top: 0.5rem; }
+            .filter-toggles { gap: 0.75rem; }
+            .toggle-label { font-size: 0.7rem; }
+            .sidebar-header { padding: 0.5rem 0.75rem; }
+            .sidebar-header h2 { font-size: 0.9rem; }
+            .sidebar-header p { font-size: 0.75rem; }
+            .provider-list { padding: 0.4rem; }
+            .provider-card { padding: 0.75rem; margin-bottom: 0.5rem; }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="header-content">
+            <a href="index.html" class="logo">
+                <div class="logo-icon">🚛</div>
+                DumpsterMap
+            </a>
+            <div class="search-bar">
+                <input type="text" id="location-search" placeholder="Enter city or ZIP code" value="Naples, FL">
+                <select id="size-filter">
+                    <option value="">All Sizes</option>
+                    <option value="10">10 Yard</option>
+                    <option value="15">15 Yard</option>
+                    <option value="20">20 Yard</option>
+                    <option value="30">30 Yard</option>
+                    <option value="40">40 Yard</option>
+                </select>
+                <button class="btn btn-primary" onclick="searchLocation()">Search</button>
+            </div>
+            <a href="quote.html" class="btn btn-primary">Get Quotes</a>
+        </div>
+    </header>
+    
+    <div class="main-container">
+        <div class="sidebar">
+            <div class="filters">
+                <button class="filter-toggle-btn" onclick="toggleFilters()">🔧 Filters & Sort ▼</button>
+                <div class="filter-content" id="filter-content">
+                    <div class="filter-row">
+                        <div class="filter-group">
+                            <label>Size</label>
+                            <select id="filter-size" onchange="applyFilters()">
+                                <option value="">All</option>
+                                <option value="10">10 Yd</option>
+                                <option value="15">15 Yd</option>
+                                <option value="20">20 Yd</option>
+                                <option value="30">30 Yd</option>
+                                <option value="40">40 Yd</option>
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <label>Max Price</label>
+                            <select id="filter-price" onchange="applyFilters()">
+                                <option value="">Any</option>
+                                <option value="275">&lt;$275</option>
+                                <option value="300">&lt;$300</option>
+                                <option value="350">&lt;$350</option>
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <label>Rating</label>
+                            <select id="filter-rating" onchange="applyFilters()">
+                                <option value="">Any</option>
+                                <option value="4.5">4.5+</option>
+                                <option value="4.7">4.7+</option>
+                                <option value="4.8">4.8+</option>
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <label>Sort</label>
+                            <select id="sort-by" onchange="applyFilters()">
+                                <option value="rating">Rating</option>
+                                <option value="price-low">Price ↑</option>
+                                <option value="price-high">Price ↓</option>
+                                <option value="reviews">Reviews</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="sort-row">
+                        <div class="filter-toggles">
+                            <label class="toggle-label">
+                                <input type="checkbox" id="filter-verified" onchange="applyFilters()">
+                                Verified
+                            </label>
+                            <label class="toggle-label">
+                                <input type="checkbox" id="filter-featured" onchange="applyFilters()">
+                                Featured
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="sidebar-header">
+                <h2>Dumpster Rentals Near Naples, FL</h2>
+                <p><span class="results-count" id="results-count">6 providers</span> found</p>
+            </div>
+            <div class="provider-list" id="provider-list">
+                <!-- Provider cards will be inserted here by JS -->
+            </div>
+        </div>
+        <div class="map-container">
+            <div id="map"></div>
+        </div>
+    </div>
+    
+    <script>
+        // Provider data with coordinates
+        const providers = [
+            {
+                id: 'abc-dumpster-naples',
+                name: 'ABC Dumpster Services',
+                image: 'https://images.unsplash.com/photo-1530587191325-3db32d826c18?w=300&h=200&fit=crop',
+                rating: 4.9,
+                reviewCount: 127,
+                city: 'Naples',
+                responseTime: 'Under 1 hour',
+                yearsInBusiness: 12,
+                verified: true,
+                featured: true,
+                price: 299,
+                priceNote: '10 yard, 7 days',
+                lat: 26.1420,
+                lng: -81.7948
+            },
+            {
+                id: 'coastal-containers',
+                name: 'Coastal Containers LLC',
+                image: 'https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=300&h=200&fit=crop',
+                rating: 4.7,
+                reviewCount: 156,
+                city: 'Naples',
+                responseTime: 'Under 2 hours',
+                yearsInBusiness: 15,
+                verified: true,
+                featured: true,
+                price: 289,
+                priceNote: '10 yard, 7 days',
+                lat: 26.1885,
+                lng: -81.8055
+            },
+            {
+                id: 'marco-hauling',
+                name: 'Marco Hauling Co',
+                image: 'https://images.unsplash.com/photo-1558618047-f4b511ede60e?w=300&h=200&fit=crop',
+                rating: 4.8,
+                reviewCount: 92,
+                city: 'Marco Island',
+                responseTime: 'Same day',
+                yearsInBusiness: 10,
+                verified: true,
+                featured: false,
+                price: 319,
+                priceNote: '10 yard, 7 days',
+                lat: 25.9412,
+                lng: -81.7182
+            },
+            {
+                id: 'green-waste-solutions',
+                name: 'Green Waste Solutions',
+                image: 'https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=300&h=200&fit=crop',
+                rating: 4.8,
+                reviewCount: 89,
+                city: 'Fort Myers',
+                responseTime: 'Under 2 hours',
+                yearsInBusiness: 8,
+                verified: true,
+                featured: false,
+                price: 275,
+                priceNote: '10 yard, 7 days',
+                lat: 26.6406,
+                lng: -81.8723
+            },
+            {
+                id: 'pro-haul-dumpsters',
+                name: 'Pro Haul Dumpsters',
+                image: 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=300&h=200&fit=crop',
+                rating: 4.6,
+                reviewCount: 64,
+                city: 'Cape Coral',
+                responseTime: 'Same day',
+                yearsInBusiness: 5,
+                verified: true,
+                featured: false,
+                price: 259,
+                priceNote: '15 yard, 5 days',
+                lat: 26.5629,
+                lng: -81.9495
+            },
+            {
+                id: 'bonita-disposal',
+                name: 'Bonita Disposal Services',
+                image: 'https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=300&h=200&fit=crop',
+                rating: 4.5,
+                reviewCount: 73,
+                city: 'Bonita Springs',
+                responseTime: 'Next day',
+                yearsInBusiness: 7,
+                verified: true,
+                featured: false,
+                price: 295,
+                priceNote: '10 yard, 7 days',
+                lat: 26.3398,
+                lng: -81.7787
+            }
+        ];
+        
+        let map;
+        let markers = {};
+        let activeProviderId = null;
+        let filteredProviders = [...providers];
+        
+        // Initialize map
+        function initMap() {
+            map = L.map('map').setView([26.25, -81.82], 10);
+            
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors'
+            }).addTo(map);
+            
+            // Add markers for all providers initially
+            updateMapMarkers(providers);
+        }
+        
+        // Update map markers based on filtered providers
+        function updateMapMarkers(providerList) {
+            // Clear existing markers
+            Object.values(markers).forEach(marker => map.removeLayer(marker));
+            markers = {};
+            
+            // Add markers for filtered providers
+            providerList.forEach(provider => {
+                const marker = L.marker([provider.lat, provider.lng], {
+                    icon: L.divIcon({
+                        className: 'custom-marker-container',
+                        html: `<div class="custom-marker" data-id="${provider.id}">$${provider.price}</div>`,
+                        iconSize: [60, 24],
+                        iconAnchor: [30, 12]
+                    })
+                }).addTo(map);
+                
+                marker.bindPopup(`
+                    <div class="popup-title">${provider.name}</div>
+                    <div class="popup-rating">★ ${provider.rating} (${provider.reviewCount} reviews)</div>
+                    <div class="popup-price">From $${provider.price}</div>
+                `);
+                
+                marker.on('click', () => {
+                    setActiveProvider(provider.id);
+                    scrollToCard(provider.id);
+                });
+                
+                markers[provider.id] = marker;
+            });
+            
+            // Fit map to show all markers
+            if (providerList.length > 0) {
+                const group = L.featureGroup(Object.values(markers));
+                map.fitBounds(group.getBounds().pad(0.1));
+            }
+        }
+        
+        // Apply filters
+        function applyFilters() {
+            const sizeFilter = document.getElementById('filter-size').value;
+            const priceFilter = document.getElementById('filter-price').value;
+            const ratingFilter = document.getElementById('filter-rating').value;
+            const verifiedOnly = document.getElementById('filter-verified').checked;
+            const featuredOnly = document.getElementById('filter-featured').checked;
+            const sortBy = document.getElementById('sort-by').value;
+            
+            // Filter providers
+            filteredProviders = providers.filter(p => {
+                if (priceFilter && p.price > parseInt(priceFilter)) return false;
+                if (ratingFilter && p.rating < parseFloat(ratingFilter)) return false;
+                if (verifiedOnly && !p.verified) return false;
+                if (featuredOnly && !p.featured) return false;
+                return true;
+            });
+            
+            // Sort providers
+            filteredProviders.sort((a, b) => {
+                switch(sortBy) {
+                    case 'price-low': return a.price - b.price;
+                    case 'price-high': return b.price - a.price;
+                    case 'reviews': return b.reviewCount - a.reviewCount;
+                    case 'rating': 
+                    default: return b.rating - a.rating;
+                }
+            });
+            
+            // Update UI
+            renderProviderCards(filteredProviders);
+            updateMapMarkers(filteredProviders);
+            document.getElementById('results-count').textContent = `${filteredProviders.length} provider${filteredProviders.length !== 1 ? 's' : ''}`;
+        }
+        
+        // Render provider cards
+        function renderProviderCards(providerList = providers) {
+            const container = document.getElementById('provider-list');
+            
+            if (providerList.length === 0) {
+                container.innerHTML = '<div style="padding: 2rem; text-align: center; color: var(--text-light);">No providers match your filters. Try adjusting your criteria.</div>';
+                return;
+            }
+            
+            container.innerHTML = providerList.map(provider => `
+                <div class="provider-card" data-id="${provider.id}" onclick="setActiveProvider('${provider.id}')">
+                    <div class="provider-card-header">
+                        <img src="${provider.image}" alt="${provider.name}" class="provider-img">
+                        <div class="provider-title">
+                            <h3><a href="provider.html?id=${provider.id}">${provider.name}</a></h3>
+                            <div class="rating">★ ${provider.rating} <span class="rating-count">(${provider.reviewCount})</span></div>
+                        </div>
+                    </div>
+                    <div class="provider-meta">
+                        <span>📍 ${provider.city}</span>
+                        <span>🕐 ${provider.responseTime}</span>
+                        <span>📅 ${provider.yearsInBusiness} years</span>
+                    </div>
+                    <div class="provider-badges">
+                        ${provider.verified ? '<span class="badge badge-verified">✓ Verified</span>' : ''}
+                        ${provider.featured ? '<span class="badge badge-featured">⭐ Featured</span>' : ''}
+                    </div>
+                    <div class="provider-price">
+                        <div class="price-info">
+                            <div class="price-label">${provider.priceNote}</div>
+                            <div class="price-value">$${provider.price}</div>
+                        </div>
+                        <a href="quote.html?provider=${provider.id}" class="btn btn-primary btn-sm">Get Quote</a>
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        // Set active provider
+        function setActiveProvider(providerId) {
+            // Remove active class from all cards and markers
+            document.querySelectorAll('.provider-card').forEach(card => {
+                card.classList.remove('active');
+            });
+            document.querySelectorAll('.custom-marker').forEach(marker => {
+                marker.classList.remove('active');
+            });
+            
+            // Add active class to selected card and marker
+            const card = document.querySelector(`.provider-card[data-id="${providerId}"]`);
+            const markerEl = document.querySelector(`.custom-marker[data-id="${providerId}"]`);
+            
+            if (card) card.classList.add('active');
+            if (markerEl) markerEl.classList.add('active');
+            
+            // Open popup on map
+            if (markers[providerId]) {
+                markers[providerId].openPopup();
+            }
+            
+            activeProviderId = providerId;
+        }
+        
+        // Scroll to card in sidebar
+        function scrollToCard(providerId) {
+            const card = document.querySelector(`.provider-card[data-id="${providerId}"]`);
+            if (card) {
+                card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        }
+        
+        // Toggle filters on mobile
+        function toggleFilters() {
+            const content = document.getElementById('filter-content');
+            const btn = document.querySelector('.filter-toggle-btn');
+            content.classList.toggle('expanded');
+            btn.textContent = content.classList.contains('expanded') ? '🔧 Filters & Sort ▲' : '🔧 Filters & Sort ▼';
+        }
+        
+        // Search location
+        function searchLocation() {
+            const location = document.getElementById('location-search').value;
+            // Update URL and reload with new location
+            const url = new URL(window.location);
+            url.searchParams.set('location', location);
+            window.location.href = url.toString();
+        }
+        
+        // Read URL parameters
+        function getUrlParams() {
+            const params = new URLSearchParams(window.location.search);
+            return {
+                zip: params.get('zip'),
+                location: params.get('location'),
+                project: params.get('project'),
+                size: params.get('size')
+            };
+        }
+        
+        // Update header based on location
+        function updateLocationDisplay(location) {
+            const header = document.querySelector('.sidebar-header h2');
+            if (header && location) {
+                header.textContent = `Dumpster Rentals Near ${location}`;
+            }
+            const searchInput = document.getElementById('location-search');
+            if (searchInput && location) {
+                searchInput.value = location;
+            }
+        }
+        
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            const params = getUrlParams();
+            
+            // Set location from URL params
+            if (params.zip) {
+                updateLocationDisplay(params.zip);
+            } else if (params.location) {
+                updateLocationDisplay(params.location);
+            }
+            
+            // Set size filter from URL if provided
+            if (params.size) {
+                const sizeFilter = document.getElementById('filter-size');
+                if (sizeFilter) sizeFilter.value = params.size;
+            }
+            
+            initMap();
+            renderProviderCards();
+        });
+    </script>
+</body>
+</html>
