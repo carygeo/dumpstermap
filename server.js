@@ -14,6 +14,7 @@ const NOTIFICATION_EMAIL = 'admin@dumpstermap.io';
 const SINGLE_LEAD_PRICE = 40;
 const SINGLE_LEAD_STRIPE_LINK = 'https://buy.stripe.com/cNidR9aQ76T46IF78j5Rm04';
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'dumpstermap2026';
+const STRIPE_WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET;
 
 // Email config - Resend (primary) or SMTP (fallback)
 const RESEND_API_KEY = process.env.RESEND_API_KEY;
@@ -21,7 +22,8 @@ const SMTP_USER = process.env.SMTP_USER || 'admin@dumpstermap.io';
 const SMTP_PASS = process.env.SMTP_PASS;
 const EMAIL_FROM = process.env.EMAIL_FROM || 'DumpsterMap <leads@dumpstermap.io>';
 
-// Parse JSON bodies
+// Parse JSON bodies - raw for Stripe webhook verification
+app.use('/api/stripe-webhook', express.raw({ type: 'application/json' }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -365,11 +367,59 @@ function getOrCreateProvider(email, name = null) {
   return provider;
 }
 
+// Verify Stripe signature helper
+function verifyStripeSignature(payload, signature) {
+  if (!STRIPE_WEBHOOK_SECRET || !signature) return null;
+  
+  try {
+    const timestamp = signature.split(',').find(s => s.startsWith('t='))?.split('=')[1];
+    const signatures = signature.split(',').filter(s => s.startsWith('v1=')).map(s => s.split('=')[1]);
+    
+    if (!timestamp || signatures.length === 0) return null;
+    
+    const signedPayload = `${timestamp}.${payload}`;
+    const expectedSig = crypto.createHmac('sha256', STRIPE_WEBHOOK_SECRET)
+      .update(signedPayload).digest('hex');
+    
+    const isValid = signatures.some(sig => {
+      try {
+        return crypto.timingSafeEqual(Buffer.from(expectedSig), Buffer.from(sig));
+      } catch { return false; }
+    });
+    
+    // Check timestamp is within 5 minutes
+    const timestampAge = Date.now() / 1000 - parseInt(timestamp);
+    if (timestampAge > 300) return null;
+    
+    return isValid ? JSON.parse(payload) : null;
+  } catch (e) {
+    console.error('Signature verification failed:', e.message);
+    return null;
+  }
+}
+
 app.post('/api/stripe-webhook', async (req, res) => {
   console.log('\n=== Stripe Webhook ===');
   
   try {
-    const event = req.body;
+    let event;
+    
+    // Verify signature if secret is configured
+    if (STRIPE_WEBHOOK_SECRET) {
+      const signature = req.headers['stripe-signature'];
+      const payload = req.body.toString();
+      event = verifyStripeSignature(payload, signature);
+      
+      if (!event) {
+        console.warn('Webhook signature verification failed');
+        logError('webhook', 'Signature verification failed', { hasSignature: !!signature });
+        return res.status(400).json({ error: 'Invalid signature' });
+      }
+    } else {
+      // Dev mode - no signature verification
+      event = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
+    }
+    
     if (event.type !== 'checkout.session.completed') {
       return res.json({ received: true, processed: false });
     }

@@ -66,8 +66,8 @@
 |---------|-------|---------|
 | Single Lead | $40 | 1 |
 | Starter Pack | $200 | 5 |
-| Growth Pack | $700 | 20 |
-| Pro Pack | $1,500 | 60 |
+| Pro Pack | $700 | 20 |
+| Premium Pack | $1,500 | 60 |
 
 ## Tech Stack
 
