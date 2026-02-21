@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Check Your Credits - DumpsterMap</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #f9fafb;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+        }
+        .card {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            padding: 2rem;
+            max-width: 400px;
+            width: 100%;
+        }
+        h1 {
+            font-size: 1.5rem;
+            margin-bottom: 0.5rem;
+            text-align: center;
+        }
+        .subtitle {
+            color: #6b7280;
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+        label {
+            display: block;
+            font-weight: 500;
+            margin-bottom: 0.5rem;
+        }
+        input {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            font-size: 1rem;
+            margin-bottom: 1rem;
+        }
+        input:focus {
+            outline: none;
+            border-color: #10b981;
+        }
+        button {
+            width: 100%;
+            padding: 0.75rem;
+            background: #10b981;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #059669;
+        }
+        .result {
+            margin-top: 1.5rem;
+            padding: 1.5rem;
+            background: #f0fdf4;
+            border-radius: 8px;
+            display: none;
+        }
+        .result.error {
+            background: #fef2f2;
+        }
+        .balance {
+            font-size: 3rem;
+            font-weight: 700;
+            color: #10b981;
+            text-align: center;
+        }
+        .company {
+            text-align: center;
+            color: #374151;
+            margin-bottom: 1rem;
+        }
+        .stats {
+            display: flex;
+            justify-content: space-around;
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 1px solid #d1fae5;
+        }
+        .stat {
+            text-align: center;
+        }
+        .stat-value {
+            font-size: 1.25rem;
+            font-weight: 600;
+        }
+        .stat-label {
+            font-size: 0.75rem;
+            color: #6b7280;
+        }
+        .error-msg {
+            color: #dc2626;
+            text-align: center;
+        }
+        .buy-more {
+            display: block;
+            text-align: center;
+            margin-top: 1rem;
+            color: #10b981;
+            text-decoration: none;
+            font-weight: 500;
+        }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1>🎫 Check Your Credits</h1>
+        <p class="subtitle">Enter your business email to see your balance</p>
+        
+        <form id="checkForm">
+            <label for="email">Business Email</label>
+            <input type="email" id="email" placeholder="you@yourcompany.com" required>
+            <button type="submit">Check Balance</button>
+        </form>
+        
+        <div class="result" id="result">
+            <div class="company" id="company"></div>
+            <div class="balance" id="balance"></div>
+            <div class="stats">
+                <div class="stat">
+                    <div class="stat-value" id="leads">0</div>
+                    <div class="stat-label">Leads Received</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-value" id="plan">Free</div>
+                    <div class="stat-label">Plan</div>
+                </div>
+            </div>
+            <a href="/for-providers.html#pricing" class="buy-more">Buy More Credits →</a>
+        </div>
+        
+        <div class="result error" id="error">
+            <p class="error-msg" id="errorMsg"></p>
+        </div>
+    </div>
+    
+    <script>
+        const API_URL = 'https://script.google.com/macros/s/AKfycbxRIvl6z4kN8t1RZYUhqfubiRkpy-rOkDYlzwI9CSmpzkbV4aatki254g7h6zTnKmikRQ/exec';
+        
+        document.getElementById('checkForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('email').value.trim();
+            
+            document.getElementById('result').style.display = 'none';
+            document.getElementById('error').style.display = 'none';
+            
+            try {
+                const response = await fetch(`${API_URL}?action=balance&email=${encodeURIComponent(email)}`);
+                const data = await response.json();
+                
+                if (data.status === 'ok') {
+                    document.getElementById('company').textContent = data.companyName;
+                    document.getElementById('balance').textContent = data.creditBalance + ' credits';
+                    document.getElementById('leads').textContent = data.totalLeadsReceived;
+                    document.getElementById('plan').textContent = data.plan;
+                    document.getElementById('result').style.display = 'block';
+                } else {
+                    document.getElementById('errorMsg').textContent = data.message || 'Provider not found';
+                    document.getElementById('error').style.display = 'block';
+                }
+            } catch (err) {
+                document.getElementById('errorMsg').textContent = 'Unable to check balance. Please try again.';
+                document.getElementById('error').style.display = 'block';
+            }
+        });
+    </script>
+</body>
+</html>
