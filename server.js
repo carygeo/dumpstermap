@@ -338,6 +338,33 @@ async function sendTeaserToProvider(provider, leadId, lead) {
 // ============================================
 // STRIPE WEBHOOK
 // ============================================
+
+// Credit pack pricing
+const CREDIT_PACKS = {
+  200: { credits: 5, name: 'Starter Pack' },
+  700: { credits: 20, name: 'Pro Pack' },
+  1500: { credits: 60, name: 'Premium Pack' }
+};
+
+// Get or create provider by email
+function getOrCreateProvider(email, name = null) {
+  let provider = db.prepare('SELECT * FROM providers WHERE LOWER(email) = LOWER(?)').get(email);
+  
+  if (!provider) {
+    // Auto-create provider
+    const companyName = name || email.split('@')[0].replace(/[._]/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+    db.prepare(`
+      INSERT INTO providers (company_name, email, status, notes)
+      VALUES (?, ?, 'Active', 'Auto-created from purchase')
+    `).run(companyName, email.toLowerCase());
+    
+    provider = db.prepare('SELECT * FROM providers WHERE LOWER(email) = LOWER(?)').get(email);
+    console.log('Auto-created provider:', companyName, email);
+  }
+  
+  return provider;
+}
+
 app.post('/api/stripe-webhook', async (req, res) => {
   console.log('\n=== Stripe Webhook ===');
   
@@ -350,21 +377,68 @@ app.post('/api/stripe-webhook', async (req, res) => {
     const session = event.data.object;
     const leadId = session.client_reference_id;
     const customerEmail = session.customer_details?.email || session.customer_email;
+    const customerName = session.customer_details?.name;
     const amount = session.amount_total ? session.amount_total / 100 : 0;
     const paymentId = session.payment_intent || session.id;
     const paymentStatus = session.payment_status;
     
-    console.log('Lead:', leadId, 'Customer:', customerEmail, 'Amount:', amount);
+    console.log('Payment:', { leadId, customerEmail, amount, paymentStatus });
     
     // Log purchase attempt
-    db.prepare('INSERT INTO purchase_log (lead_id, buyer_email, amount, payment_id, status) VALUES (?, ?, ?, ?, ?)').run(leadId, customerEmail, amount, paymentId, 'Processing');
+    db.prepare('INSERT INTO purchase_log (lead_id, buyer_email, amount, payment_id, status) VALUES (?, ?, ?, ?, ?)').run(leadId || 'CREDIT_PACK', customerEmail, amount, paymentId, 'Processing');
     
     if (paymentStatus !== 'paid') {
       return res.json({ received: true, error: 'Not paid' });
     }
+    
+    // Check if this is a credit pack purchase (by amount)
+    const creditPack = CREDIT_PACKS[amount];
+    
+    if (creditPack) {
+      // === CREDIT PACK PURCHASE ===
+      console.log(`Credit pack purchase: ${creditPack.name} (${creditPack.credits} credits) for $${amount}`);
+      
+      // Get or create provider
+      const provider = getOrCreateProvider(customerEmail, customerName);
+      
+      // Add credits
+      db.prepare('UPDATE providers SET credit_balance = credit_balance + ? WHERE id = ?').run(creditPack.credits, provider.id);
+      
+      // Update purchase log
+      db.prepare('UPDATE purchase_log SET status = ?, lead_id = ? WHERE payment_id = ?').run('Credits Added', `PACK_${creditPack.credits}`, paymentId);
+      
+      // Send confirmation email
+      const html = `
+<div style="font-family: Arial, sans-serif; max-width: 600px;">
+  <h2 style="color: #16a34a;">✅ ${creditPack.name} Activated!</h2>
+  <p>Thanks for your purchase! Your account has been credited.</p>
+  <div style="background: #f0fdf4; border: 1px solid #86efac; padding: 20px; border-radius: 8px; margin: 20px 0;">
+    <strong>Credits Added:</strong> ${creditPack.credits}<br>
+    <strong>New Balance:</strong> ${provider.credit_balance + creditPack.credits} credits
+  </div>
+  <p>You'll now automatically receive full contact details for leads in your service area.</p>
+  <p><a href="https://dumpstermap.io/balance">Check your balance</a></p>
+  <p>Questions? Reply to this email.</p>
+  <p>— DumpsterMap</p>
+</div>`;
+      
+      const emailSent = await sendEmail(customerEmail, `${creditPack.name} Activated - ${creditPack.credits} Credits Added`, html);
+      
+      // Notify admin
+      const isNewProvider = provider.notes?.includes('Auto-created');
+      await sendAdminNotification(
+        `💰 ${creditPack.name} Purchased${isNewProvider ? ' (NEW PROVIDER)' : ''}`,
+        `Buyer: ${customerEmail}\nAmount: $${amount}\nCredits: ${creditPack.credits}\nNew Balance: ${provider.credit_balance + creditPack.credits}\n${isNewProvider ? '⭐ Auto-created provider account' : ''}`
+      );
+      
+      return res.json({ received: true, processed: true, type: 'credit_pack', credits: creditPack.credits, emailSent });
+    }
+    
+    // === SINGLE LEAD PURCHASE ($40) ===
     if (!leadId) {
-      await sendAdminNotification('⚠️ Payment without Lead ID', `Customer: ${customerEmail}\nAmount: $${amount}`);
-      return res.json({ received: true, error: 'No lead ID' });
+      // No lead ID and not a credit pack - unknown purchase
+      await sendAdminNotification('⚠️ Unknown Payment', `Customer: ${customerEmail}\nAmount: $${amount}\nNo lead ID, not a credit pack.`);
+      return res.json({ received: true, error: 'Unknown purchase type' });
     }
     
     const lead = getLeadById(leadId);
@@ -405,9 +479,10 @@ app.post('/api/stripe-webhook', async (req, res) => {
     await sendAdminNotification(`${emailSent ? '✅' : '❌'} Lead ${leadId} purchased`, 
       `Buyer: ${customerEmail}\nAmount: $${amount}\nLead: ${lead.name} | ${lead.phone}\nEmail sent: ${emailSent ? 'Yes' : 'FAILED'}`);
     
-    res.json({ received: true, processed: true, emailSent });
+    res.json({ received: true, processed: true, type: 'single_lead', emailSent });
   } catch (error) {
     console.error('Webhook error:', error);
+    await sendAdminNotification('❌ Webhook Error', error.toString());
     res.json({ received: true, error: error.message });
   }
 });
