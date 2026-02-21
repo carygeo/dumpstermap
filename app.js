@@ -1,4 +1,4 @@
-// RollOffCompare - Main Application JavaScript
+// DumpsterMap.io - Main Application JavaScript
 
 // Provider data (loaded from JSON)
 let providers = [];
@@ -17,73 +17,45 @@ async function loadProviders() {
     }
 }
 
-// ZIP code validation (Florida ZIP codes)
-function isValidZip(zip) {
-    const zipRegex = /^\d{5}$/;
-    if (!zipRegex.test(zip)) return false;
+// Search providers by location
+function searchProviders(query) {
+    if (!query) return providers;
     
-    // Florida ZIP codes range (approximate)
-    const zipNum = parseInt(zip);
-    return (zipNum >= 32003 && zipNum <= 34997);
-}
-
-// Get providers by service area
-function getProvidersByZip(zip) {
-    // For demo, match based on nearby cities
-    const zipToCities = {
-        '34102': ['Naples', 'Marco Island', 'Bonita Springs'],
-        '34103': ['Naples', 'Marco Island', 'Bonita Springs'],
-        '34104': ['Naples', 'Golden Gate', 'Estero'],
-        '34108': ['Naples', 'Bonita Springs', 'Estero'],
-        '34110': ['Naples', 'Bonita Springs'],
-        '33901': ['Fort Myers', 'Cape Coral', 'Lehigh Acres'],
-        '33907': ['Fort Myers', 'Cape Coral', 'Estero'],
-        '33904': ['Cape Coral', 'Fort Myers', 'Pine Island'],
-        '33991': ['Cape Coral', 'Fort Myers', 'North Fort Myers'],
-        '33936': ['Lehigh Acres', 'Fort Myers', 'Alva'],
-        '34135': ['Bonita Springs', 'Naples', 'Estero'],
-        '33957': ['Sanibel', 'Captiva', 'Fort Myers Beach']
-    };
-    
-    const cities = zipToCities[zip] || ['Naples', 'Fort Myers', 'Cape Coral'];
-    
+    const q = query.toLowerCase();
     return providers.filter(p => 
-        p.serviceAreas.some(area => 
-            cities.some(city => area.toLowerCase().includes(city.toLowerCase()))
-        )
+        (p.city && p.city.toLowerCase().includes(q)) ||
+        (p.state && p.state.toLowerCase().includes(q)) ||
+        (p.zip && p.zip.includes(q)) ||
+        (p.name && p.name.toLowerCase().includes(q))
     );
 }
 
 // Sort providers
-function sortProviders(providers, sortBy) {
-    const sorted = [...providers];
+function sortProviders(providerList, sortBy) {
+    const sorted = [...providerList];
     
     switch(sortBy) {
-        case 'price-low':
-            return sorted.sort((a, b) => a.sizes[0].price - b.sizes[0].price);
-        case 'price-high':
-            return sorted.sort((a, b) => b.sizes[0].price - a.sizes[0].price);
         case 'rating':
-            return sorted.sort((a, b) => b.rating - a.rating);
+            return sorted.sort((a, b) => (b.rating || 0) - (a.rating || 0));
         case 'reviews':
-            return sorted.sort((a, b) => b.reviewCount - a.reviewCount);
+            return sorted.sort((a, b) => (b.reviewCount || 0) - (a.reviewCount || 0));
+        case 'name':
+            return sorted.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
         default:
-            return sorted.sort((a, b) => b.rating - a.rating);
+            return sorted.sort((a, b) => (b.rating || 0) - (a.rating || 0));
     }
 }
 
-// Filter providers by size
-function filterBySize(providers, size) {
-    if (!size || size === 'all') return providers;
-    
-    const sizeNum = parseInt(size);
-    return providers.filter(p => 
-        p.sizes.some(s => s.size === sizeNum)
-    );
+// Filter by minimum rating
+function filterByRating(providerList, minRating) {
+    if (!minRating || minRating === 'all') return providerList;
+    return providerList.filter(p => (p.rating || 0) >= parseFloat(minRating));
 }
 
 // Generate star rating HTML
 function getStarsHtml(rating) {
+    if (!rating) return '<span class="no-rating">No rating</span>';
+    
     const fullStars = Math.floor(rating);
     const hasHalf = rating % 1 >= 0.5;
     let html = '';
@@ -99,105 +71,93 @@ function getStarsHtml(rating) {
     return html;
 }
 
-// Get price for specific size
-function getPriceForSize(provider, size) {
-    const sizeData = provider.sizes.find(s => s.size === parseInt(size));
-    return sizeData ? sizeData.price : provider.sizes[0].price;
+// Get provider image (photo, logo, or fallback)
+function getProviderImage(provider) {
+    if (provider.photo) return provider.photo;
+    if (provider.logo) return provider.logo;
+    // Fallback to colored initial
+    return null;
 }
 
-// Render provider card
-function renderProviderCard(provider, selectedSize) {
-    const price = selectedSize ? getPriceForSize(provider, selectedSize) : provider.sizes[0].price;
-    const sizeLabel = selectedSize || provider.sizes[0].size;
+// Render provider card with REAL data
+function renderProviderCard(provider) {
+    const image = getProviderImage(provider);
+    const rating = provider.rating || 0;
+    const reviewCount = provider.reviewCount || 0;
     
-    const sizeTags = provider.sizes.map(s => 
-        `<span class="size-tag${s.size === parseInt(selectedSize) ? ' active' : ''}">${s.size} yd</span>`
-    ).join('');
+    const imageHtml = image 
+        ? `<img src="${image}" alt="${provider.name}" class="provider-photo" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+           <div class="provider-logo-fallback" style="display:none;">${(provider.name || '?').charAt(0)}</div>`
+        : `<div class="provider-logo-fallback">${(provider.name || '?').charAt(0)}</div>`;
     
-    const features = provider.features.slice(0, 2).map(f => 
-        `<span class="feature"><span class="feature-icon">✓</span> ${f}</span>`
-    ).join('');
+    const ratingHtml = rating > 0 
+        ? `<div class="provider-rating">
+               <span class="stars">${getStarsHtml(rating)}</span>
+               <span class="rating-value">${rating.toFixed(1)}</span>
+               <span class="rating-count">(${reviewCount.toLocaleString()} reviews)</span>
+           </div>`
+        : `<div class="provider-rating"><span class="no-rating">No reviews yet</span></div>`;
+    
+    const phoneHtml = provider.phone 
+        ? `<a href="tel:${provider.phone}" class="btn btn-primary">📞 Call Now</a>`
+        : '';
+    
+    const websiteHtml = provider.website 
+        ? `<a href="${provider.website}" target="_blank" class="btn btn-secondary">🌐 Website</a>`
+        : '';
+    
+    const reviewsLinkHtml = provider.reviewsLink
+        ? `<a href="${provider.reviewsLink}" target="_blank" class="reviews-link">See all reviews →</a>`
+        : '';
     
     return `
         <div class="provider-card" data-id="${provider.id}">
             <div class="provider-header">
-                <div class="provider-logo">${provider.name.charAt(0)}</div>
+                <div class="provider-image-container">
+                    ${imageHtml}
+                </div>
                 <div class="provider-info">
-                    <h3>${provider.name}</h3>
-                    <div class="provider-location">📍 ${provider.city}, ${provider.state}</div>
-                    <div class="provider-rating">
-                        <span class="stars">${getStarsHtml(provider.rating)}</span>
-                        <span class="rating-count">(${provider.reviewCount} reviews)</span>
-                    </div>
+                    <h3>${provider.name || 'Unknown Provider'}</h3>
+                    <div class="provider-location">📍 ${provider.city || ''}${provider.city && provider.state ? ', ' : ''}${provider.state || ''}</div>
+                    ${ratingHtml}
+                    ${reviewsLinkHtml}
                 </div>
             </div>
             <div class="provider-body">
-                <div class="provider-sizes">${sizeTags}</div>
-                <div class="provider-price">
-                    <span class="price-label">Starting at</span>
-                    <span class="price-value">$${price}</span>
-                </div>
-                <div class="provider-features">${features}</div>
+                ${provider.category ? `<div class="provider-category">${provider.category}</div>` : ''}
                 <div class="provider-actions">
-                    <a href="provider.html?id=${provider.id}" class="btn btn-primary">Get Quote</a>
-                    <a href="provider.html?id=${provider.id}" class="btn btn-secondary">View Profile</a>
+                    ${phoneHtml}
+                    ${websiteHtml}
                 </div>
             </div>
         </div>
     `;
 }
 
-// Render results
-function renderResults(providers, selectedSize) {
+// Render results grid
+function renderResults(providerList) {
     const container = document.getElementById('results-container');
     if (!container) return;
     
-    if (providers.length === 0) {
+    if (providerList.length === 0) {
         container.innerHTML = `
             <div class="no-results">
-                <h3>No providers found in your area</h3>
-                <p>Try a different ZIP code or expand your search radius.</p>
+                <h3>No providers found</h3>
+                <p>Try a different location or adjust your filters.</p>
             </div>
         `;
         return;
     }
     
-    container.innerHTML = providers.map(p => renderProviderCard(p, selectedSize)).join('');
+    container.innerHTML = providerList.map(p => renderProviderCard(p)).join('');
 }
 
 // Update results count
-function updateResultsCount(count, zip) {
+function updateResultsCount(count, location) {
     const countEl = document.getElementById('results-count');
     if (countEl) {
-        countEl.textContent = `${count} hauler${count !== 1 ? 's' : ''} found near ${zip}`;
+        countEl.textContent = `${count.toLocaleString()} provider${count !== 1 ? 's' : ''} found${location ? ' near ' + location : ''}`;
     }
-}
-
-// Handle search form submission
-function handleSearch(event) {
-    if (event) event.preventDefault();
-    
-    const zipInput = document.getElementById('zip-input') || document.querySelector('input[type="text"]');
-    const projectSelect = document.getElementById('project-type') || document.querySelector('select');
-    
-    const zip = zipInput?.value?.trim();
-    const project = projectSelect?.value;
-    
-    if (!zip) {
-        alert('Please enter a ZIP code');
-        return;
-    }
-    
-    if (!isValidZip(zip)) {
-        alert('Please enter a valid Florida ZIP code');
-        return;
-    }
-    
-    // Store search params and redirect to results
-    sessionStorage.setItem('searchZip', zip);
-    sessionStorage.setItem('searchProject', project || '');
-    
-    window.location.href = `map.html?zip=${zip}&project=${encodeURIComponent(project || '')}`;
 }
 
 // Initialize results page
@@ -205,88 +165,69 @@ async function initResultsPage() {
     await loadProviders();
     
     const params = new URLSearchParams(window.location.search);
-    const zip = params.get('zip') || sessionStorage.getItem('searchZip') || '34102';
-    const project = params.get('project') || sessionStorage.getItem('searchProject') || '';
-    const size = params.get('size') || 'all';
+    const location = params.get('location') || params.get('zip') || '';
     const sort = params.get('sort') || 'rating';
+    const minRating = params.get('rating') || 'all';
     
-    // Update form values
-    const zipDisplay = document.getElementById('zip-display');
-    if (zipDisplay) zipDisplay.textContent = zip;
-    
-    const sortSelect = document.getElementById('sort-select');
-    if (sortSelect) sortSelect.value = sort;
-    
-    const sizeFilter = document.getElementById('size-filter');
-    if (sizeFilter) sizeFilter.value = size;
-    
-    // Get and filter providers
-    let results = getProvidersByZip(zip);
-    results = filterBySize(results, size);
+    let results = location ? searchProviders(location) : providers;
+    results = filterByRating(results, minRating);
     results = sortProviders(results, sort);
     
-    filteredProviders = results;
+    // Limit to first 100 for performance
+    const displayResults = results.slice(0, 100);
     
-    updateResultsCount(results.length, zip);
-    renderResults(results, size !== 'all' ? size : null);
-}
-
-// Handle filter changes
-function handleFilterChange() {
-    const params = new URLSearchParams(window.location.search);
-    const zip = params.get('zip') || '34102';
+    updateResultsCount(results.length, location);
+    renderResults(displayResults);
     
+    // Set up filter handlers
     const sortSelect = document.getElementById('sort-select');
-    const sizeFilter = document.getElementById('size-filter');
+    const ratingSelect = document.getElementById('rating-select');
+    const searchInput = document.getElementById('search-input');
     
-    const sort = sortSelect?.value || 'rating';
-    const size = sizeFilter?.value || 'all';
+    if (sortSelect) {
+        sortSelect.value = sort;
+        sortSelect.addEventListener('change', () => {
+            const url = new URL(window.location);
+            url.searchParams.set('sort', sortSelect.value);
+            window.location = url;
+        });
+    }
     
-    let results = getProvidersByZip(zip);
-    results = filterBySize(results, size);
-    results = sortProviders(results, sort);
+    if (ratingSelect) {
+        ratingSelect.value = minRating;
+        ratingSelect.addEventListener('change', () => {
+            const url = new URL(window.location);
+            url.searchParams.set('rating', ratingSelect.value);
+            window.location = url;
+        });
+    }
     
-    filteredProviders = results;
-    
-    updateResultsCount(results.length, zip);
-    renderResults(results, size !== 'all' ? size : null);
-    
-    // Update URL without reload
-    const newUrl = `results.html?zip=${zip}&sort=${sort}&size=${size}`;
-    window.history.replaceState({}, '', newUrl);
+    if (searchInput) {
+        searchInput.value = location;
+    }
 }
 
-// Initialize on page load
-document.addEventListener('DOMContentLoaded', function() {
-    // Check if we're on results page
+// Initialize home page search
+function initHomePage() {
+    const searchForm = document.getElementById('search-form');
+    const searchInput = document.getElementById('location-input');
+    
+    if (searchForm) {
+        searchForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const location = searchInput?.value?.trim();
+            if (location) {
+                window.location = `results.html?location=${encodeURIComponent(location)}`;
+            }
+        });
+    }
+}
+
+// Auto-init based on page
+document.addEventListener('DOMContentLoaded', () => {
     if (document.getElementById('results-container')) {
         initResultsPage();
-    }
-    
-    // Attach search handler
-    const searchForm = document.getElementById('search-form');
-    if (searchForm) {
-        searchForm.addEventListener('submit', handleSearch);
-    }
-    
-    const searchBtn = document.querySelector('.search-btn');
-    if (searchBtn) {
-        searchBtn.addEventListener('click', handleSearch);
-    }
-    
-    // Attach filter handlers
-    const sortSelect = document.getElementById('sort-select');
-    if (sortSelect) {
-        sortSelect.addEventListener('change', handleFilterChange);
-    }
-    
-    const sizeFilter = document.getElementById('size-filter');
-    if (sizeFilter) {
-        sizeFilter.addEventListener('change', handleFilterChange);
+    } else {
+        initHomePage();
     }
 });
-
-// Export for testing
-if (typeof module !== 'undefined') {
-    module.exports = { loadProviders, getProvidersByZip, sortProviders, filterBySize };
-}

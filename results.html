@@ -238,17 +238,60 @@
             gap: 1rem;
         }
         
-        .provider-logo {
-            width: 64px;
-            height: 64px;
+        .provider-image-container {
+            width: 80px;
+            height: 80px;
+            flex-shrink: 0;
+        }
+        
+        .provider-photo {
+            width: 80px;
+            height: 80px;
+            object-fit: cover;
+            border-radius: 8px;
+        }
+        
+        .provider-logo-fallback {
+            width: 80px;
+            height: 80px;
             background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
             border-radius: 8px;
             display: flex;
             align-items: center;
             justify-content: center;
             color: white;
-            font-size: 1.5rem;
+            font-size: 1.75rem;
             font-weight: 700;
+        }
+        
+        .rating-value {
+            font-weight: 600;
+            color: var(--text);
+        }
+        
+        .no-rating {
+            color: var(--text-light);
+            font-style: italic;
+        }
+        
+        .reviews-link {
+            font-size: 0.75rem;
+            color: var(--primary);
+            text-decoration: none;
+        }
+        
+        .reviews-link:hover {
+            text-decoration: underline;
+        }
+        
+        .provider-category {
+            font-size: 0.75rem;
+            color: var(--text-light);
+            background: var(--bg-gray);
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            display: inline-block;
+            margin-bottom: 0.5rem;
         }
         
         .provider-info {
