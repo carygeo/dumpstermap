@@ -729,41 +729,52 @@
         
         // Geocode and navigate to searched location
         async function navigateToLocation(query) {
-            if (!query) return;
+            if (!query) return false;
             
             // For ZIP codes, add "USA" for better geocoding
-            let searchQuery = query;
-            if (/^\d{5}$/.test(query.trim())) {
-                searchQuery = query + ', USA';
+            let searchQuery = query.trim();
+            if (/^\d{5}$/.test(searchQuery)) {
+                searchQuery = searchQuery + ', United States';
             }
+            
+            console.log('Geocoding:', searchQuery);
             
             try {
                 const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}&countrycodes=us&limit=1`);
                 const data = await response.json();
+                console.log('Geocode result:', data);
+                
                 if (data.length > 0) {
                     const lat = parseFloat(data[0].lat);
                     const lng = parseFloat(data[0].lon);
-                    // Zoom level 11 for ZIP codes, good balance of detail
-                    map.setView([lat, lng], 11);
+                    console.log('Setting view to:', lat, lng);
+                    
+                    // Use flyTo for smoother animation and ensure it completes
+                    map.flyTo([lat, lng], 11, { duration: 1 });
+                    return true;
                 }
             } catch (e) {
                 console.error('Geocoding error:', e);
             }
+            return false;
         }
         
         // Override renderResults to load ALL providers on map, then navigate
         const originalRenderResults = renderResults;
         renderResults = function(providerList) {
-            // Load ALL providers on the map
+            // Load ALL providers on the map first
             if (typeof providers !== 'undefined' && providers.length > 0) {
                 loadAllMarkersOnMap(providers);
             } else {
                 loadAllMarkersOnMap(providerList);
             }
             
-            // Navigate to searched location if provided, then cards will update via moveend
+            // Navigate to searched location if provided
+            // Use setTimeout to ensure map is fully ready
             if (window.searchLocation) {
-                navigateToLocation(window.searchLocation);
+                setTimeout(() => {
+                    navigateToLocation(window.searchLocation);
+                }, 500);
             } else {
                 // No search, show initial cards
                 originalRenderResults(providerList);
