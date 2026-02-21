@@ -76,7 +76,7 @@ flowchart TD
 | **Tiles** | CARTO Dark |
 | **Hosting** | Fly.io |
 | **Payments** | Stripe |
-| **Email** | Gmail SMTP |
+| **Email** | Resend (or SMTP fallback) |
 | **Analytics** | GoatCounter |
 
 ---
@@ -125,8 +125,11 @@ fly deploy
 ### Required Secrets
 
 ```bash
-# Gmail App Password (for SMTP)
-fly secrets set SMTP_PASS=xxxx-xxxx-xxxx-xxxx
+# Email: Resend API Key (recommended)
+fly secrets set RESEND_API_KEY=re_xxxxxxxxxx
+
+# OR Email: Gmail App Password (fallback)
+# fly secrets set SMTP_PASS=xxxx-xxxx-xxxx-xxxx
 
 # Stripe Secret Key
 fly secrets set STRIPE_SECRET_KEY=sk_live_xxx
@@ -134,6 +137,13 @@ fly secrets set STRIPE_SECRET_KEY=sk_live_xxx
 # Stripe Webhook Secret
 fly secrets set STRIPE_WEBHOOK_SECRET=whsec_xxx
 ```
+
+### Email Setup (Resend)
+
+1. Sign up at [resend.com](https://resend.com)
+2. Add and verify `dumpstermap.io` domain
+3. Get API key from dashboard
+4. Set the secret: `fly secrets set RESEND_API_KEY=re_xxx`
 
 ### Stripe Webhook URL
 

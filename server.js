@@ -15,9 +15,11 @@ const SINGLE_LEAD_PRICE = 40;
 const SINGLE_LEAD_STRIPE_LINK = 'https://buy.stripe.com/cNidR9aQ76T46IF78j5Rm04';
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'dumpstermap2026';
 
-// Gmail SMTP config
+// Email config - Resend (primary) or SMTP (fallback)
+const RESEND_API_KEY = process.env.RESEND_API_KEY;
 const SMTP_USER = process.env.SMTP_USER || 'admin@dumpstermap.io';
 const SMTP_PASS = process.env.SMTP_PASS;
+const EMAIL_FROM = process.env.EMAIL_FROM || 'DumpsterMap <leads@dumpstermap.io>';
 
 // Parse JSON bodies
 app.use(express.json());
@@ -97,22 +99,31 @@ function initDatabase() {
 }
 
 // ============================================
-// EMAIL SETUP
+// EMAIL SETUP (Resend primary, SMTP fallback)
 // ============================================
 let emailTransporter = null;
+let useResend = false;
 
 function initEmail() {
-  if (!SMTP_PASS) {
-    console.log('No SMTP_PASS - Email disabled');
-    return null;
+  // Prefer Resend if API key is set
+  if (RESEND_API_KEY) {
+    useResend = true;
+    console.log('Email: Using Resend API');
+    return true;
   }
   
-  emailTransporter = nodemailer.createTransport({
-    service: 'gmail',
-    auth: { user: SMTP_USER, pass: SMTP_PASS }
-  });
-  console.log('Email transporter initialized');
-  return emailTransporter;
+  // Fallback to SMTP
+  if (SMTP_PASS) {
+    emailTransporter = nodemailer.createTransport({
+      service: 'gmail',
+      auth: { user: SMTP_USER, pass: SMTP_PASS }
+    });
+    console.log('Email: Using SMTP/Gmail');
+    return emailTransporter;
+  }
+  
+  console.log('Email: DISABLED (no RESEND_API_KEY or SMTP_PASS)');
+  return null;
 }
 
 // ============================================
@@ -145,20 +156,56 @@ function getProviderByEmail(email) {
 }
 
 async function sendEmail(to, subject, html, text) {
-  if (!emailTransporter) {
-    console.log('Email disabled - would send to:', to, subject);
-    return false;
+  // Use Resend if available
+  if (useResend && RESEND_API_KEY) {
+    try {
+      const response = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${RESEND_API_KEY}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          from: EMAIL_FROM,
+          to: [to],
+          subject: subject,
+          html: html,
+          text: text
+        })
+      });
+      
+      if (!response.ok) {
+        const error = await response.text();
+        console.error('Resend error:', error);
+        return false;
+      }
+      
+      const result = await response.json();
+      console.log('Email sent via Resend:', result.id);
+      return true;
+    } catch (error) {
+      console.error('Resend error:', error.message);
+      return false;
+    }
   }
-  try {
-    await emailTransporter.sendMail({
-      from: `"DumpsterMap" <${SMTP_USER}>`,
-      to, subject, html, text
-    });
-    return true;
-  } catch (error) {
-    console.error('Email error:', error.message);
-    return false;
+  
+  // Fallback to SMTP
+  if (emailTransporter) {
+    try {
+      await emailTransporter.sendMail({
+        from: EMAIL_FROM,
+        to, subject, html, text
+      });
+      console.log('Email sent via SMTP to:', to);
+      return true;
+    } catch (error) {
+      console.error('SMTP error:', error.message);
+      return false;
+    }
   }
+  
+  console.log('Email disabled - would send to:', to, subject);
+  return false;
 }
 
 async function sendAdminNotification(subject, body) {
