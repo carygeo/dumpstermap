@@ -58,6 +58,11 @@
             color: white;
             font-size: 1.2rem;
         }
+        .logo-icon svg {
+            width: 24px;
+            height: 24px;
+            fill: white;
+        }
         nav { display: flex; gap: 2rem; align-items: center; }
         nav a { color: var(--text); text-decoration: none; font-weight: 500; transition: color 0.2s; }
         nav a:hover { color: var(--primary); }
@@ -358,7 +363,15 @@
     <header>
         <div class="header-content">
             <a href="/" class="logo">
-                <div class="logo-icon">🗑️</div>
+                <div class="logo-icon">
+                    <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M2 8L4 4h16l2 4v2H2V8z"/>
+                        <path d="M3 10h18v9a1 1 0 01-1 1H4a1 1 0 01-1-1v-9z"/>
+                        <rect x="5" y="12" width="2" height="5" rx="0.5" fill="#2563eb"/>
+                        <rect x="11" y="12" width="2" height="5" rx="0.5" fill="#2563eb"/>
+                        <rect x="17" y="12" width="2" height="5" rx="0.5" fill="#2563eb"/>
+                    </svg>
+                </div>
                 DumpsterMap
             </a>
             <nav>
