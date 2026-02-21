@@ -1187,7 +1187,8 @@ app.use(express.static(path.join(__dirname), {
 app.get('*', (req, res) => {
   const htmlPath = path.join(__dirname, req.path + '.html');
   if (require('fs').existsSync(htmlPath)) return res.sendFile(htmlPath);
-  res.sendFile(path.join(__dirname, 'index.html'));
+  // 404 for unknown routes
+  res.status(404).sendFile(path.join(__dirname, '404.html'));
 });
 
 // ============================================
