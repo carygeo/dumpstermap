@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dumpster Size Guide | What Size Dumpster Do I Need? | DumpsterMap</title>
+    <meta name="description" content="Complete guide to dumpster sizes. Learn which size (10, 15, 20, 30, or 40 yard) is right for your project. Includes dimensions, capacity, and use cases.">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --primary: #2563eb;
+            --primary-dark: #1d4ed8;
+            --secondary: #059669;
+            --accent: #f59e0b;
+            --text: #1f2937;
+            --text-light: #6b7280;
+            --bg: #ffffff;
+            --bg-light: #f9fafb;
+            --border: #e5e7eb;
+        }
+        body { font-family: 'Inter', -apple-system, sans-serif; color: var(--text); line-height: 1.7; }
+        
+        /* Header */
+        header {
+            background: var(--bg);
+            border-bottom: 1px solid var(--border);
+            padding: 1rem 2rem;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        .header-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .logo {
+            font-size: 1.5rem;
+            font-weight: 800;
+            color: var(--primary);
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .logo-icon {
+            width: 40px;
+            height: 40px;
+            background: var(--primary);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .logo-icon svg { width: 24px; height: 24px; fill: white; }
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            font-weight: 600;
+            text-decoration: none;
+            background: var(--primary);
+            color: white;
+        }
+        .btn:hover { background: var(--primary-dark); }
+        
+        /* Hero */
+        .hero {
+            background: linear-gradient(135deg, #1e3a5f 0%, #2563eb 100%);
+            padding: 4rem 2rem;
+            text-align: center;
+            color: white;
+        }
+        .hero h1 { font-size: 2.5rem; font-weight: 800; margin-bottom: 1rem; }
+        .hero p { font-size: 1.2rem; opacity: 0.9; max-width: 600px; margin: 0 auto; }
+        
+        /* Content */
+        .content {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 3rem 2rem;
+        }
+        
+        /* Size Section */
+        .size-section {
+            margin-bottom: 4rem;
+            scroll-margin-top: 100px;
+        }
+        .size-header {
+            display: flex;
+            align-items: center;
+            gap: 1.5rem;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 3px solid var(--primary);
+        }
+        .size-badge {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 1.75rem;
+            font-weight: 800;
+            flex-shrink: 0;
+        }
+        .size-title h2 {
+            font-size: 2rem;
+            margin-bottom: 0.25rem;
+        }
+        .size-title .dimensions {
+            color: var(--text-light);
+            font-size: 1rem;
+        }
+        
+        .size-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+        }
+        
+        .size-details h3 {
+            font-size: 1.1rem;
+            margin-bottom: 0.75rem;
+            color: var(--primary);
+        }
+        .size-details p {
+            color: var(--text-light);
+            margin-bottom: 1.5rem;
+        }
+        .size-details ul {
+            list-style: none;
+            margin-bottom: 1.5rem;
+        }
+        .size-details li {
+            padding: 0.5rem 0;
+            padding-left: 1.5rem;
+            position: relative;
+        }
+        .size-details li::before {
+            content: '✓';
+            position: absolute;
+            left: 0;
+            color: var(--secondary);
+            font-weight: bold;
+        }
+        
+        .size-visual-box {
+            background: var(--bg-light);
+            border-radius: 12px;
+            padding: 2rem;
+            text-align: center;
+        }
+        .dumpster-graphic {
+            width: 100%;
+            max-width: 250px;
+            margin: 0 auto 1.5rem;
+            aspect-ratio: 16/9;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 3rem;
+            font-weight: 800;
+        }
+        .capacity-info {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            text-align: left;
+        }
+        .capacity-item {
+            background: white;
+            padding: 1rem;
+            border-radius: 8px;
+        }
+        .capacity-item .label {
+            font-size: 0.75rem;
+            color: var(--text-light);
+            text-transform: uppercase;
+            margin-bottom: 0.25rem;
+        }
+        .capacity-item .value {
+            font-size: 1.1rem;
+            font-weight: 700;
+        }
+        
+        .cta-box {
+            background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
+            border: 2px solid var(--secondary);
+            border-radius: 12px;
+            padding: 1.5rem;
+            text-align: center;
+            margin-top: 2rem;
+        }
+        .cta-box h4 { color: var(--secondary); margin-bottom: 0.5rem; }
+        .cta-box p { color: #065f46; font-size: 0.9rem; margin-bottom: 1rem; }
+        .cta-box .btn { background: var(--secondary); }
+        .cta-box .btn:hover { background: #047857; }
+        
+        /* Quick Compare */
+        .compare-table {
+            margin: 3rem 0;
+            overflow-x: auto;
+        }
+        .compare-table h2 {
+            text-align: center;
+            margin-bottom: 1.5rem;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+        th, td {
+            padding: 1rem;
+            text-align: center;
+            border-bottom: 1px solid var(--border);
+        }
+        th {
+            background: var(--primary);
+            color: white;
+            font-weight: 600;
+        }
+        tr:hover { background: var(--bg-light); }
+        
+        /* Footer */
+        footer {
+            background: var(--bg-light);
+            padding: 2rem;
+            text-align: center;
+            color: var(--text-light);
+        }
+        footer a { color: var(--primary); text-decoration: none; }
+        
+        @media (max-width: 768px) {
+            .size-content { grid-template-columns: 1fr; }
+            .hero h1 { font-size: 1.75rem; }
+            .size-header { flex-direction: column; text-align: center; }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="header-content">
+            <a href="index.html" class="logo">
+                <div class="logo-icon">
+                    <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M2 8L4 4h16l2 4v2H2V8z"/>
+                        <path d="M3 10h18v9a1 1 0 01-1 1H4a1 1 0 01-1-1v-9z"/>
+                        <rect x="5" y="12" width="2" height="5" rx="0.5" fill="#2563eb"/>
+                        <rect x="11" y="12" width="2" height="5" rx="0.5" fill="#2563eb"/>
+                        <rect x="17" y="12" width="2" height="5" rx="0.5" fill="#2563eb"/>
+                    </svg>
+                </div>
+                DumpsterMap
+            </a>
+            <a href="results.html" class="btn">Find Providers →</a>
+        </div>
+    </header>
+
+    <section class="hero">
+        <h1>🗑️ Dumpster Size Guide</h1>
+        <p>Not sure what size you need? We'll help you pick the perfect dumpster for your project.</p>
+    </section>
+
+    <main class="content">
+        <!-- Quick Compare Table -->
+        <div class="compare-table">
+            <h2>Quick Size Comparison</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Size</th>
+                        <th>Dimensions</th>
+                        <th>Capacity</th>
+                        <th>Best For</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>10 Yard</strong></td>
+                        <td>12' × 8' × 3.5'</td>
+                        <td>~3 pickup loads</td>
+                        <td>Small cleanouts</td>
+                    </tr>
+                    <tr>
+                        <td><strong>15 Yard</strong></td>
+                        <td>16' × 8' × 4'</td>
+                        <td>~5 pickup loads</td>
+                        <td>Single room reno</td>
+                    </tr>
+                    <tr>
+                        <td><strong>20 Yard</strong></td>
+                        <td>22' × 8' × 4.5'</td>
+                        <td>~6 pickup loads</td>
+                        <td>Multi-room, roofing</td>
+                    </tr>
+                    <tr>
+                        <td><strong>30 Yard</strong></td>
+                        <td>22' × 8' × 6'</td>
+                        <td>~9 pickup loads</td>
+                        <td>Large renovation</td>
+                    </tr>
+                    <tr>
+                        <td><strong>40 Yard</strong></td>
+                        <td>22' × 8' × 8'</td>
+                        <td>~12 pickup loads</td>
+                        <td>Major construction</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- 10 Yard Section -->
+        <section class="size-section" id="10-yard">
+            <div class="size-header">
+                <div class="size-badge">10</div>
+                <div class="size-title">
+                    <h2>10 Yard Dumpster</h2>
+                    <span class="dimensions">12' long × 8' wide × 3.5' tall</span>
+                </div>
+            </div>
+            <div class="size-content">
+                <div class="size-details">
+                    <h3>Best For</h3>
+                    <ul>
+                        <li>Small basement or garage cleanouts</li>
+                        <li>Single room remodel debris</li>
+                        <li>Small landscaping projects</li>
+                        <li>Deck removal (up to 300 sq ft)</li>
+                        <li>250-300 sq ft of roofing shingles</li>
+                    </ul>
+                    <h3>Holds Approximately</h3>
+                    <p>3 pickup truck loads of debris, or about 2-3 tons of material.</p>
+                    <h3>Good to Know</h3>
+                    <p>The 10-yard is the most compact option. It fits in tight driveways and is perfect when you don't have a huge amount of waste but need more than what fits in your trash can.</p>
+                </div>
+                <div class="size-visual-box">
+                    <div class="dumpster-graphic">10</div>
+                    <div class="capacity-info">
+                        <div class="capacity-item">
+                            <div class="label">Capacity</div>
+                            <div class="value">10 cubic yards</div>
+                        </div>
+                        <div class="capacity-item">
+                            <div class="label">Weight Limit</div>
+                            <div class="value">2-3 tons typical</div>
+                        </div>
+                    </div>
+                    <div class="cta-box">
+                        <h4>🚛 Ready to Rent?</h4>
+                        <p>Find 10-yard dumpster providers in your area</p>
+                        <a href="results.html" class="btn">Get Free Quotes</a>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 15 Yard Section -->
+        <section class="size-section" id="15-yard">
+            <div class="size-header">
+                <div class="size-badge">15</div>
+                <div class="size-title">
+                    <h2>15 Yard Dumpster</h2>
+                    <span class="dimensions">16' long × 8' wide × 4' tall</span>
+                </div>
+            </div>
+            <div class="size-content">
+                <div class="size-details">
+                    <h3>Best For</h3>
+                    <ul>
+                        <li>Medium basement or attic cleanouts</li>
+                        <li>Kitchen or bathroom remodels</li>
+                        <li>Flooring removal projects</li>
+                        <li>Small home renovation debris</li>
+                        <li>Yard waste and brush cleanup</li>
+                    </ul>
+                    <h3>Holds Approximately</h3>
+                    <p>5 pickup truck loads of debris, or about 3-4 tons of material.</p>
+                    <h3>Good to Know</h3>
+                    <p>The 15-yard hits the sweet spot for single-room renovations. Not all providers offer this size, so if unavailable, consider a 20-yard.</p>
+                </div>
+                <div class="size-visual-box">
+                    <div class="dumpster-graphic">15</div>
+                    <div class="capacity-info">
+                        <div class="capacity-item">
+                            <div class="label">Capacity</div>
+                            <div class="value">15 cubic yards</div>
+                        </div>
+                        <div class="capacity-item">
+                            <div class="label">Weight Limit</div>
+                            <div class="value">3-4 tons typical</div>
+                        </div>
+                    </div>
+                    <div class="cta-box">
+                        <h4>🚛 Ready to Rent?</h4>
+                        <p>Find 15-yard dumpster providers in your area</p>
+                        <a href="results.html" class="btn">Get Free Quotes</a>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 20 Yard Section -->
+        <section class="size-section" id="20-yard">
+            <div class="size-header">
+                <div class="size-badge">20</div>
+                <div class="size-title">
+                    <h2>20 Yard Dumpster</h2>
+                    <span class="dimensions">22' long × 8' wide × 4.5' tall</span>
+                </div>
+            </div>
+            <div class="size-content">
+                <div class="size-details">
+                    <h3>Best For</h3>
+                    <ul>
+                        <li>Multi-room renovation projects</li>
+                        <li>Roofing tear-offs (up to 3,000 sq ft)</li>
+                        <li>Large garage or estate cleanouts</li>
+                        <li>Deck or shed demolition</li>
+                        <li>Moving cleanouts</li>
+                    </ul>
+                    <h3>Holds Approximately</h3>
+                    <p>6 pickup truck loads of debris, or about 4-6 tons of material.</p>
+                    <h3>Good to Know</h3>
+                    <p>The 20-yard is the most popular residential size. It handles most home projects without taking up too much driveway space.</p>
+                </div>
+                <div class="size-visual-box">
+                    <div class="dumpster-graphic">20</div>
+                    <div class="capacity-info">
+                        <div class="capacity-item">
+                            <div class="label">Capacity</div>
+                            <div class="value">20 cubic yards</div>
+                        </div>
+                        <div class="capacity-item">
+                            <div class="label">Weight Limit</div>
+                            <div class="value">4-6 tons typical</div>
+                        </div>
+                    </div>
+                    <div class="cta-box">
+                        <h4>🚛 Ready to Rent?</h4>
+                        <p>Find 20-yard dumpster providers in your area</p>
+                        <a href="results.html" class="btn">Get Free Quotes</a>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 30 Yard Section -->
+        <section class="size-section" id="30-yard">
+            <div class="size-header">
+                <div class="size-badge">30</div>
+                <div class="size-title">
+                    <h2>30 Yard Dumpster</h2>
+                    <span class="dimensions">22' long × 8' wide × 6' tall</span>
+                </div>
+            </div>
+            <div class="size-content">
+                <div class="size-details">
+                    <h3>Best For</h3>
+                    <ul>
+                        <li>Whole-house renovation debris</li>
+                        <li>New home construction waste</li>
+                        <li>Commercial cleanouts</li>
+                        <li>Large landscaping overhauls</li>
+                        <li>Storm damage cleanup</li>
+                    </ul>
+                    <h3>Holds Approximately</h3>
+                    <p>9 pickup truck loads of debris, or about 5-7 tons of material.</p>
+                    <h3>Good to Know</h3>
+                    <p>The 30-yard is popular with contractors. The taller walls (6 feet) mean you'll need to toss items over the side rather than walk in.</p>
+                </div>
+                <div class="size-visual-box">
+                    <div class="dumpster-graphic">30</div>
+                    <div class="capacity-info">
+                        <div class="capacity-item">
+                            <div class="label">Capacity</div>
+                            <div class="value">30 cubic yards</div>
+                        </div>
+                        <div class="capacity-item">
+                            <div class="label">Weight Limit</div>
+                            <div class="value">5-7 tons typical</div>
+                        </div>
+                    </div>
+                    <div class="cta-box">
+                        <h4>🚛 Ready to Rent?</h4>
+                        <p>Find 30-yard dumpster providers in your area</p>
+                        <a href="results.html" class="btn">Get Free Quotes</a>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 40 Yard Section -->
+        <section class="size-section" id="40-yard">
+            <div class="size-header">
+                <div class="size-badge">40</div>
+                <div class="size-title">
+                    <h2>40 Yard Dumpster</h2>
+                    <span class="dimensions">22' long × 8' wide × 8' tall</span>
+                </div>
+            </div>
+            <div class="size-content">
+                <div class="size-details">
+                    <h3>Best For</h3>
+                    <ul>
+                        <li>Major construction projects</li>
+                        <li>Large commercial demolition</li>
+                        <li>Industrial cleanouts</li>
+                        <li>Large-scale remodeling</li>
+                        <li>Community cleanup events</li>
+                    </ul>
+                    <h3>Holds Approximately</h3>
+                    <p>12 pickup truck loads of debris, or about 6-8 tons of material.</p>
+                    <h3>Good to Know</h3>
+                    <p>The 40-yard is the largest standard size. With 8-foot walls, you'll definitely need equipment or a walk-in door to load it. Best for commercial/contractor use.</p>
+                </div>
+                <div class="size-visual-box">
+                    <div class="dumpster-graphic">40</div>
+                    <div class="capacity-info">
+                        <div class="capacity-item">
+                            <div class="label">Capacity</div>
+                            <div class="value">40 cubic yards</div>
+                        </div>
+                        <div class="capacity-item">
+                            <div class="label">Weight Limit</div>
+                            <div class="value">6-8 tons typical</div>
+                        </div>
+                    </div>
+                    <div class="cta-box">
+                        <h4>🚛 Ready to Rent?</h4>
+                        <p>Find 40-yard dumpster providers in your area</p>
+                        <a href="results.html" class="btn">Get Free Quotes</a>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Tips Section -->
+        <section style="background: var(--bg-light); padding: 2rem; border-radius: 12px; margin-top: 2rem;">
+            <h2 style="margin-bottom: 1rem;">💡 Tips for Choosing the Right Size</h2>
+            <ul style="list-style: none;">
+                <li style="padding: 0.75rem 0; border-bottom: 1px solid var(--border);">
+                    <strong>When in doubt, size up.</strong> Overage fees for exceeding weight limits can be costly. A slightly larger dumpster often costs less than a second haul.
+                </li>
+                <li style="padding: 0.75rem 0; border-bottom: 1px solid var(--border);">
+                    <strong>Consider the weight, not just volume.</strong> Concrete, dirt, and roofing materials are heavy. You might fill only half the dumpster before hitting weight limits.
+                </li>
+                <li style="padding: 0.75rem 0; border-bottom: 1px solid var(--border);">
+                    <strong>Check your driveway.</strong> Make sure you have space for the dumpster size you choose. A 40-yard needs about 60 feet of clearance for delivery.
+                </li>
+                <li style="padding: 0.75rem 0;">
+                    <strong>Ask your provider.</strong> Describe your project and they'll recommend the right size based on experience.
+                </li>
+            </ul>
+        </section>
+    </main>
+
+    <footer>
+        <p>© 2026 DumpsterMap. <a href="index.html">Home</a> · <a href="results.html">Find Providers</a></p>
+    </footer>
+</body>
+</html>

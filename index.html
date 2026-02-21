@@ -697,10 +697,27 @@
             margin-bottom: 1rem;
         }
 
-        .size-price {
-            font-size: 1.25rem;
-            font-weight: 700;
-            color: var(--secondary);
+        .size-cta {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--primary);
+            margin-top: 0.5rem;
+        }
+        
+        a.size-card {
+            text-decoration: none;
+            color: inherit;
+            cursor: pointer;
+        }
+        
+        a.size-card:hover {
+            border-color: var(--primary);
+            transform: translateY(-4px);
+            box-shadow: 0 8px 25px rgba(37, 99, 235, 0.15);
+        }
+        
+        a.size-card:hover .size-cta {
+            color: var(--primary-dark);
         }
 
         /* CTA Section */
@@ -967,8 +984,8 @@
             </div>
             <div class="step">
                 <div class="step-number">2</div>
-                <h3>Compare Prices & Reviews</h3>
-                <p>See transparent pricing, real customer reviews, and availability from multiple providers.</p>
+                <h3>Compare Providers & Reviews</h3>
+                <p>Browse local haulers on an interactive map. Read real customer reviews and ratings to find the best fit.</p>
             </div>
             <div class="step">
                 <div class="step-number">3</div>
@@ -1141,51 +1158,51 @@
             <p>Not sure what size you need? Here's a quick reference.</p>
         </div>
         <div class="size-cards">
-            <div class="size-card">
+            <a href="sizes.html#10-yard" class="size-card">
                 <div class="size-visual">
                     <div class="dumpster-icon">10</div>
                 </div>
                 <div class="size-name">10 Yard</div>
                 <div class="size-dimensions">12' × 8' × 3.5'</div>
                 <div class="size-use">Small cleanout, 1 room</div>
-                <div class="size-price">$250 - $400</div>
-            </div>
-            <div class="size-card">
+                <div class="size-cta">Learn More →</div>
+            </a>
+            <a href="sizes.html#15-yard" class="size-card">
                 <div class="size-visual">
                     <div class="dumpster-icon">15</div>
                 </div>
                 <div class="size-name">15 Yard</div>
                 <div class="size-dimensions">16' × 8' × 4'</div>
                 <div class="size-use">Single room reno</div>
-                <div class="size-price">$300 - $450</div>
-            </div>
-            <div class="size-card">
+                <div class="size-cta">Learn More →</div>
+            </a>
+            <a href="sizes.html#20-yard" class="size-card">
                 <div class="size-visual">
                     <div class="dumpster-icon">20</div>
                 </div>
                 <div class="size-name">20 Yard</div>
                 <div class="size-dimensions">22' × 8' × 4.5'</div>
                 <div class="size-use">Multi-room, roofing</div>
-                <div class="size-price">$350 - $500</div>
-            </div>
-            <div class="size-card">
+                <div class="size-cta">Learn More →</div>
+            </a>
+            <a href="sizes.html#30-yard" class="size-card">
                 <div class="size-visual">
                     <div class="dumpster-icon">30</div>
                 </div>
                 <div class="size-name">30 Yard</div>
                 <div class="size-dimensions">22' × 8' × 6'</div>
                 <div class="size-use">Large reno, construction</div>
-                <div class="size-price">$400 - $600</div>
-            </div>
-            <div class="size-card">
+                <div class="size-cta">Learn More →</div>
+            </a>
+            <a href="sizes.html#40-yard" class="size-card">
                 <div class="size-visual">
                     <div class="dumpster-icon">40</div>
                 </div>
                 <div class="size-name">40 Yard</div>
                 <div class="size-dimensions">22' × 8' × 8'</div>
                 <div class="size-use">Major construction, demo</div>
-                <div class="size-price">$450 - $700</div>
-            </div>
+                <div class="size-cta">Learn More →</div>
+            </a>
         </div>
     </section>
 
