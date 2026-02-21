@@ -458,16 +458,25 @@ app.post('/api/stripe-webhook', async (req, res) => {
       db.prepare('UPDATE purchase_log SET status = ?, lead_id = ? WHERE payment_id = ?').run('Credits Added', `PACK_${creditPack.credits}`, paymentId);
       
       // Send confirmation email
+      const newBalance = provider.credit_balance + creditPack.credits;
       const html = `
 <div style="font-family: Arial, sans-serif; max-width: 600px;">
   <h2 style="color: #16a34a;">✅ ${creditPack.name} Activated!</h2>
   <p>Thanks for your purchase! Your account has been credited.</p>
   <div style="background: #f0fdf4; border: 1px solid #86efac; padding: 20px; border-radius: 8px; margin: 20px 0;">
     <strong>Credits Added:</strong> ${creditPack.credits}<br>
-    <strong>New Balance:</strong> ${provider.credit_balance + creditPack.credits} credits
+    <strong>New Balance:</strong> ${newBalance} credits
   </div>
   <p>You'll now automatically receive full contact details for leads in your service area.</p>
-  <p><a href="https://dumpstermap.io/balance">Check your balance</a></p>
+  <div style="background: #f9f9f9; padding: 15px; border-radius: 8px; margin: 20px 0;">
+    <strong>Next Steps:</strong>
+    <ol style="margin: 10px 0 0 0; padding-left: 20px;">
+      <li>Make sure your service zips are set up (reply to this email with your zip codes)</li>
+      <li>You'll receive leads via email as customers request quotes</li>
+      <li>Call leads within 5 minutes for best conversion</li>
+    </ol>
+  </div>
+  <p><a href="https://dumpstermap.io/balance" style="color: #2563eb;">Check your balance</a> | <a href="https://dumpstermap.io/for-providers" style="color: #2563eb;">Buy more credits</a></p>
   <p>Questions? Reply to this email.</p>
   <p>— DumpsterMap</p>
 </div>`;
@@ -1060,6 +1069,13 @@ app.get('/admin/logs', (req, res) => {
   const purchases = db.prepare('SELECT * FROM purchase_log ORDER BY id DESC LIMIT 200').all();
   const errors = db.prepare('SELECT * FROM error_log ORDER BY id DESC LIMIT 100').all();
   
+  // Calculate revenue breakdown
+  const singleLeadRev = db.prepare("SELECT SUM(amount) as total FROM purchase_log WHERE lead_id LIKE 'LEAD-%' AND (status LIKE '%Success%' OR status = 'Credits Added')").get().total || 0;
+  const starterRev = db.prepare("SELECT SUM(amount) as total FROM purchase_log WHERE lead_id = 'PACK_5' AND status = 'Credits Added'").get().total || 0;
+  const proRev = db.prepare("SELECT SUM(amount) as total FROM purchase_log WHERE lead_id = 'PACK_20' AND status = 'Credits Added'").get().total || 0;
+  const premiumRev = db.prepare("SELECT SUM(amount) as total FROM purchase_log WHERE lead_id = 'PACK_60' AND status = 'Credits Added'").get().total || 0;
+  const totalRev = singleLeadRev + starterRev + proRev + premiumRev;
+  
   const html = `
 <!DOCTYPE html>
 <html>
@@ -1081,15 +1097,45 @@ app.get('/admin/logs', (req, res) => {
   <a href="/admin?key=${req.query.key}" class="back">← Back to Admin</a>
   <h1>📋 System Logs</h1>
   
+  <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 15px; margin-bottom: 30px;">
+    <div style="background: white; padding: 15px; border-radius: 8px; text-align: center; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+      <div style="font-size: 24px; font-weight: bold; color: #1e40af;">$${totalRev.toFixed(0)}</div>
+      <div style="font-size: 12px; color: #64748b;">Total Revenue</div>
+    </div>
+    <div style="background: white; padding: 15px; border-radius: 8px; text-align: center; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+      <div style="font-size: 24px; font-weight: bold; color: #64748b;">$${singleLeadRev.toFixed(0)}</div>
+      <div style="font-size: 12px; color: #64748b;">Single Leads</div>
+    </div>
+    <div style="background: white; padding: 15px; border-radius: 8px; text-align: center; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+      <div style="font-size: 24px; font-weight: bold; color: #16a34a;">$${starterRev.toFixed(0)}</div>
+      <div style="font-size: 12px; color: #64748b;">Starter Packs</div>
+    </div>
+    <div style="background: white; padding: 15px; border-radius: 8px; text-align: center; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+      <div style="font-size: 24px; font-weight: bold; color: #2563eb;">$${proRev.toFixed(0)}</div>
+      <div style="font-size: 12px; color: #64748b;">Pro Packs</div>
+    </div>
+    <div style="background: white; padding: 15px; border-radius: 8px; text-align: center; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+      <div style="font-size: 24px; font-weight: bold; color: #9333ea;">$${premiumRev.toFixed(0)}</div>
+      <div style="font-size: 12px; color: #64748b;">Premium Packs</div>
+    </div>
+  </div>
+  
   <h2>Purchase Log</h2>
   <table>
     <tr><th>Timestamp</th><th>Type</th><th>Email</th><th>Amount</th><th>Payment ID</th><th>Status</th></tr>
     ${purchases.map(p => {
       const statusClass = p.status?.includes('Success') ? 'success' : p.status?.includes('credit') ? 'credit' : p.status?.includes('Failed') ? 'error' : '';
+      // Format type for better readability
+      let typeDisplay = p.lead_id || '';
+      if (typeDisplay === 'PACK_5') typeDisplay = '📦 Starter (5 cr)';
+      else if (typeDisplay === 'PACK_20') typeDisplay = '📦 Pro (20 cr)';
+      else if (typeDisplay === 'PACK_60') typeDisplay = '📦 Premium (60 cr)';
+      else if (typeDisplay === 'MANUAL') typeDisplay = '🔧 Manual';
+      else if (typeDisplay === 'CREDIT_PACK') typeDisplay = '📦 Credit Pack';
       return `
         <tr>
           <td>${p.timestamp || ''}</td>
-          <td>${p.lead_id || ''}</td>
+          <td>${typeDisplay}</td>
           <td>${p.buyer_email || ''}</td>
           <td>$${p.amount || 0}</td>
           <td style="font-size: 10px; max-width: 200px; overflow: hidden; text-overflow: ellipsis;">${p.payment_id || ''}</td>
