@@ -229,6 +229,91 @@
             transform: translateY(-2px);
         }
         
+        /* Map Preview Teaser */
+        .map-preview {
+            margin-top: 2rem;
+            max-width: 700px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        
+        .map-preview-inner {
+            background: rgba(255,255,255,0.95);
+            border-radius: 12px;
+            padding: 1rem;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+        }
+        
+        .map-preview-bg {
+            background: linear-gradient(135deg, #e8f4f8 0%, #d1e8f0 50%, #c5dce8 100%);
+            border-radius: 8px;
+            height: 180px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .map-preview-bg::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: 
+                linear-gradient(90deg, rgba(200,220,230,0.3) 1px, transparent 1px),
+                linear-gradient(rgba(200,220,230,0.3) 1px, transparent 1px);
+            background-size: 40px 40px;
+        }
+        
+        .map-pin {
+            position: absolute;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            animation: float 3s ease-in-out infinite;
+        }
+        
+        .map-pin:nth-child(2) { animation-delay: 0.5s; }
+        .map-pin:nth-child(3) { animation-delay: 1s; }
+        .map-pin:nth-child(4) { animation-delay: 1.5s; }
+        .map-pin:nth-child(5) { animation-delay: 2s; }
+        
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-5px); }
+        }
+        
+        .pin-dot {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            border: 3px solid white;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+        }
+        
+        .pin-dot.green { background: #10b981; }
+        .pin-dot.blue { background: #3b82f6; }
+        .pin-dot.yellow { background: #f59e0b; }
+        
+        .pin-label {
+            background: white;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            color: #1f2937;
+            margin-top: 4px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .map-preview-caption {
+            text-align: center;
+            color: #6b7280;
+            font-size: 0.875rem;
+            margin-top: 0.75rem;
+            font-weight: 500;
+        }
+        
         /* Trust Bar */
         .trust-bar {
             background: var(--bg-light);
@@ -812,7 +897,36 @@
                             <option>Moving/Junk Removal</option>
                         </select>
                     </div>
-                    <button class="search-btn">Compare Prices →</button>
+                    <button class="search-btn">🗺️ Search the Map →</button>
+                </div>
+            </div>
+            
+            <!-- Map Preview Teaser -->
+            <div class="map-preview">
+                <div class="map-preview-inner">
+                    <div class="map-preview-bg">
+                        <div class="map-pin" style="top: 20%; left: 30%;">
+                            <span class="pin-dot green"></span>
+                            <span class="pin-label">4.9 ⭐</span>
+                        </div>
+                        <div class="map-pin" style="top: 45%; left: 55%;">
+                            <span class="pin-dot blue"></span>
+                            <span class="pin-label">4.7 ⭐</span>
+                        </div>
+                        <div class="map-pin" style="top: 35%; left: 70%;">
+                            <span class="pin-dot green"></span>
+                            <span class="pin-label">5.0 ⭐</span>
+                        </div>
+                        <div class="map-pin" style="top: 60%; left: 40%;">
+                            <span class="pin-dot yellow"></span>
+                            <span class="pin-label">4.2 ⭐</span>
+                        </div>
+                        <div class="map-pin" style="top: 25%; left: 80%;">
+                            <span class="pin-dot blue"></span>
+                            <span class="pin-label">4.5 ⭐</span>
+                        </div>
+                    </div>
+                    <p class="map-preview-caption">📍 8,000+ providers mapped across the USA</p>
                 </div>
             </div>
         </div>
@@ -1194,7 +1308,7 @@
     <section class="cta">
         <h2>Ready to Compare Prices?</h2>
         <p>Join thousands of homeowners and contractors who save time and money with DumpsterMap.</p>
-        <a href="#" class="btn btn-primary">Get Free Quotes Now →</a>
+        <a href="results.html" class="btn btn-primary">🗺️ Explore the Map →</a>
     </section>
 
     <!-- Footer -->
