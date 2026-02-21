@@ -160,7 +160,21 @@ function updateResultsCount(count, location) {
     }
 }
 
-// Initialize results page
+// Geocode location and return coordinates
+async function geocodeLocation(query) {
+    try {
+        const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&countrycodes=us&limit=1`);
+        const data = await response.json();
+        if (data.length > 0) {
+            return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon), name: data[0].display_name };
+        }
+    } catch (e) {
+        console.error('Geocoding error:', e);
+    }
+    return null;
+}
+
+// Initialize results page - show ALL providers, search just navigates map
 async function initResultsPage() {
     await loadProviders();
     
@@ -169,15 +183,18 @@ async function initResultsPage() {
     const sort = params.get('sort') || 'rating';
     const minRating = params.get('rating') || 'all';
     
-    let results = location ? searchProviders(location) : providers;
-    results = filterByRating(results, minRating);
+    // Always show ALL providers, just filter by rating if set
+    let results = filterByRating(providers, minRating);
     results = sortProviders(results, sort);
     
-    // Limit to first 100 for performance
-    const displayResults = results.slice(0, 100);
+    // Show top 200 in the list for performance
+    const displayResults = results.slice(0, 200);
     
     updateResultsCount(results.length, location);
     renderResults(displayResults);
+    
+    // Store search location for map to use
+    window.searchLocation = location;
     
     // Set up filter handlers
     const sortSelect = document.getElementById('sort-select');
@@ -204,6 +221,15 @@ async function initResultsPage() {
     
     if (searchInput) {
         searchInput.value = location;
+        // Allow re-searching from results page
+        searchInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                const newLoc = searchInput.value.trim();
+                if (newLoc) {
+                    window.location = `results.html?location=${encodeURIComponent(newLoc)}`;
+                }
+            }
+        });
     }
 }
 
