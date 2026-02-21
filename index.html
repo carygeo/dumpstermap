@@ -252,63 +252,73 @@
         .search-box {
             background: white;
             border-radius: 16px;
-            padding: 1.5rem;
+            padding: 2rem;
             box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-            max-width: 700px;
+            max-width: 600px;
             margin: 0 auto;
         }
 
         .search-row {
             display: flex;
+            flex-direction: column;
             gap: 1rem;
-            flex-wrap: wrap;
         }
 
         .search-field {
-            flex: 1;
-            min-width: 200px;
+            width: 100%;
         }
 
         .search-field label {
             display: block;
-            font-size: 0.875rem;
+            font-size: 0.8rem;
             font-weight: 600;
-            color: var(--text);
+            color: var(--text-light);
             margin-bottom: 0.5rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
 
         .search-field input,
         .search-field select {
             width: 100%;
-            padding: 1rem;
+            padding: 1rem 1.25rem;
             border: 2px solid var(--border);
-            border-radius: 8px;
+            border-radius: 10px;
             font-size: 1rem;
-            transition: border-color 0.2s;
+            transition: all 0.2s;
+            background: var(--bg-light);
         }
 
         .search-field input:focus,
         .search-field select:focus {
             outline: none;
             border-color: var(--primary);
+            background: white;
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+
+        .search-field input::placeholder {
+            color: #9ca3af;
         }
 
         .search-btn {
-            padding: 1rem 2rem;
-            background: var(--secondary);
+            width: 100%;
+            padding: 1.1rem 2rem;
+            background: linear-gradient(135deg, var(--secondary) 0%, #047857 100%);
             color: white;
             border: none;
-            border-radius: 8px;
+            border-radius: 10px;
             font-size: 1.1rem;
             font-weight: 700;
             cursor: pointer;
             transition: all 0.2s;
-            align-self: flex-end;
+            margin-top: 0.5rem;
+            box-shadow: 0 4px 14px rgba(5, 150, 105, 0.4);
         }
 
         .search-btn:hover {
-            background: #047857;
             transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(5, 150, 105, 0.5);
         }
 
         /* Trust Bar */
@@ -888,13 +898,13 @@
             <div class="search-box">
                 <div class="search-row">
                     <div class="search-field">
-                        <label>Your Location</label>
-                        <input type="text" id="zip-input" placeholder="Enter ZIP code (e.g., 34102)">
+                        <label>📍 Enter Your Location</label>
+                        <input type="text" id="zip-input" placeholder="ZIP code or city name...">
                     </div>
                     <div class="search-field">
-                        <label>Project Type</label>
+                        <label>🗑️ Project Type (Optional)</label>
                         <select>
-                            <option>Select project type...</option>
+                            <option value="">Any project type</option>
                             <option>Home Renovation</option>
                             <option>Roofing Project</option>
                             <option>Estate Cleanout</option>
@@ -903,7 +913,7 @@
                             <option>Moving/Junk Removal</option>
                         </select>
                     </div>
-                    <button class="search-btn">🗺️ Search the Map →</button>
+                    <button class="search-btn">🗺️ Find Providers Near Me</button>
                 </div>
             </div>
         </div>
@@ -1193,7 +1203,7 @@
                     <a href="dumpster-rental/dallas-texas.html">Dallas, TX</a>
                     <a href="dumpster-rental/houston-texas.html">Houston, TX</a>
                     <a href="dumpster-rental/orlando-florida.html">Orlando, FL</a>
-                    <a href="dumpster-rental/new-york-new york.html">New York, NY</a>
+                    <a href="dumpster-rental/new-york-new-york.html">New York, NY</a>
                     <a href="dumpster-rental/chicago-illinois.html">Chicago, IL</a>
                     <a href="dumpster-rental/phoenix-arizona.html">Phoenix, AZ</a>
                     <a href="dumpster-rental/san-antonio-texas.html">San Antonio, TX</a>
@@ -1204,8 +1214,8 @@
                     <a href="dumpster-rental/miami-florida.html">Miami, FL</a>
                     <a href="dumpster-rental/tampa-florida.html">Tampa, FL</a>
                     <a href="dumpster-rental/denver-colorado.html">Denver, CO</a>
-                    <a href="dumpster-rental/atlanta-georgia.html">Atlanta, GA</a>
-                    <a href="dumpster-rental/charlotte-north carolina.html">Charlotte, NC</a>
+                    <a href="dumpster-rental/san-diego-california.html">San Diego, CA</a>
+                    <a href="dumpster-rental/charlotte-north-carolina.html">Charlotte, NC</a>
                     <a href="dumpster-rental/nashville-tennessee.html">Nashville, TN</a>
                     <a href="dumpster-rental/las-vegas-nevada.html">Las Vegas, NV</a>
                     <a href="dumpster-rental/seattle-washington.html">Seattle, WA</a>
@@ -1216,10 +1226,10 @@
                     <a href="dumpster-rental/san-diego-california.html">San Diego, CA</a>
                     <a href="dumpster-rental/fort-lauderdale-florida.html">Fort Lauderdale, FL</a>
                     <a href="dumpster-rental/fort-myers-florida.html">Fort Myers, FL</a>
-                    <a href="dumpster-rental/st-louis-missouri.html">St. Louis, MO</a>
+                    <a href="dumpster-rental/louisville-kentucky.html">Louisville, KY</a>
                     <a href="dumpster-rental/kansas-city-missouri.html">Kansas City, MO</a>
                     <a href="dumpster-rental/oklahoma-city-oklahoma.html">Oklahoma City, OK</a>
-                    <a href="dumpster-rental/raleigh-north carolina.html">Raleigh, NC</a>
+                    <a href="dumpster-rental/raleigh-north-carolina.html">Raleigh, NC</a>
                 </div>
             </div>
 
