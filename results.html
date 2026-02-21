@@ -332,6 +332,16 @@
         .badge-top { background: #fef3c7; color: #92400e; }
         .badge-popular { background: #fee2e2; color: #991b1b; }
         
+        .provider-category-tag {
+            font-size: 0.7rem;
+            color: #6366f1;
+            background: #eef2ff;
+            padding: 0.15rem 0.4rem;
+            border-radius: 4px;
+            display: inline-block;
+            margin-top: 0.25rem;
+        }
+        
         .provider-features {
             display: flex;
             gap: 1rem;
@@ -554,20 +564,29 @@
                     <label>Sort by:</label>
                     <select id="sort-select">
                         <option value="rating">Top Rated</option>
-                        <option value="price-low">Price: Low to High</option>
-                        <option value="price-high">Price: High to Low</option>
                         <option value="reviews">Most Reviews</option>
+                        <option value="name">Name A-Z</option>
                     </select>
                 </div>
                 <div class="filter-group">
-                    <label>Size:</label>
-                    <select id="size-filter">
-                        <option value="all">All Sizes</option>
-                        <option value="10">10 Yard</option>
-                        <option value="15">15 Yard</option>
-                        <option value="20">20 Yard</option>
-                        <option value="30">30 Yard</option>
-                        <option value="40">40 Yard</option>
+                    <label>Category:</label>
+                    <select id="category-filter">
+                        <option value="all">All Types</option>
+                        <option value="Dumpster rental service">Dumpster Rental</option>
+                        <option value="Waste management service">Waste Management</option>
+                        <option value="Junk removal service">Junk Removal</option>
+                        <option value="Garbage collection service">Garbage Collection</option>
+                        <option value="Debris removal service">Debris Removal</option>
+                        <option value="Demolition contractor">Demolition</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label>Rating:</label>
+                    <select id="rating-filter">
+                        <option value="all">Any Rating</option>
+                        <option value="4.5">4.5+ ⭐</option>
+                        <option value="4">4+ ⭐</option>
+                        <option value="3">3+ ⭐</option>
                     </select>
                 </div>
             </div>
@@ -581,50 +600,53 @@
             <h3>Filter Results</h3>
             
             <div class="filter-section">
-                <h4>Features</h4>
+                <h4>Service Type</h4>
                 <label class="filter-option">
-                    <input type="checkbox" checked> Same-day delivery
+                    <input type="checkbox" data-category="Dumpster rental service" checked> Dumpster Rental
                 </label>
                 <label class="filter-option">
-                    <input type="checkbox" checked> No hidden fees
+                    <input type="checkbox" data-category="Waste management service"> Waste Management
                 </label>
                 <label class="filter-option">
-                    <input type="checkbox"> Online booking
+                    <input type="checkbox" data-category="Junk removal service"> Junk Removal
                 </label>
                 <label class="filter-option">
-                    <input type="checkbox"> Recycling included
-                </label>
-            </div>
-            
-            <div class="filter-section">
-                <h4>Price Range</h4>
-                <div class="price-range">
-                    <input type="number" placeholder="Min" value="200">
-                    <span>to</span>
-                    <input type="number" placeholder="Max" value="600">
-                </div>
-            </div>
-            
-            <div class="filter-section">
-                <h4>Rating</h4>
-                <label class="filter-option">
-                    <input type="checkbox" checked> 4+ stars
+                    <input type="checkbox" data-category="Debris removal service"> Debris Removal
                 </label>
                 <label class="filter-option">
-                    <input type="checkbox"> 3+ stars
+                    <input type="checkbox" data-category="Demolition contractor"> Demolition
                 </label>
             </div>
             
             <div class="filter-section">
-                <h4>Verification</h4>
+                <h4>Minimum Rating</h4>
                 <label class="filter-option">
-                    <input type="checkbox" checked> Licensed
+                    <input type="radio" name="min-rating" value="0" checked> Any rating
                 </label>
                 <label class="filter-option">
-                    <input type="checkbox" checked> Insured
+                    <input type="radio" name="min-rating" value="3"> 3+ stars
                 </label>
                 <label class="filter-option">
-                    <input type="checkbox"> BBB Accredited
+                    <input type="radio" name="min-rating" value="4"> 4+ stars
+                </label>
+                <label class="filter-option">
+                    <input type="radio" name="min-rating" value="4.5"> 4.5+ stars
+                </label>
+            </div>
+            
+            <div class="filter-section">
+                <h4>Reviews</h4>
+                <label class="filter-option">
+                    <input type="radio" name="min-reviews" value="0" checked> Any
+                </label>
+                <label class="filter-option">
+                    <input type="radio" name="min-reviews" value="10"> 10+ reviews
+                </label>
+                <label class="filter-option">
+                    <input type="radio" name="min-reviews" value="50"> 50+ reviews
+                </label>
+                <label class="filter-option">
+                    <input type="radio" name="min-reviews" value="100"> 100+ reviews
                 </label>
             </div>
         </aside>

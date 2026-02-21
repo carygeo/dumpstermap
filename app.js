@@ -108,8 +108,11 @@ function renderProviderCard(provider) {
     // Store provider data for quote form (JSON escaped)
     const providerData = JSON.stringify(provider).replace(/'/g, "\\'").replace(/"/g, '&quot;');
     
+    // Format category for display
+    const categoryDisplay = provider.category ? provider.category.replace(' service', '').replace(' contractor', '') : '';
+    
     return `
-        <div class="provider-card" data-id="${provider.id}">
+        <div class="provider-card" data-id="${provider.id}" data-category="${provider.category || ''}">
             <div class="provider-header">
                 <div class="provider-image-container">
                     ${imageHtml}
@@ -117,15 +120,12 @@ function renderProviderCard(provider) {
                 <div class="provider-info">
                     <h3>${provider.name || 'Local Provider'}</h3>
                     <div class="provider-location">📍 ${provider.city || ''}${provider.city && provider.state ? ', ' : ''}${provider.state || ''}</div>
+                    ${categoryDisplay ? `<div class="provider-category-tag">${categoryDisplay}</div>` : ''}
                     ${ratingHtml}
                     ${badges.length ? `<div class="provider-badges">${badges.join('')}</div>` : ''}
                 </div>
             </div>
             <div class="provider-body">
-                <div class="provider-features">
-                    <span class="feature">✓ Free quotes</span>
-                    <span class="feature">✓ Same-day available</span>
-                </div>
                 <div class="provider-actions">
                     <button class="btn btn-primary btn-quote" onclick='openQuoteModal(${providerData})'>
                         Get Free Quote →
