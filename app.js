@@ -209,15 +209,25 @@ async function initResultsPage() {
 
 // Initialize home page search
 function initHomePage() {
-    const searchForm = document.getElementById('search-form');
-    const searchInput = document.getElementById('location-input');
+    const searchBtn = document.querySelector('.search-btn');
+    const zipInput = document.getElementById('zip-input');
     
-    if (searchForm) {
-        searchForm.addEventListener('submit', (e) => {
+    if (searchBtn && zipInput) {
+        searchBtn.addEventListener('click', (e) => {
             e.preventDefault();
-            const location = searchInput?.value?.trim();
+            const location = zipInput.value.trim();
             if (location) {
                 window.location = `results.html?location=${encodeURIComponent(location)}`;
+            } else {
+                alert('Please enter a ZIP code or city');
+            }
+        });
+        
+        // Also handle Enter key
+        zipInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                searchBtn.click();
             }
         });
     }
