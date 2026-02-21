@@ -111,20 +111,42 @@ EMAIL_FROM="DumpsterMap <leads@dumpstermap.io>"
 ## Deploy
 
 ```bash
+# Deploy to Fly.io
 fly deploy
+
+# View logs
+fly logs
+
+# SSH into instance
+fly ssh console
+
+# Check database
+fly ssh console -C "sqlite3 /data/dumpstermap.db '.tables'"
 ```
+
+## Stripe Webhook Setup
+
+1. Create webhook endpoint in Stripe Dashboard → Developers → Webhooks
+2. URL: `https://dumpstermap.fly.dev/api/stripe-webhook`
+3. Events: `checkout.session.completed`
+4. Copy signing secret and set as `STRIPE_WEBHOOK_SECRET` env var
+5. Test with Stripe CLI: `stripe trigger checkout.session.completed`
 
 ## API Endpoints
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
 | `/api/lead` | POST | Submit new lead |
-| `/api/stripe-webhook` | POST | Stripe payment webhook |
+| `/api/stripe-webhook` | POST | Stripe payment webhook (idempotent) |
 | `/api/balance` | GET | Check provider credit balance |
+| `/api/provider` | GET | Provider profile lookup |
+| `/api/provider/zips` | POST | Provider self-service zip update |
+| `/api/stats` | GET | Public stats (leads, providers) |
+| `/api/admin/stats` | GET | Admin stats (revenue, errors) - requires key |
 | `/api/health` | GET | Health check |
 | `/admin` | GET | Admin dashboard |
 | `/admin/outreach` | GET | Provider outreach tracking |
-| `/admin/logs` | GET | System & error logs |
+| `/admin/logs` | GET | System & error logs with revenue breakdown |
 | `/admin/export/:type` | GET | Export CSV (leads/providers/purchases/outreach) |
 
 ## Project Structure

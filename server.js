@@ -79,6 +79,7 @@ function initDatabase() {
       status TEXT DEFAULT 'Active',
       verified INTEGER DEFAULT 0,
       priority INTEGER DEFAULT 0,
+      last_purchase_at TEXT,
       notes TEXT
     );
     
@@ -123,6 +124,14 @@ function initDatabase() {
     CREATE INDEX IF NOT EXISTS idx_leads_zip ON leads(zip);
     CREATE INDEX IF NOT EXISTS idx_providers_email ON providers(email);
   `);
+  
+  // Migration: Add last_purchase_at column if it doesn't exist
+  try {
+    db.exec('ALTER TABLE providers ADD COLUMN last_purchase_at TEXT');
+    console.log('Migration: Added last_purchase_at column to providers');
+  } catch (e) {
+    // Column already exists, ignore
+  }
   
   console.log('Database initialized:', DB_PATH);
 }
@@ -348,6 +357,13 @@ const CREDIT_PACKS = {
   1500: { credits: 60, name: 'Premium Pack' }
 };
 
+// Check if payment was already processed (idempotency)
+function isPaymentProcessed(paymentId) {
+  if (!paymentId) return false;
+  const existing = db.prepare("SELECT * FROM purchase_log WHERE payment_id = ? AND (status LIKE '%Success%' OR status = 'Credits Added')").get(paymentId);
+  return !!existing;
+}
+
 // Monthly subscription plans
 const SUBSCRIPTIONS = {
   99: { credits: 3, name: 'Featured Partner', perks: ['verified', 'priority'] }
@@ -439,6 +455,12 @@ app.post('/api/stripe-webhook', async (req, res) => {
     
     console.log('Payment:', { leadId, customerEmail, amount, paymentStatus });
     
+    // Idempotency check - don't process same payment twice
+    if (isPaymentProcessed(paymentId)) {
+      console.log('Payment already processed:', paymentId);
+      return res.json({ received: true, processed: false, reason: 'already_processed' });
+    }
+    
     // Log purchase attempt
     db.prepare('INSERT INTO purchase_log (lead_id, buyer_email, amount, payment_id, status) VALUES (?, ?, ?, ?, ?)').run(leadId || 'CREDIT_PACK', customerEmail, amount, paymentId, 'Processing');
     
@@ -459,8 +481,8 @@ app.post('/api/stripe-webhook', async (req, res) => {
       // Get or create provider
       const provider = getOrCreateProvider(customerEmail, customerName);
       
-      // Add credits
-      db.prepare('UPDATE providers SET credit_balance = credit_balance + ? WHERE id = ?').run(pack.credits, provider.id);
+      // Add credits and update last purchase time
+      db.prepare("UPDATE providers SET credit_balance = credit_balance + ?, last_purchase_at = datetime('now') WHERE id = ?").run(pack.credits, provider.id);
       
       // Apply subscription perks if any
       if (isSubscription && subscription.perks) {
@@ -574,6 +596,49 @@ app.post('/api/stripe-webhook', async (req, res) => {
     await sendAdminNotification('❌ Webhook Error', error.toString());
     res.json({ received: true, error: error.message });
   }
+});
+
+// ============================================
+// PROVIDER SELF-SERVICE
+// ============================================
+
+// Update service zips (provider self-service)
+app.post('/api/provider/zips', (req, res) => {
+  const email = (req.body.email || '').toLowerCase().trim();
+  const phoneLast4 = (req.body.phone || '').replace(/\D/g, '').slice(-4);
+  const zips = req.body.zips || '';
+  
+  if (!email || !phoneLast4) {
+    return res.status(400).json({ error: 'Email and phone last 4 digits required' });
+  }
+  
+  const provider = getProviderByEmail(email);
+  if (!provider) {
+    return res.status(404).json({ error: 'Provider not found' });
+  }
+  
+  // Verify phone
+  const providerLast4 = (provider.phone || '').replace(/\D/g, '').slice(-4);
+  if (phoneLast4 !== providerLast4 && providerLast4) {
+    return res.status(401).json({ error: 'Phone verification failed' });
+  }
+  
+  // Clean and validate zips
+  const cleanZips = zips.split(/[,\s]+/)
+    .map(z => z.trim())
+    .filter(z => /^\d{5}$/.test(z))
+    .join(', ');
+  
+  db.prepare('UPDATE providers SET service_zips = ? WHERE id = ?').run(cleanZips, provider.id);
+  
+  const zipCount = cleanZips ? cleanZips.split(', ').length : 0;
+  console.log(`Provider ${email} updated zips: ${zipCount} zips`);
+  
+  res.json({
+    status: 'ok',
+    message: `Service zips updated: ${zipCount} zip codes`,
+    serviceZips: cleanZips
+  });
 });
 
 // ============================================
@@ -1278,6 +1343,50 @@ app.get('/api/provider', (req, res) => {
       provider.credit_balance === 0 ? 'Purchase credits at dumpstermap.io/for-providers to receive full lead details.' : null,
       !provider.phone ? 'Add a phone number to receive SMS lead alerts.' : null
     ].filter(Boolean)
+  });
+});
+
+// ============================================
+// STATS API (for dashboards/monitoring)
+// ============================================
+app.get('/api/stats', (req, res) => {
+  // Public stats (no auth required)
+  const totalLeads = db.prepare('SELECT COUNT(*) as cnt FROM leads').get().cnt;
+  const totalProviders = db.prepare("SELECT COUNT(*) as cnt FROM providers WHERE status = 'Active'").get().cnt;
+  const leadsToday = db.prepare("SELECT COUNT(*) as cnt FROM leads WHERE date(created_at) = date('now')").get().cnt;
+  
+  res.json({
+    totalLeads,
+    totalProviders,
+    leadsToday,
+    timestamp: new Date().toISOString()
+  });
+});
+
+// Admin stats (requires auth)
+app.get('/api/admin/stats', (req, res) => {
+  const auth = req.query.key || req.headers['x-admin-key'];
+  if (auth !== ADMIN_PASSWORD) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+  
+  const totalLeads = db.prepare('SELECT COUNT(*) as cnt FROM leads').get().cnt;
+  const purchasedLeads = db.prepare("SELECT COUNT(*) as cnt FROM leads WHERE status = 'Purchased'").get().cnt;
+  const totalProviders = db.prepare('SELECT COUNT(*) as cnt FROM providers').get().cnt;
+  const activeProviders = db.prepare("SELECT COUNT(*) as cnt FROM providers WHERE status = 'Active'").get().cnt;
+  const totalRevenue = db.prepare("SELECT COALESCE(SUM(amount), 0) as total FROM purchase_log WHERE status LIKE '%Success%' OR status = 'Credits Added'").get().total;
+  const outstandingCredits = db.prepare('SELECT COALESCE(SUM(credit_balance), 0) as total FROM providers').get().total;
+  const leadsToday = db.prepare("SELECT COUNT(*) as cnt FROM leads WHERE date(created_at) = date('now')").get().cnt;
+  const revenueToday = db.prepare("SELECT COALESCE(SUM(amount), 0) as total FROM purchase_log WHERE date(timestamp) = date('now') AND (status LIKE '%Success%' OR status = 'Credits Added')").get().total;
+  const recentErrors = db.prepare("SELECT COUNT(*) as cnt FROM error_log WHERE timestamp > datetime('now', '-24 hours')").get().cnt;
+  
+  res.json({
+    leads: { total: totalLeads, purchased: purchasedLeads, today: leadsToday },
+    providers: { total: totalProviders, active: activeProviders },
+    revenue: { total: totalRevenue, today: revenueToday },
+    credits: { outstanding: outstandingCredits },
+    errors: { last24h: recentErrors },
+    timestamp: new Date().toISOString()
   });
 });
 
