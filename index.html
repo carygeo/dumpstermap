@@ -11,7 +11,7 @@
             padding: 0;
             box-sizing: border-box;
         }
-        
+
         :root {
             --primary: #2563eb;
             --primary-dark: #1d4ed8;
@@ -24,13 +24,13 @@
             --bg-dark: #111827;
             --border: #e5e7eb;
         }
-        
+
         body {
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
             color: var(--text);
             line-height: 1.6;
         }
-        
+
         /* Header */
         header {
             background: var(--bg);
@@ -40,7 +40,7 @@
             top: 0;
             z-index: 100;
         }
-        
+
         .header-content {
             max-width: 1200px;
             margin: 0 auto;
@@ -48,7 +48,7 @@
             justify-content: space-between;
             align-items: center;
         }
-        
+
         .logo {
             font-size: 1.5rem;
             font-weight: 800;
@@ -58,7 +58,7 @@
             align-items: center;
             gap: 0.5rem;
         }
-        
+
         .logo-icon {
             width: 40px;
             height: 40px;
@@ -70,30 +70,30 @@
             color: white;
             font-size: 1.2rem;
         }
-        
+
         .logo-icon svg {
             width: 24px;
             height: 24px;
             fill: white;
         }
-        
+
         nav {
             display: flex;
             gap: 2rem;
             align-items: center;
         }
-        
+
         nav a {
             color: var(--text);
             text-decoration: none;
             font-weight: 500;
             transition: color 0.2s;
         }
-        
+
         nav a:hover {
             color: var(--primary);
         }
-        
+
         .btn {
             padding: 0.75rem 1.5rem;
             border-radius: 8px;
@@ -104,27 +104,27 @@
             border: none;
             font-size: 1rem;
         }
-        
+
         .btn-primary {
             background: var(--primary);
             color: white;
         }
-        
+
         .btn-primary:hover {
             background: var(--primary-dark);
             transform: translateY(-1px);
         }
-        
+
         .btn-secondary {
             background: var(--bg-light);
             color: var(--text);
             border: 1px solid var(--border);
         }
-        
+
         .btn-secondary:hover {
             background: var(--border);
         }
-        
+
         /* Hero Section */
         .hero {
             background: linear-gradient(135deg, #1e3a5f 0%, #2563eb 100%);
@@ -134,7 +134,7 @@
             position: relative;
             overflow: hidden;
         }
-        
+
         /* Map grid pattern - streets/roads look */
         .hero::before {
             content: '';
@@ -143,14 +143,14 @@
             left: 0;
             right: 0;
             bottom: 0;
-            background: 
+            background:
                 /* Main grid - like city blocks */
                 linear-gradient(90deg, rgba(255,255,255,0.08) 1px, transparent 1px),
                 linear-gradient(rgba(255,255,255,0.08) 1px, transparent 1px),
                 /* Larger roads */
                 linear-gradient(90deg, rgba(255,255,255,0.12) 2px, transparent 2px),
                 linear-gradient(rgba(255,255,255,0.12) 2px, transparent 2px);
-            background-size: 
+            background-size:
                 40px 40px,
                 40px 40px,
                 200px 200px,
@@ -161,7 +161,7 @@
                 -1px -1px,
                 -1px -1px;
         }
-        
+
         /* Map pin markers scattered in hero */
         .hero::after {
             content: '';
@@ -170,7 +170,7 @@
             left: 0;
             right: 0;
             bottom: 0;
-            background-image: 
+            background-image:
                 radial-gradient(circle at 15% 20%, rgba(16,185,129,0.4) 4px, transparent 4px),
                 radial-gradient(circle at 85% 15%, rgba(59,130,246,0.4) 5px, transparent 5px),
                 radial-gradient(circle at 10% 80%, rgba(245,158,11,0.3) 4px, transparent 4px),
@@ -182,27 +182,27 @@
                 radial-gradient(circle at 95% 50%, rgba(16,185,129,0.3) 4px, transparent 4px);
             pointer-events: none;
         }
-        
+
         .hero-content {
             max-width: 800px;
             margin: 0 auto;
             position: relative;
             z-index: 1;
         }
-        
+
         .hero h1 {
             font-size: 3rem;
             font-weight: 800;
             margin-bottom: 1rem;
             line-height: 1.2;
         }
-        
+
         .hero p {
             font-size: 1.25rem;
             opacity: 0.9;
             margin-bottom: 2rem;
         }
-        
+
         /* Search Box */
         .search-box {
             background: white;
@@ -212,18 +212,18 @@
             max-width: 700px;
             margin: 0 auto;
         }
-        
+
         .search-row {
             display: flex;
             gap: 1rem;
             flex-wrap: wrap;
         }
-        
+
         .search-field {
             flex: 1;
             min-width: 200px;
         }
-        
+
         .search-field label {
             display: block;
             font-size: 0.875rem;
@@ -231,7 +231,7 @@
             color: var(--text);
             margin-bottom: 0.5rem;
         }
-        
+
         .search-field input,
         .search-field select {
             width: 100%;
@@ -241,13 +241,13 @@
             font-size: 1rem;
             transition: border-color 0.2s;
         }
-        
+
         .search-field input:focus,
         .search-field select:focus {
             outline: none;
             border-color: var(--primary);
         }
-        
+
         .search-btn {
             padding: 1rem 2rem;
             background: var(--secondary);
@@ -260,104 +260,19 @@
             transition: all 0.2s;
             align-self: flex-end;
         }
-        
+
         .search-btn:hover {
             background: #047857;
             transform: translateY(-2px);
         }
-        
-        /* Map Preview Teaser */
-        .map-preview {
-            margin-top: 2rem;
-            max-width: 700px;
-            margin-left: auto;
-            margin-right: auto;
-        }
-        
-        .map-preview-inner {
-            background: rgba(255,255,255,0.95);
-            border-radius: 12px;
-            padding: 1rem;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
-        }
-        
-        .map-preview-bg {
-            background: linear-gradient(135deg, #e8f4f8 0%, #d1e8f0 50%, #c5dce8 100%);
-            border-radius: 8px;
-            height: 180px;
-            position: relative;
-            overflow: hidden;
-        }
-        
-        .map-preview-bg::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: 
-                linear-gradient(90deg, rgba(200,220,230,0.3) 1px, transparent 1px),
-                linear-gradient(rgba(200,220,230,0.3) 1px, transparent 1px);
-            background-size: 40px 40px;
-        }
-        
-        .map-pin {
-            position: absolute;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            animation: float 3s ease-in-out infinite;
-        }
-        
-        .map-pin:nth-child(2) { animation-delay: 0.5s; }
-        .map-pin:nth-child(3) { animation-delay: 1s; }
-        .map-pin:nth-child(4) { animation-delay: 1.5s; }
-        .map-pin:nth-child(5) { animation-delay: 2s; }
-        
-        @keyframes float {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-5px); }
-        }
-        
-        .pin-dot {
-            width: 16px;
-            height: 16px;
-            border-radius: 50%;
-            border: 3px solid white;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-        }
-        
-        .pin-dot.green { background: #10b981; }
-        .pin-dot.blue { background: #3b82f6; }
-        .pin-dot.yellow { background: #f59e0b; }
-        
-        .pin-label {
-            background: white;
-            padding: 2px 6px;
-            border-radius: 4px;
-            font-size: 0.7rem;
-            font-weight: 600;
-            color: #1f2937;
-            margin-top: 4px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-        
-        .map-preview-caption {
-            text-align: center;
-            color: #6b7280;
-            font-size: 0.875rem;
-            margin-top: 0.75rem;
-            font-weight: 500;
-        }
-        
+
         /* Trust Bar */
         .trust-bar {
             background: var(--bg-light);
             padding: 2rem;
             text-align: center;
         }
-        
+
         .trust-items {
             max-width: 1000px;
             margin: 0 auto;
@@ -366,13 +281,13 @@
             gap: 3rem;
             flex-wrap: wrap;
         }
-        
+
         .trust-item {
             display: flex;
             align-items: center;
             gap: 0.75rem;
         }
-        
+
         .trust-icon {
             width: 48px;
             height: 48px;
@@ -384,45 +299,45 @@
             color: white;
             font-size: 1.25rem;
         }
-        
+
         .trust-text {
             text-align: left;
         }
-        
+
         .trust-number {
             font-size: 1.5rem;
             font-weight: 800;
             color: var(--text);
         }
-        
+
         .trust-label {
             font-size: 0.875rem;
             color: var(--text-light);
         }
-        
+
         /* How It Works */
         .how-it-works {
             padding: 5rem 2rem;
             background: white;
         }
-        
+
         .section-header {
             text-align: center;
             max-width: 600px;
             margin: 0 auto 3rem;
         }
-        
+
         .section-header h2 {
             font-size: 2.5rem;
             font-weight: 800;
             margin-bottom: 1rem;
         }
-        
+
         .section-header p {
             color: var(--text-light);
             font-size: 1.1rem;
         }
-        
+
         .steps {
             max-width: 1000px;
             margin: 0 auto;
@@ -430,12 +345,12 @@
             grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
             gap: 2rem;
         }
-        
+
         .step {
             text-align: center;
             padding: 2rem;
         }
-        
+
         .step-number {
             width: 60px;
             height: 60px;
@@ -449,22 +364,22 @@
             font-weight: 800;
             margin: 0 auto 1.5rem;
         }
-        
+
         .step h3 {
             font-size: 1.25rem;
             margin-bottom: 0.75rem;
         }
-        
+
         .step p {
             color: var(--text-light);
         }
-        
+
         /* Featured Providers */
         .providers {
             padding: 5rem 2rem;
             background: var(--bg-light);
         }
-        
+
         .provider-grid {
             max-width: 1200px;
             margin: 0 auto;
@@ -472,7 +387,7 @@
             grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
             gap: 1.5rem;
         }
-        
+
         .provider-card {
             background: white;
             border-radius: 12px;
@@ -480,19 +395,19 @@
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
             transition: all 0.3s;
         }
-        
+
         .provider-card:hover {
             transform: translateY(-4px);
             box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
         }
-        
+
         .provider-header {
             padding: 1.5rem;
             border-bottom: 1px solid var(--border);
             display: flex;
             gap: 1rem;
         }
-        
+
         .provider-logo {
             width: 64px;
             height: 64px;
@@ -503,44 +418,44 @@
             justify-content: center;
             font-size: 1.5rem;
         }
-        
+
         .provider-info h3 {
             font-size: 1.1rem;
             margin-bottom: 0.25rem;
         }
-        
+
         .provider-location {
             color: var(--text-light);
             font-size: 0.875rem;
         }
-        
+
         .provider-rating {
             display: flex;
             align-items: center;
             gap: 0.25rem;
             margin-top: 0.5rem;
         }
-        
+
         .stars {
             color: var(--accent);
         }
-        
+
         .rating-count {
             color: var(--text-light);
             font-size: 0.875rem;
         }
-        
+
         .provider-body {
             padding: 1.5rem;
         }
-        
+
         .provider-sizes {
             display: flex;
             gap: 0.5rem;
             flex-wrap: wrap;
             margin-bottom: 1rem;
         }
-        
+
         .size-tag {
             background: var(--bg-light);
             padding: 0.25rem 0.75rem;
@@ -548,32 +463,32 @@
             font-size: 0.875rem;
             font-weight: 500;
         }
-        
+
         .provider-price {
             display: flex;
             justify-content: space-between;
             align-items: center;
             margin-bottom: 1rem;
         }
-        
+
         .price-label {
             color: var(--text-light);
             font-size: 0.875rem;
         }
-        
+
         .price-value {
             font-size: 1.5rem;
             font-weight: 800;
             color: var(--secondary);
         }
-        
+
         .provider-features {
             display: flex;
             gap: 1rem;
             margin-bottom: 1rem;
             flex-wrap: wrap;
         }
-        
+
         .feature {
             display: flex;
             align-items: center;
@@ -581,27 +496,27 @@
             font-size: 0.875rem;
             color: var(--text-light);
         }
-        
+
         .feature-icon {
             color: var(--secondary);
         }
-        
+
         .provider-actions {
             display: flex;
             gap: 0.75rem;
         }
-        
+
         .provider-actions .btn {
             flex: 1;
             text-align: center;
         }
-        
+
         /* Testimonials */
         .testimonials {
             padding: 5rem 2rem;
             background: white;
         }
-        
+
         .testimonial-grid {
             max-width: 1200px;
             margin: 0 auto;
@@ -609,31 +524,31 @@
             grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
             gap: 2rem;
         }
-        
+
         .testimonial {
             background: var(--bg-light);
             padding: 2rem;
             border-radius: 12px;
             border-left: 4px solid var(--primary);
         }
-        
+
         .testimonial-stars {
             color: var(--accent);
             margin-bottom: 1rem;
         }
-        
+
         .testimonial-text {
             font-size: 1rem;
             margin-bottom: 1.5rem;
             font-style: italic;
         }
-        
+
         .testimonial-author {
             display: flex;
             align-items: center;
             gap: 1rem;
         }
-        
+
         .author-avatar {
             width: 48px;
             height: 48px;
@@ -645,22 +560,22 @@
             color: white;
             font-weight: 600;
         }
-        
+
         .author-name {
             font-weight: 600;
         }
-        
+
         .author-detail {
             font-size: 0.875rem;
             color: var(--text-light);
         }
-        
+
         /* Size Guide */
         .size-guide {
             padding: 5rem 2rem;
             background: var(--bg-light);
         }
-        
+
         .size-cards {
             max-width: 1200px;
             margin: 0 auto;
@@ -668,7 +583,7 @@
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
             gap: 1.5rem;
         }
-        
+
         .size-card {
             background: white;
             border-radius: 12px;
@@ -677,11 +592,11 @@
             border: 2px solid var(--border);
             transition: all 0.3s;
         }
-        
+
         .size-card:hover {
             border-color: var(--primary);
         }
-        
+
         .size-visual {
             height: 80px;
             background: var(--bg-light);
@@ -692,7 +607,7 @@
             justify-content: center;
             padding-bottom: 0.5rem;
         }
-        
+
         .dumpster-icon {
             background: var(--primary);
             border-radius: 4px;
@@ -702,37 +617,37 @@
             justify-content: center;
             font-weight: 700;
         }
-        
+
         .size-card:nth-child(1) .dumpster-icon { width: 40px; height: 30px; font-size: 0.7rem; }
         .size-card:nth-child(2) .dumpster-icon { width: 50px; height: 35px; font-size: 0.75rem; }
         .size-card:nth-child(3) .dumpster-icon { width: 60px; height: 40px; font-size: 0.8rem; }
         .size-card:nth-child(4) .dumpster-icon { width: 70px; height: 50px; font-size: 0.85rem; }
         .size-card:nth-child(5) .dumpster-icon { width: 80px; height: 60px; font-size: 0.9rem; }
-        
+
         .size-name {
             font-size: 1.25rem;
             font-weight: 700;
             margin-bottom: 0.5rem;
         }
-        
+
         .size-dimensions {
             font-size: 0.875rem;
             color: var(--text-light);
             margin-bottom: 0.5rem;
         }
-        
+
         .size-use {
             font-size: 0.875rem;
             color: var(--text-light);
             margin-bottom: 1rem;
         }
-        
+
         .size-price {
             font-size: 1.25rem;
             font-weight: 700;
             color: var(--secondary);
         }
-        
+
         /* CTA Section */
         .cta {
             background: linear-gradient(135deg, var(--bg-dark) 0%, #374151 100%);
@@ -740,13 +655,13 @@
             text-align: center;
             color: white;
         }
-        
+
         .cta h2 {
             font-size: 2.5rem;
             font-weight: 800;
             margin-bottom: 1rem;
         }
-        
+
         .cta p {
             font-size: 1.25rem;
             opacity: 0.9;
@@ -755,19 +670,19 @@
             margin-left: auto;
             margin-right: auto;
         }
-        
+
         .cta .btn-primary {
             font-size: 1.25rem;
             padding: 1rem 2.5rem;
         }
-        
+
         /* Footer */
         footer {
             background: var(--bg-dark);
             color: white;
             padding: 3rem 2rem 1.5rem;
         }
-        
+
         .footer-content {
             max-width: 1200px;
             margin: 0 auto;
@@ -776,13 +691,13 @@
             gap: 2rem;
             margin-bottom: 2rem;
         }
-        
+
         .footer-section h4 {
             font-size: 1rem;
             font-weight: 600;
             margin-bottom: 1rem;
         }
-        
+
         .footer-section a {
             display: block;
             color: #9ca3af;
@@ -790,11 +705,11 @@
             padding: 0.25rem 0;
             transition: color 0.2s;
         }
-        
+
         .footer-section a:hover {
             color: white;
         }
-        
+
         .footer-bottom {
             border-top: 1px solid #374151;
             padding-top: 1.5rem;
@@ -802,22 +717,22 @@
             color: #9ca3af;
             font-size: 0.875rem;
         }
-        
+
         /* Location Links - SEO Section */
         .location-links {
             padding: 4rem 2rem;
             background: white;
         }
-        
+
         .location-content {
             max-width: 1200px;
             margin: 0 auto;
         }
-        
+
         .location-section {
             margin-bottom: 2.5rem;
         }
-        
+
         .location-section h3 {
             font-size: 1.25rem;
             font-weight: 700;
@@ -825,20 +740,20 @@
             padding-bottom: 0.75rem;
             border-bottom: 2px solid var(--border);
         }
-        
+
         .city-grid, .state-grid {
             display: grid;
             gap: 0.5rem 1rem;
         }
-        
+
         .city-grid {
             grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
         }
-        
+
         .state-grid {
             grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
         }
-        
+
         .city-grid a, .state-grid a {
             color: var(--primary);
             text-decoration: none;
@@ -848,35 +763,35 @@
             transition: all 0.2s;
             white-space: nowrap;
         }
-        
+
         .city-grid a:hover, .state-grid a:hover {
             background: var(--bg-light);
             color: var(--primary-dark);
         }
-        
+
         /* Responsive */
         @media (max-width: 768px) {
             .hero h1 {
                 font-size: 2rem;
             }
-            
+
             nav {
                 display: none;
             }
-            
+
             .search-row {
                 flex-direction: column;
             }
-            
+
             .search-btn {
                 width: 100%;
             }
-            
+
             .trust-items {
                 flex-direction: column;
                 gap: 1.5rem;
             }
-            
+
             .section-header h2 {
                 font-size: 1.75rem;
             }
@@ -915,7 +830,7 @@
         <div class="hero-content">
             <h1>Compare Dumpster Prices.<br>Book in Minutes. Save Money.</h1>
             <p>Find and compare local dumpster rental prices instantly. No phone calls, no hassle, no hidden fees.</p>
-            
+
             <div class="search-box">
                 <div class="search-row">
                     <div class="search-field">
@@ -935,35 +850,6 @@
                         </select>
                     </div>
                     <button class="search-btn">🗺️ Search the Map →</button>
-                </div>
-            </div>
-            
-            <!-- Map Preview Teaser -->
-            <div class="map-preview">
-                <div class="map-preview-inner">
-                    <div class="map-preview-bg">
-                        <div class="map-pin" style="top: 20%; left: 30%;">
-                            <span class="pin-dot green"></span>
-                            <span class="pin-label">4.9 ⭐</span>
-                        </div>
-                        <div class="map-pin" style="top: 45%; left: 55%;">
-                            <span class="pin-dot blue"></span>
-                            <span class="pin-label">4.7 ⭐</span>
-                        </div>
-                        <div class="map-pin" style="top: 35%; left: 70%;">
-                            <span class="pin-dot green"></span>
-                            <span class="pin-label">5.0 ⭐</span>
-                        </div>
-                        <div class="map-pin" style="top: 60%; left: 40%;">
-                            <span class="pin-dot yellow"></span>
-                            <span class="pin-label">4.2 ⭐</span>
-                        </div>
-                        <div class="map-pin" style="top: 25%; left: 80%;">
-                            <span class="pin-dot blue"></span>
-                            <span class="pin-label">4.5 ⭐</span>
-                        </div>
-                    </div>
-                    <p class="map-preview-caption">📍 8,000+ providers mapped across the USA</p>
                 </div>
             </div>
         </div>
@@ -1069,7 +955,7 @@
                     </div>
                 </div>
             </div>
-            
+
             <!-- Provider 2 -->
             <div class="provider-card">
                 <div class="provider-header">
@@ -1104,7 +990,7 @@
                     </div>
                 </div>
             </div>
-            
+
             <!-- Provider 3 -->
             <div class="provider-card">
                 <div class="provider-header">
@@ -1246,7 +1132,7 @@
                 <h2>Find Dumpster Rentals Near You</h2>
                 <p>Browse dumpster rental providers in major cities across the United States</p>
             </div>
-            
+
             <div class="location-section">
                 <h3>🏙️ Popular Cities</h3>
                 <div class="city-grid">
@@ -1282,7 +1168,7 @@
                     <a href="dumpster-rental/raleigh-north carolina.html">Raleigh, NC</a>
                 </div>
             </div>
-            
+
             <div class="location-section">
                 <h3>🗺️ Browse by State</h3>
                 <div class="state-grid">
