@@ -90,7 +90,34 @@ function initDatabase() {
       status TEXT
     );
     
+    CREATE TABLE IF NOT EXISTS outreach (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      provider_email TEXT NOT NULL,
+      company_name TEXT,
+      phone TEXT,
+      zip TEXT,
+      source TEXT,
+      campaign TEXT,
+      email_sent_at TEXT,
+      email_status TEXT DEFAULT 'Pending',
+      opened_at TEXT,
+      clicked_at TEXT,
+      replied_at TEXT,
+      converted INTEGER DEFAULT 0,
+      notes TEXT
+    );
+    
+    CREATE TABLE IF NOT EXISTS error_log (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      timestamp TEXT DEFAULT CURRENT_TIMESTAMP,
+      type TEXT,
+      message TEXT,
+      context TEXT
+    );
+    
     CREATE INDEX IF NOT EXISTS idx_leads_lead_id ON leads(lead_id);
+    CREATE INDEX IF NOT EXISTS idx_outreach_email ON outreach(provider_email);
     CREATE INDEX IF NOT EXISTS idx_leads_zip ON leads(zip);
     CREATE INDEX IF NOT EXISTS idx_providers_email ON providers(email);
   `);
@@ -210,6 +237,15 @@ async function sendEmail(to, subject, html, text) {
 
 async function sendAdminNotification(subject, body) {
   await sendEmail(NOTIFICATION_EMAIL, subject, `<pre>${body}</pre>`, body);
+}
+
+function logError(type, message, context = {}) {
+  try {
+    db.prepare('INSERT INTO error_log (type, message, context) VALUES (?, ?, ?)').run(type, message, JSON.stringify(context));
+  } catch (e) {
+    console.error('Failed to log error:', e);
+  }
+  console.error(`[${type}] ${message}`, context);
 }
 
 // ============================================
@@ -415,29 +451,65 @@ app.get('/admin', (req, res) => {
   const providers = db.prepare('SELECT * FROM providers ORDER BY id DESC').all();
   const purchases = db.prepare('SELECT * FROM purchase_log ORDER BY id DESC LIMIT 50').all();
   
+  // Stats
+  const totalLeads = db.prepare('SELECT COUNT(*) as cnt FROM leads').get().cnt;
+  const totalRevenue = db.prepare("SELECT SUM(amount) as total FROM purchase_log WHERE status LIKE '%Success%' OR status LIKE '%credit%'").get().total || 0;
+  const totalCredits = providers.reduce((sum, p) => sum + (p.credit_balance || 0), 0);
+  
   const html = `
 <!DOCTYPE html>
 <html>
 <head>
   <title>DumpsterMap Admin</title>
   <style>
-    body { font-family: system-ui; padding: 20px; max-width: 1400px; margin: 0 auto; }
-    table { border-collapse: collapse; width: 100%; margin: 20px 0; font-size: 13px; }
-    th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-    th { background: #f5f5f5; }
-    tr:hover { background: #f9f9f9; }
-    h2 { margin-top: 40px; }
-    .status-new { color: blue; }
-    .status-sent { color: green; }
-    .status-purchased { color: purple; font-weight: bold; }
-    .btn { padding: 8px 16px; background: #2563eb; color: white; border: none; border-radius: 4px; cursor: pointer; margin: 5px; }
+    body { font-family: system-ui; padding: 20px; max-width: 1600px; margin: 0 auto; background: #f8fafc; }
+    .stats { display: flex; gap: 20px; margin-bottom: 30px; }
+    .stat { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); flex: 1; }
+    .stat-value { font-size: 32px; font-weight: bold; color: #1e40af; }
+    .stat-label { color: #64748b; font-size: 14px; }
+    table { border-collapse: collapse; width: 100%; margin: 20px 0; font-size: 13px; background: white; }
+    th, td { border: 1px solid #e2e8f0; padding: 10px; text-align: left; }
+    th { background: #f1f5f9; font-weight: 600; }
+    tr:hover { background: #f8fafc; }
+    h2 { margin-top: 40px; color: #1e293b; }
+    .status-new { color: #2563eb; }
+    .status-sent { color: #16a34a; }
+    .status-purchased { color: #9333ea; font-weight: bold; }
+    .btn { padding: 8px 16px; background: #2563eb; color: white; border: none; border-radius: 4px; cursor: pointer; margin: 2px; text-decoration: none; display: inline-block; font-size: 13px; }
     .btn:hover { background: #1d4ed8; }
+    .btn-sm { padding: 4px 8px; font-size: 11px; }
+    .btn-green { background: #16a34a; }
+    .btn-green:hover { background: #15803d; }
+    .btn-red { background: #dc2626; }
+    .btn-red:hover { background: #b91c1c; }
+    .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 20px; }
+    input, select { padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 4px; }
+    .credit-badge { background: #dcfce7; color: #16a34a; padding: 2px 8px; border-radius: 999px; font-weight: bold; }
+    .nav { background: white; padding: 15px 20px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+    .nav a { margin-right: 20px; color: #2563eb; text-decoration: none; font-weight: 500; }
+    .nav a:hover { text-decoration: underline; }
   </style>
 </head>
 <body>
   <h1>🗑️ DumpsterMap Admin</h1>
   
-  <h2>Leads (${leads.length})</h2>
+  <div class="nav">
+    <a href="#leads">Leads</a>
+    <a href="#providers">Providers</a>
+    <a href="#add-credits">Add Credits</a>
+    <a href="#purchases">Purchases</a>
+    <a href="/admin/outreach?key=${auth}">Outreach</a>
+    <a href="/admin/logs?key=${auth}">System Logs</a>
+  </div>
+  
+  <div class="stats">
+    <div class="stat"><div class="stat-value">${totalLeads}</div><div class="stat-label">Total Leads</div></div>
+    <div class="stat"><div class="stat-value">$${totalRevenue.toFixed(0)}</div><div class="stat-label">Revenue</div></div>
+    <div class="stat"><div class="stat-value">${providers.length}</div><div class="stat-label">Providers</div></div>
+    <div class="stat"><div class="stat-value">${totalCredits}</div><div class="stat-label">Credits Outstanding</div></div>
+  </div>
+  
+  <h2 id="leads">Leads (${leads.length})</h2>
   <table>
     <tr><th>ID</th><th>Date</th><th>Name</th><th>Phone</th><th>Email</th><th>Zip</th><th>Size</th><th>Status</th><th>Provider</th><th>Purchased By</th></tr>
     ${leads.map(l => `
@@ -456,35 +528,54 @@ app.get('/admin', (req, res) => {
     `).join('')}
   </table>
   
-  <h2>Providers (${providers.length})</h2>
+  <h2 id="providers">Providers (${providers.length})</h2>
   <table>
-    <tr><th>Company</th><th>Email</th><th>Phone</th><th>Zips</th><th>Credits</th><th>Total Leads</th><th>Status</th></tr>
+    <tr><th>ID</th><th>Company</th><th>Email</th><th>Phone</th><th>Zips</th><th>Credits</th><th>Leads</th><th>Status</th><th>Actions</th></tr>
     ${providers.map(p => `
       <tr>
+        <td>${p.id}</td>
         <td>${p.company_name}</td>
         <td>${p.email}</td>
         <td>${p.phone || ''}</td>
-        <td>${p.service_zips || ''}</td>
-        <td><strong>${p.credit_balance}</strong></td>
+        <td>${p.service_zips || '<em style="color:#94a3b8">none</em>'}</td>
+        <td><span class="credit-badge">${p.credit_balance}</span></td>
         <td>${p.total_leads}</td>
         <td>${p.status}</td>
+        <td>
+          <a href="/admin/edit-provider/${p.id}?key=${auth}" class="btn btn-sm">Edit</a>
+        </td>
       </tr>
     `).join('')}
   </table>
   
-  <h2>Add Provider</h2>
-  <form action="/admin/add-provider?key=${auth}" method="POST" style="display: flex; gap: 10px; flex-wrap: wrap;">
-    <input name="company_name" placeholder="Company Name" required>
-    <input name="email" placeholder="Email" required>
-    <input name="phone" placeholder="Phone">
-    <input name="service_zips" placeholder="Zips (comma-separated)">
-    <input name="credit_balance" placeholder="Credits" type="number" value="0">
-    <button class="btn">Add Provider</button>
-  </form>
+  <div class="card">
+    <h3>Add New Provider</h3>
+    <form action="/admin/add-provider?key=${auth}" method="POST" style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
+      <input name="company_name" placeholder="Company Name" required>
+      <input name="email" placeholder="Email" required>
+      <input name="phone" placeholder="Phone">
+      <input name="service_zips" placeholder="Zips (comma-separated)">
+      <input name="credit_balance" placeholder="Credits" type="number" value="0" style="width: 80px;">
+      <button class="btn btn-green">Add Provider</button>
+    </form>
+  </div>
   
-  <h2>Recent Purchases</h2>
+  <div class="card" id="add-credits">
+    <h3>Quick Add Credits</h3>
+    <form action="/admin/add-credits?key=${auth}" method="POST" style="display: flex; gap: 10px; align-items: center;">
+      <select name="provider_id" required style="min-width: 200px;">
+        <option value="">Select Provider...</option>
+        ${providers.map(p => `<option value="${p.id}">${p.company_name} (${p.credit_balance} credits)</option>`).join('')}
+      </select>
+      <input name="credits" type="number" placeholder="Credits" required style="width: 100px;">
+      <input name="reason" placeholder="Reason (optional)" style="width: 200px;">
+      <button class="btn btn-green">Add Credits</button>
+    </form>
+  </div>
+  
+  <h2 id="purchases">Recent Purchases</h2>
   <table>
-    <tr><th>Time</th><th>Lead</th><th>Buyer</th><th>Amount</th><th>Status</th></tr>
+    <tr><th>Time</th><th>Type</th><th>Buyer</th><th>Amount</th><th>Status</th><th>Payment ID</th></tr>
     ${purchases.map(p => `
       <tr>
         <td>${p.timestamp || ''}</td>
@@ -492,6 +583,7 @@ app.get('/admin', (req, res) => {
         <td>${p.buyer_email || ''}</td>
         <td>$${p.amount || 0}</td>
         <td>${p.status || ''}</td>
+        <td style="font-size: 11px; color: #64748b;">${(p.payment_id || '').slice(0, 20)}...</td>
       </tr>
     `).join('')}
   </table>
@@ -499,9 +591,405 @@ app.get('/admin', (req, res) => {
   <h2>Export</h2>
   <a href="/admin/export/leads?key=${auth}" class="btn">Export Leads CSV</a>
   <a href="/admin/export/providers?key=${auth}" class="btn">Export Providers CSV</a>
+  <a href="/admin/export/purchases?key=${auth}" class="btn">Export Purchases CSV</a>
 </body>
 </html>`;
   
+  res.send(html);
+});
+
+// Edit provider page
+app.get('/admin/edit-provider/:id', (req, res) => {
+  if (req.query.key !== ADMIN_PASSWORD) return res.status(401).send('Unauthorized');
+  
+  const provider = db.prepare('SELECT * FROM providers WHERE id = ?').get(req.params.id);
+  if (!provider) return res.status(404).send('Provider not found');
+  
+  const recentLeads = db.prepare(`
+    SELECT * FROM leads WHERE purchased_by = ? OR assigned_provider = ? ORDER BY id DESC LIMIT 10
+  `).all(provider.email, provider.company_name);
+  
+  const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Edit Provider - ${provider.company_name}</title>
+  <style>
+    body { font-family: system-ui; padding: 20px; max-width: 800px; margin: 0 auto; background: #f8fafc; }
+    .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 20px; }
+    label { display: block; margin-bottom: 5px; font-weight: 500; color: #374151; }
+    input, textarea, select { width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 4px; margin-bottom: 15px; box-sizing: border-box; }
+    .btn { padding: 10px 20px; background: #2563eb; color: white; border: none; border-radius: 4px; cursor: pointer; }
+    .btn:hover { background: #1d4ed8; }
+    .btn-red { background: #dc2626; }
+    .back { color: #2563eb; text-decoration: none; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th, td { padding: 8px; border: 1px solid #e2e8f0; text-align: left; }
+    th { background: #f1f5f9; }
+  </style>
+</head>
+<body>
+  <a href="/admin?key=${req.query.key}" class="back">← Back to Admin</a>
+  <h1>Edit: ${provider.company_name}</h1>
+  
+  <div class="card">
+    <form action="/admin/update-provider/${provider.id}?key=${req.query.key}" method="POST">
+      <label>Company Name</label>
+      <input name="company_name" value="${provider.company_name || ''}" required>
+      
+      <label>Email</label>
+      <input name="email" type="email" value="${provider.email || ''}" required>
+      
+      <label>Phone</label>
+      <input name="phone" value="${provider.phone || ''}">
+      
+      <label>Service Zips (comma-separated)</label>
+      <input name="service_zips" value="${provider.service_zips || ''}" placeholder="10001, 10002, 10003">
+      
+      <label>Credit Balance</label>
+      <input name="credit_balance" type="number" value="${provider.credit_balance || 0}">
+      
+      <label>Status</label>
+      <select name="status">
+        <option value="Active" ${provider.status === 'Active' ? 'selected' : ''}>Active</option>
+        <option value="Inactive" ${provider.status === 'Inactive' ? 'selected' : ''}>Inactive</option>
+        <option value="Suspended" ${provider.status === 'Suspended' ? 'selected' : ''}>Suspended</option>
+      </select>
+      
+      <label>Priority (higher = gets leads first)</label>
+      <input name="priority" type="number" value="${provider.priority || 0}">
+      
+      <label>Notes</label>
+      <textarea name="notes" rows="3">${provider.notes || ''}</textarea>
+      
+      <button type="submit" class="btn">Save Changes</button>
+    </form>
+  </div>
+  
+  <div class="card">
+    <h3>Recent Leads (${recentLeads.length})</h3>
+    <table>
+      <tr><th>ID</th><th>Date</th><th>Zip</th><th>Status</th></tr>
+      ${recentLeads.map(l => `<tr><td>${l.lead_id}</td><td>${l.created_at?.split('T')[0]||''}</td><td>${l.zip}</td><td>${l.status}</td></tr>`).join('')}
+    </table>
+  </div>
+  
+  <div class="card" style="border: 2px solid #fecaca;">
+    <h3 style="color: #dc2626;">Danger Zone</h3>
+    <form action="/admin/delete-provider/${provider.id}?key=${req.query.key}" method="POST" onsubmit="return confirm('Delete this provider?')">
+      <button type="submit" class="btn btn-red">Delete Provider</button>
+    </form>
+  </div>
+</body>
+</html>`;
+  res.send(html);
+});
+
+// Update provider
+app.post('/admin/update-provider/:id', (req, res) => {
+  if (req.query.key !== ADMIN_PASSWORD) return res.status(401).send('Unauthorized');
+  
+  const { company_name, email, phone, service_zips, credit_balance, status, priority, notes } = req.body;
+  db.prepare(`
+    UPDATE providers SET company_name = ?, email = ?, phone = ?, service_zips = ?, credit_balance = ?, status = ?, priority = ?, notes = ?
+    WHERE id = ?
+  `).run(company_name, email, phone, service_zips, parseInt(credit_balance) || 0, status, parseInt(priority) || 0, notes, req.params.id);
+  
+  console.log(`Provider ${req.params.id} updated`);
+  res.redirect(`/admin?key=${req.query.key}`);
+});
+
+// Delete provider
+app.post('/admin/delete-provider/:id', (req, res) => {
+  if (req.query.key !== ADMIN_PASSWORD) return res.status(401).send('Unauthorized');
+  db.prepare('DELETE FROM providers WHERE id = ?').run(req.params.id);
+  console.log(`Provider ${req.params.id} deleted`);
+  res.redirect(`/admin?key=${req.query.key}`);
+});
+
+// Quick add credits
+app.post('/admin/add-credits', (req, res) => {
+  if (req.query.key !== ADMIN_PASSWORD) return res.status(401).send('Unauthorized');
+  
+  const { provider_id, credits, reason } = req.body;
+  const creditAmount = parseInt(credits) || 0;
+  
+  db.prepare('UPDATE providers SET credit_balance = credit_balance + ? WHERE id = ?').run(creditAmount, provider_id);
+  
+  // Log the manual credit addition
+  const provider = db.prepare('SELECT * FROM providers WHERE id = ?').get(provider_id);
+  db.prepare('INSERT INTO purchase_log (lead_id, buyer_email, amount, payment_id, status) VALUES (?, ?, ?, ?, ?)').run(
+    'MANUAL', provider?.email || '', 0, 'admin-' + Date.now(), `Manual: +${creditAmount} credits. ${reason || ''}`
+  );
+  
+  console.log(`Added ${creditAmount} credits to provider ${provider_id}: ${reason || 'no reason'}`);
+  res.redirect(`/admin?key=${req.query.key}`);
+});
+
+// Provider outreach management
+app.get('/admin/outreach', (req, res) => {
+  if (req.query.key !== ADMIN_PASSWORD) return res.status(401).send('Unauthorized');
+  
+  const outreach = db.prepare('SELECT * FROM outreach ORDER BY id DESC LIMIT 200').all();
+  const campaigns = db.prepare('SELECT DISTINCT campaign FROM outreach WHERE campaign IS NOT NULL').all();
+  
+  // Stats
+  const totalOutreach = db.prepare('SELECT COUNT(*) as cnt FROM outreach').get().cnt;
+  const sentCount = db.prepare("SELECT COUNT(*) as cnt FROM outreach WHERE email_status = 'Sent'").get().cnt;
+  const convertedCount = db.prepare('SELECT COUNT(*) as cnt FROM outreach WHERE converted = 1').get().cnt;
+  
+  const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Provider Outreach - DumpsterMap Admin</title>
+  <style>
+    body { font-family: system-ui; padding: 20px; max-width: 1600px; margin: 0 auto; background: #f8fafc; }
+    .stats { display: flex; gap: 20px; margin-bottom: 30px; }
+    .stat { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); flex: 1; }
+    .stat-value { font-size: 32px; font-weight: bold; color: #1e40af; }
+    .stat-label { color: #64748b; font-size: 14px; }
+    table { border-collapse: collapse; width: 100%; font-size: 12px; background: white; margin-top: 20px; }
+    th, td { border: 1px solid #e2e8f0; padding: 8px; text-align: left; }
+    th { background: #f1f5f9; position: sticky; top: 0; }
+    .back { color: #2563eb; text-decoration: none; margin-bottom: 20px; display: inline-block; }
+    .btn { padding: 8px 16px; background: #2563eb; color: white; border: none; border-radius: 4px; cursor: pointer; margin: 2px; text-decoration: none; display: inline-block; font-size: 13px; }
+    .btn:hover { background: #1d4ed8; }
+    .btn-green { background: #16a34a; }
+    .btn-sm { padding: 4px 8px; font-size: 11px; }
+    .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 20px; }
+    input, select, textarea { padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 4px; }
+    .status-pending { color: #f59e0b; }
+    .status-sent { color: #2563eb; }
+    .status-converted { color: #16a34a; font-weight: bold; }
+    .status-replied { color: #9333ea; }
+  </style>
+</head>
+<body>
+  <a href="/admin?key=${req.query.key}" class="back">← Back to Admin</a>
+  <h1>📧 Provider Outreach</h1>
+  
+  <div class="stats">
+    <div class="stat"><div class="stat-value">${totalOutreach}</div><div class="stat-label">Total Contacts</div></div>
+    <div class="stat"><div class="stat-value">${sentCount}</div><div class="stat-label">Emails Sent</div></div>
+    <div class="stat"><div class="stat-value">${convertedCount}</div><div class="stat-label">Converted</div></div>
+    <div class="stat"><div class="stat-value">${totalOutreach > 0 ? ((convertedCount / totalOutreach) * 100).toFixed(1) : 0}%</div><div class="stat-label">Conversion Rate</div></div>
+  </div>
+  
+  <div class="card">
+    <h3>Add Outreach Contact</h3>
+    <form action="/admin/outreach/add?key=${req.query.key}" method="POST" style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
+      <input name="company_name" placeholder="Company Name" required>
+      <input name="provider_email" placeholder="Email" required type="email">
+      <input name="phone" placeholder="Phone">
+      <input name="zip" placeholder="Zip">
+      <input name="source" placeholder="Source (e.g., Google Maps)">
+      <input name="campaign" placeholder="Campaign" list="campaigns">
+      <datalist id="campaigns">
+        ${campaigns.map(c => `<option value="${c.campaign}">`).join('')}
+      </datalist>
+      <button class="btn btn-green">Add Contact</button>
+    </form>
+  </div>
+  
+  <div class="card">
+    <h3>Bulk Import (CSV)</h3>
+    <form action="/admin/outreach/import?key=${req.query.key}" method="POST" style="display: flex; gap: 10px; align-items: flex-start;">
+      <textarea name="csv_data" placeholder="company_name,email,phone,zip,source&#10;ABC Dumpsters,abc@example.com,555-1234,10001,Google Maps" rows="4" style="width: 500px;"></textarea>
+      <input name="campaign" placeholder="Campaign name">
+      <button class="btn">Import CSV</button>
+    </form>
+  </div>
+  
+  <h2>Outreach List (${outreach.length})</h2>
+  <table>
+    <tr>
+      <th>ID</th>
+      <th>Date</th>
+      <th>Company</th>
+      <th>Email</th>
+      <th>Phone</th>
+      <th>Zip</th>
+      <th>Campaign</th>
+      <th>Status</th>
+      <th>Converted</th>
+      <th>Actions</th>
+    </tr>
+    ${outreach.map(o => {
+      const statusClass = o.converted ? 'status-converted' : o.replied_at ? 'status-replied' : o.email_status === 'Sent' ? 'status-sent' : 'status-pending';
+      return `
+        <tr>
+          <td>${o.id}</td>
+          <td>${o.created_at?.split('T')[0] || ''}</td>
+          <td>${o.company_name || ''}</td>
+          <td>${o.provider_email}</td>
+          <td>${o.phone || ''}</td>
+          <td>${o.zip || ''}</td>
+          <td>${o.campaign || ''}</td>
+          <td class="${statusClass}">${o.email_status}${o.replied_at ? ' (replied)' : ''}</td>
+          <td>${o.converted ? '✅' : ''}</td>
+          <td>
+            <form action="/admin/outreach/update/${o.id}?key=${req.query.key}" method="POST" style="display: inline;">
+              <select name="action" onchange="this.form.submit()" style="padding: 4px; font-size: 11px;">
+                <option value="">Actions...</option>
+                <option value="sent">Mark Sent</option>
+                <option value="replied">Mark Replied</option>
+                <option value="converted">Mark Converted</option>
+                <option value="delete">Delete</option>
+              </select>
+            </form>
+          </td>
+        </tr>
+      `;
+    }).join('')}
+  </table>
+  
+  <h2>Export</h2>
+  <a href="/admin/export/outreach?key=${req.query.key}" class="btn">Export Outreach CSV</a>
+</body>
+</html>`;
+  res.send(html);
+});
+
+// Add outreach contact
+app.post('/admin/outreach/add', (req, res) => {
+  if (req.query.key !== ADMIN_PASSWORD) return res.status(401).send('Unauthorized');
+  
+  const { company_name, provider_email, phone, zip, source, campaign } = req.body;
+  db.prepare(`
+    INSERT INTO outreach (company_name, provider_email, phone, zip, source, campaign)
+    VALUES (?, ?, ?, ?, ?, ?)
+  `).run(company_name, provider_email, phone, zip, source, campaign);
+  
+  res.redirect(`/admin/outreach?key=${req.query.key}`);
+});
+
+// Bulk import outreach
+app.post('/admin/outreach/import', (req, res) => {
+  if (req.query.key !== ADMIN_PASSWORD) return res.status(401).send('Unauthorized');
+  
+  const { csv_data, campaign } = req.body;
+  if (!csv_data) return res.redirect(`/admin/outreach?key=${req.query.key}`);
+  
+  const lines = csv_data.trim().split('\n');
+  let imported = 0;
+  
+  for (const line of lines) {
+    if (!line.trim() || line.toLowerCase().startsWith('company')) continue; // Skip headers
+    const parts = line.split(',').map(p => p.trim());
+    const [company_name, email, phone, zip, source] = parts;
+    
+    if (email && email.includes('@')) {
+      try {
+        db.prepare(`
+          INSERT INTO outreach (company_name, provider_email, phone, zip, source, campaign)
+          VALUES (?, ?, ?, ?, ?, ?)
+        `).run(company_name || '', email, phone || '', zip || '', source || '', campaign || '');
+        imported++;
+      } catch (e) {
+        console.log('Import skip (duplicate?):', email);
+      }
+    }
+  }
+  
+  console.log(`Imported ${imported} outreach contacts`);
+  res.redirect(`/admin/outreach?key=${req.query.key}`);
+});
+
+// Update outreach status
+app.post('/admin/outreach/update/:id', (req, res) => {
+  if (req.query.key !== ADMIN_PASSWORD) return res.status(401).send('Unauthorized');
+  
+  const action = req.body.action;
+  const id = req.params.id;
+  
+  if (action === 'sent') {
+    db.prepare("UPDATE outreach SET email_status = 'Sent', email_sent_at = datetime('now') WHERE id = ?").run(id);
+  } else if (action === 'replied') {
+    db.prepare("UPDATE outreach SET replied_at = datetime('now') WHERE id = ?").run(id);
+  } else if (action === 'converted') {
+    db.prepare("UPDATE outreach SET converted = 1 WHERE id = ?").run(id);
+    // Also create provider record if doesn't exist
+    const outreach = db.prepare('SELECT * FROM outreach WHERE id = ?').get(id);
+    if (outreach) {
+      const existingProvider = getProviderByEmail(outreach.provider_email);
+      if (!existingProvider) {
+        db.prepare(`
+          INSERT INTO providers (company_name, email, phone, service_zips, notes)
+          VALUES (?, ?, ?, ?, 'Converted from outreach')
+        `).run(outreach.company_name, outreach.provider_email, outreach.phone, outreach.zip);
+        console.log(`Created provider from outreach: ${outreach.provider_email}`);
+      }
+    }
+  } else if (action === 'delete') {
+    db.prepare('DELETE FROM outreach WHERE id = ?').run(id);
+  }
+  
+  res.redirect(`/admin/outreach?key=${req.query.key}`);
+});
+
+// System logs page
+app.get('/admin/logs', (req, res) => {
+  if (req.query.key !== ADMIN_PASSWORD) return res.status(401).send('Unauthorized');
+  
+  const purchases = db.prepare('SELECT * FROM purchase_log ORDER BY id DESC LIMIT 200').all();
+  const errors = db.prepare('SELECT * FROM error_log ORDER BY id DESC LIMIT 100').all();
+  
+  const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <title>System Logs - DumpsterMap</title>
+  <style>
+    body { font-family: system-ui; padding: 20px; max-width: 1400px; margin: 0 auto; background: #f8fafc; }
+    table { border-collapse: collapse; width: 100%; font-size: 12px; background: white; margin-bottom: 30px; }
+    th, td { border: 1px solid #e2e8f0; padding: 8px; text-align: left; }
+    th { background: #f1f5f9; position: sticky; top: 0; }
+    .back { color: #2563eb; text-decoration: none; margin-bottom: 20px; display: inline-block; }
+    .success { color: #16a34a; }
+    .error { color: #dc2626; }
+    .credit { color: #9333ea; }
+    h2 { margin-top: 40px; }
+  </style>
+</head>
+<body>
+  <a href="/admin?key=${req.query.key}" class="back">← Back to Admin</a>
+  <h1>📋 System Logs</h1>
+  
+  <h2>Purchase Log</h2>
+  <table>
+    <tr><th>Timestamp</th><th>Type</th><th>Email</th><th>Amount</th><th>Payment ID</th><th>Status</th></tr>
+    ${purchases.map(p => {
+      const statusClass = p.status?.includes('Success') ? 'success' : p.status?.includes('credit') ? 'credit' : p.status?.includes('Failed') ? 'error' : '';
+      return `
+        <tr>
+          <td>${p.timestamp || ''}</td>
+          <td>${p.lead_id || ''}</td>
+          <td>${p.buyer_email || ''}</td>
+          <td>$${p.amount || 0}</td>
+          <td style="font-size: 10px; max-width: 200px; overflow: hidden; text-overflow: ellipsis;">${p.payment_id || ''}</td>
+          <td class="${statusClass}">${p.status || ''}</td>
+        </tr>
+      `;
+    }).join('')}
+  </table>
+  
+  ${errors.length > 0 ? `
+  <h2 style="color: #dc2626;">⚠️ Error Log (${errors.length})</h2>
+  <table>
+    <tr><th>Timestamp</th><th>Type</th><th>Message</th><th>Context</th></tr>
+    ${errors.map(e => `
+      <tr>
+        <td>${e.timestamp || ''}</td>
+        <td class="error">${e.type || ''}</td>
+        <td>${e.message || ''}</td>
+        <td style="font-size: 10px; max-width: 300px; overflow: hidden; text-overflow: ellipsis;">${e.context || ''}</td>
+      </tr>
+    `).join('')}
+  </table>
+  ` : ''}
+</body>
+</html>`;
   res.send(html);
 });
 
@@ -526,6 +1014,12 @@ app.get('/admin/export/:type', (req, res) => {
   if (type === 'leads') {
     data = db.prepare('SELECT * FROM leads ORDER BY id DESC').all();
     filename = 'leads.csv';
+  } else if (type === 'purchases') {
+    data = db.prepare('SELECT * FROM purchase_log ORDER BY id DESC').all();
+    filename = 'purchases.csv';
+  } else if (type === 'outreach') {
+    data = db.prepare('SELECT * FROM outreach ORDER BY id DESC').all();
+    filename = 'outreach.csv';
   } else {
     data = db.prepare('SELECT * FROM providers ORDER BY id DESC').all();
     filename = 'providers.csv';
