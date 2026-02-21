@@ -301,13 +301,12 @@ function submitQuote(e) {
     data.source = 'Website - Quote Modal';
     data.timestamp = new Date().toISOString();
     
-    // Send to Apps Script backend
+    // Send to API
     fetch('/api/lead', {
         method: 'POST',
-        mode: 'no-cors',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data)
-    });
+    }).catch(err => console.log('Lead submit error:', err));
     
     // Show success
     document.getElementById('quoteForm').style.display = 'none';

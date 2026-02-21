@@ -1366,13 +1366,12 @@ function submitQuote(e) {
     
     console.log('=== LEAD CAPTURED ===', data);
     
-    // Send to Apps Script backend
+    // Send to API
     fetch('/api/lead', {
         method: 'POST',
-        mode: 'no-cors',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data)
-    });
+    }).catch(err => console.log('Lead submit error:', err));
     
     document.getElementById('quoteForm').style.display = 'none';
     document.getElementById('quoteSuccess').style.display = 'block';
