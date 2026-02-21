@@ -221,8 +221,6 @@
             flex-direction: column;
             gap: 1.5rem;
             overflow-y: auto;
-            border: 3px solid red; /* DEBUG */
-            min-height: 200px; /* DEBUG */
         }
         
         .provider-card {
@@ -663,11 +661,14 @@
             });
         }
         
+        // Store the filtered local providers for this city/state
+        let localProvidersList = [];
+        
         function updateCardListFromMap() {
-            if (!map || !providers.length) return;
+            if (!map || !localProvidersList.length) return;
             
             const bounds = map.getBounds();
-            const visibleProviders = providers.filter(p => {
+            const visibleProviders = localProvidersList.filter(p => {
                 if (!p.lat || !p.lng) return false;
                 return bounds.contains([p.lat, p.lng]);
             });
@@ -678,12 +679,13 @@
                 return (b.reviewCount || 0) - (a.reviewCount || 0);
             });
             
-            renderProviderCards(visibleProviders.slice(0, 100));
+            // Always show at least the local providers, even if map bounds are off
+            const toShow = visibleProviders.length > 0 ? visibleProviders : localProvidersList;
+            renderProviderCards(toShow.slice(0, 100));
         }
         
         function renderProviderCards(providerList) {
             const container = document.getElementById('results-container');
-            console.log('[DEBUG] results-container found:', !!container);
             if (!container) return;
             
             if (providerList.length === 0) {
@@ -696,11 +698,7 @@
                 return;
             }
             
-            const html = providerList.map(p => renderProviderCard(p)).join('');
-            console.log('[DEBUG] Generated HTML length:', html.length);
-            console.log('[DEBUG] First 500 chars:', html.substring(0, 500));
-            container.innerHTML = html;
-            console.log('[DEBUG] Container children after render:', container.children.length);
+            container.innerHTML = providerList.map(p => renderProviderCard(p)).join('');
         }
         
         function renderProviderCard(p) {
@@ -856,15 +854,11 @@
         
         // Initialize
         async function init() {
-            console.log('[DEBUG] init() starting');
             cityConfig = parseCityFromUrl();
-            console.log('[DEBUG] cityConfig:', cityConfig);
             updatePageContent();
             initMap();
             
-            console.log('[DEBUG] Loading providers...');
             await loadProviders();
-            console.log('[DEBUG] Loaded providers:', providers.length);
             
             // Get coordinates if not provided
             if (!cityConfig.lat || !cityConfig.lng) {
@@ -878,14 +872,10 @@
             // Filter and display
             let localProviders;
             if (cityConfig.city) {
-                console.log('[DEBUG] Filtering by city:', cityConfig.city, cityConfig.state);
                 localProviders = filterProvidersByCity(cityConfig.city, cityConfig.state);
-                console.log('[DEBUG] City filter result:', localProviders.length);
                 // If no exact match, widen to state
                 if (localProviders.length < 5) {
-                    console.log('[DEBUG] Widening to state filter');
                     localProviders = filterProvidersByState(cityConfig.state);
-                    console.log('[DEBUG] State filter result:', localProviders.length);
                 }
             } else if (cityConfig.state) {
                 localProviders = filterProvidersByState(cityConfig.state);
@@ -893,15 +883,15 @@
                 localProviders = providers;
             }
             
-            console.log('[DEBUG] Final localProviders:', localProviders.length);
+            // Store for updateCardListFromMap to use
+            localProvidersList = localProviders;
+            
             updateStats(localProviders);
             addMarkersToMap(localProviders);
             generateNearbyCities(localProviders);
             
             // Render initial cards
-            console.log('[DEBUG] Calling renderProviderCards with', localProviders.slice(0, 100).length, 'providers');
             renderProviderCards(localProviders.slice(0, 100));
-            console.log('[DEBUG] renderProviderCards complete');
             
             // Zoom to city
             if (cityConfig.lat && cityConfig.lng) {
