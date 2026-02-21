@@ -646,6 +646,55 @@
                 chunkDelay: 10
             });
             map.addLayer(markers);
+            
+            // Update card list when map moves
+            map.on('moveend', updateCardListFromMap);
+        }
+        
+        // Filter cards to show only providers visible in current map bounds
+        function updateCardListFromMap() {
+            if (!map || !allMapProviders.length) return;
+            
+            const bounds = map.getBounds();
+            const visibleProviders = allMapProviders.filter(p => {
+                if (!p.lat || !p.lng) return false;
+                return bounds.contains([p.lat, p.lng]);
+            });
+            
+            // Sort by rating, then reviews
+            visibleProviders.sort((a, b) => {
+                const ratingDiff = (b.rating || 0) - (a.rating || 0);
+                if (ratingDiff !== 0) return ratingDiff;
+                return (b.reviewCount || 0) - (a.reviewCount || 0);
+            });
+            
+            // Update the card list (max 100 for performance)
+            const displayList = visibleProviders.slice(0, 100);
+            renderProviderCards(displayList);
+            
+            // Update count
+            const countEl = document.getElementById('results-count');
+            if (countEl) {
+                countEl.textContent = `${visibleProviders.length.toLocaleString()} providers in view`;
+            }
+        }
+        
+        // Render just the provider cards (without re-loading map)
+        function renderProviderCards(providerList) {
+            const container = document.getElementById('results-container');
+            if (!container) return;
+            
+            if (providerList.length === 0) {
+                container.innerHTML = `
+                    <div class="no-results">
+                        <h3>No providers in this area</h3>
+                        <p>Try zooming out or panning to a different location.</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            container.innerHTML = providerList.map(p => renderProviderCard(p)).join('');
         }
         
         // Load ALL providers onto the map
@@ -682,13 +731,20 @@
         async function navigateToLocation(query) {
             if (!query) return;
             
+            // For ZIP codes, add "USA" for better geocoding
+            let searchQuery = query;
+            if (/^\d{5}$/.test(query.trim())) {
+                searchQuery = query + ', USA';
+            }
+            
             try {
-                const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&countrycodes=us&limit=1`);
+                const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}&countrycodes=us&limit=1`);
                 const data = await response.json();
                 if (data.length > 0) {
                     const lat = parseFloat(data[0].lat);
                     const lng = parseFloat(data[0].lon);
-                    map.setView([lat, lng], 10);
+                    // Zoom level 11 for ZIP codes, good balance of detail
+                    map.setView([lat, lng], 11);
                 }
             } catch (e) {
                 console.error('Geocoding error:', e);
@@ -698,18 +754,19 @@
         // Override renderResults to load ALL providers on map, then navigate
         const originalRenderResults = renderResults;
         renderResults = function(providerList) {
-            originalRenderResults(providerList);
-            
-            // Load ALL providers (not just displayed ones)
+            // Load ALL providers on the map
             if (typeof providers !== 'undefined' && providers.length > 0) {
                 loadAllMarkersOnMap(providers);
             } else {
                 loadAllMarkersOnMap(providerList);
             }
             
-            // Navigate to searched location if provided
+            // Navigate to searched location if provided, then cards will update via moveend
             if (window.searchLocation) {
                 navigateToLocation(window.searchLocation);
+            } else {
+                // No search, show initial cards
+                originalRenderResults(providerList);
             }
         };
         
