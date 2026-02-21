@@ -79,7 +79,7 @@ function getProviderImage(provider) {
     return null;
 }
 
-// Render provider card - NO direct contact, use quote form
+// Render provider card - Clickable to provider detail page
 function renderProviderCard(provider) {
     const image = getProviderImage(provider);
     const reviewCount = provider.reviewCount || 0;
@@ -111,9 +111,12 @@ function renderProviderCard(provider) {
     // Format category for display
     const categoryDisplay = provider.category ? provider.category.replace(' service', '').replace(' contractor', '') : '';
     
+    // Provider detail page URL
+    const providerUrl = `provider.html?id=${encodeURIComponent(provider.id)}&slug=${encodeURIComponent(provider.slug || '')}`;
+    
     return `
         <div class="provider-card" data-id="${provider.id}" data-category="${provider.category || ''}">
-            <div class="provider-header">
+            <a href="${providerUrl}" class="provider-header provider-link">
                 <div class="provider-image-container">
                     ${imageHtml}
                 </div>
@@ -124,11 +127,14 @@ function renderProviderCard(provider) {
                     ${ratingHtml}
                     ${badges.length ? `<div class="provider-badges">${badges.join('')}</div>` : ''}
                 </div>
-            </div>
+            </a>
             <div class="provider-body">
                 <div class="provider-actions">
-                    <button class="btn btn-primary btn-quote" onclick='openQuoteModal(${providerData})'>
-                        Get Free Quote →
+                    <a href="${providerUrl}" class="btn btn-secondary" style="flex:1;text-align:center;">
+                        View Details
+                    </a>
+                    <button class="btn btn-primary btn-quote" onclick='event.stopPropagation();openQuoteModal(${providerData})' style="flex:1;">
+                        Get Quote →
                     </button>
                 </div>
             </div>

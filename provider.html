@@ -1,0 +1,889 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title id="page-title">Provider Details | DumpsterMap</title>
+    <meta name="description" id="meta-desc" content="Get a free quote from this dumpster rental provider.">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        :root {
+            --primary: #2563eb;
+            --primary-dark: #1d4ed8;
+            --secondary: #059669;
+            --accent: #f59e0b;
+            --text: #1f2937;
+            --text-light: #6b7280;
+            --bg: #ffffff;
+            --bg-light: #f9fafb;
+            --border: #e5e7eb;
+        }
+        
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            color: var(--text);
+            line-height: 1.6;
+            background: var(--bg-light);
+        }
+        
+        /* Header */
+        header {
+            background: var(--bg);
+            border-bottom: 1px solid var(--border);
+            padding: 1rem 2rem;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        
+        .header-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .logo {
+            font-size: 1.5rem;
+            font-weight: 800;
+            color: var(--primary);
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .logo-icon {
+            width: 40px;
+            height: 40px;
+            background: var(--primary);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 1.2rem;
+        }
+        
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            font-weight: 600;
+            text-decoration: none;
+            transition: all 0.2s;
+            cursor: pointer;
+            border: none;
+            font-size: 1rem;
+        }
+        
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-primary:hover { background: var(--primary-dark); }
+        .btn-secondary { background: var(--bg-light); color: var(--text); border: 1px solid var(--border); }
+        .btn-secondary:hover { background: var(--border); }
+        .btn-success { background: var(--secondary); color: white; }
+        .btn-success:hover { background: #047857; }
+        
+        /* Breadcrumbs */
+        .breadcrumbs {
+            max-width: 1200px;
+            margin: 1rem auto;
+            padding: 0 2rem;
+            font-size: 0.875rem;
+            color: var(--text-light);
+        }
+        .breadcrumbs a { color: var(--primary); text-decoration: none; }
+        .breadcrumbs a:hover { text-decoration: underline; }
+        
+        /* Main Content */
+        .main-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 2rem 2rem;
+            display: grid;
+            grid-template-columns: 1fr 380px;
+            gap: 2rem;
+        }
+        
+        /* Provider Info */
+        .provider-main {
+            background: white;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+        
+        /* Photo Gallery */
+        .photo-gallery {
+            position: relative;
+            background: #111;
+        }
+        
+        .main-photo {
+            width: 100%;
+            height: 400px;
+            object-fit: cover;
+            display: block;
+        }
+        
+        .photo-fallback {
+            width: 100%;
+            height: 400px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 6rem;
+            font-weight: 700;
+        }
+        
+        .photo-thumbnails {
+            display: flex;
+            gap: 0.5rem;
+            padding: 0.5rem;
+            background: #000;
+            overflow-x: auto;
+        }
+        
+        .photo-thumb {
+            width: 80px;
+            height: 60px;
+            object-fit: cover;
+            border-radius: 4px;
+            cursor: pointer;
+            border: 2px solid transparent;
+            transition: border-color 0.2s;
+        }
+        
+        .photo-thumb.active, .photo-thumb:hover {
+            border-color: white;
+        }
+        
+        .photo-count {
+            position: absolute;
+            bottom: 70px;
+            right: 1rem;
+            background: rgba(0,0,0,0.7);
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-size: 0.875rem;
+        }
+        
+        /* Provider Details */
+        .provider-details {
+            padding: 2rem;
+        }
+        
+        .provider-header-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 1.5rem;
+        }
+        
+        .provider-name {
+            font-size: 2rem;
+            font-weight: 800;
+            margin-bottom: 0.5rem;
+        }
+        
+        .provider-category {
+            font-size: 0.875rem;
+            color: white;
+            background: var(--primary);
+            padding: 0.25rem 0.75rem;
+            border-radius: 4px;
+            display: inline-block;
+            margin-bottom: 0.5rem;
+        }
+        
+        .provider-location {
+            color: var(--text-light);
+            font-size: 1.1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .rating-block {
+            text-align: right;
+        }
+        
+        .rating-big {
+            font-size: 3rem;
+            font-weight: 800;
+            color: var(--accent);
+        }
+        
+        .rating-stars {
+            color: var(--accent);
+            font-size: 1.25rem;
+        }
+        
+        .review-count {
+            color: var(--text-light);
+            font-size: 0.875rem;
+        }
+        
+        /* Info Grid */
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1rem;
+            margin-bottom: 2rem;
+            padding: 1.5rem;
+            background: var(--bg-light);
+            border-radius: 12px;
+        }
+        
+        .info-item {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+        
+        .info-icon {
+            width: 40px;
+            height: 40px;
+            background: white;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.25rem;
+        }
+        
+        .info-item span { font-weight: 500; }
+        
+        /* Map */
+        .provider-map {
+            height: 300px;
+            border-radius: 12px;
+            margin-bottom: 1.5rem;
+        }
+        
+        /* External Links */
+        .external-links {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+        
+        .external-link {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.75rem 1rem;
+            background: var(--bg-light);
+            border-radius: 8px;
+            text-decoration: none;
+            color: var(--text);
+            font-weight: 500;
+            transition: background 0.2s;
+        }
+        
+        .external-link:hover { background: var(--border); }
+        
+        /* Quote Sidebar */
+        .quote-sidebar {
+            position: sticky;
+            top: 100px;
+            height: fit-content;
+        }
+        
+        .quote-card {
+            background: white;
+            border-radius: 16px;
+            padding: 2rem;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        
+        .quote-card h3 {
+            font-size: 1.5rem;
+            margin-bottom: 0.5rem;
+            text-align: center;
+        }
+        
+        .quote-card .subtitle {
+            text-align: center;
+            color: var(--text-light);
+            margin-bottom: 1.5rem;
+        }
+        
+        .form-group {
+            margin-bottom: 1rem;
+        }
+        
+        .form-group label {
+            display: block;
+            font-weight: 500;
+            margin-bottom: 0.5rem;
+            font-size: 0.875rem;
+        }
+        
+        .form-group input, .form-group select, .form-group textarea {
+            width: 100%;
+            padding: 0.75rem;
+            border: 2px solid var(--border);
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: border-color 0.2s;
+        }
+        
+        .form-group input:focus, .form-group select:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+        
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.75rem;
+        }
+        
+        .submit-btn {
+            width: 100%;
+            padding: 1rem;
+            background: var(--secondary);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 1.1rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        
+        .submit-btn:hover { background: #047857; }
+        
+        .form-note {
+            text-align: center;
+            font-size: 0.75rem;
+            color: var(--text-light);
+            margin-top: 1rem;
+        }
+        
+        .trust-badges {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+            margin-top: 1.5rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid var(--border);
+        }
+        
+        .trust-badge {
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+            font-size: 0.75rem;
+            color: var(--text-light);
+        }
+        
+        .success-message {
+            text-align: center;
+            padding: 2rem;
+        }
+        
+        .success-message .checkmark {
+            width: 80px;
+            height: 80px;
+            background: var(--secondary);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 1rem;
+            font-size: 2.5rem;
+            color: white;
+        }
+        
+        .nearby-providers {
+            margin-top: 2rem;
+            background: white;
+            border-radius: 16px;
+            padding: 1.5rem;
+        }
+        
+        .nearby-providers h4 { margin-bottom: 1rem; }
+        
+        .nearby-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.75rem 0;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .nearby-item:last-child { border-bottom: none; }
+        
+        /* Lightbox */
+        .lightbox {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.95);
+            z-index: 10000;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .lightbox.active { display: flex; }
+        
+        .lightbox img {
+            max-width: 90vw;
+            max-height: 90vh;
+            object-fit: contain;
+        }
+        
+        .lightbox-close {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            background: none;
+            border: none;
+            color: white;
+            font-size: 2rem;
+            cursor: pointer;
+        }
+        
+        .lightbox-nav {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            background: rgba(255,255,255,0.2);
+            border: none;
+            color: white;
+            font-size: 2rem;
+            padding: 1rem;
+            cursor: pointer;
+        }
+        
+        .lightbox-prev { left: 1rem; }
+        .lightbox-next { right: 1rem; }
+        
+        /* Responsive */
+        @media (max-width: 968px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+            
+            .quote-sidebar {
+                position: static;
+            }
+            
+            .main-photo { height: 300px; }
+            .photo-fallback { height: 300px; font-size: 4rem; }
+            
+            .info-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header>
+        <div class="header-content">
+            <a href="index.html" class="logo">
+                <div class="logo-icon">🗑️</div>
+                DumpsterMap
+            </a>
+            <a href="results.html" class="btn btn-secondary">← Back to Results</a>
+        </div>
+    </header>
+
+    <!-- Breadcrumbs -->
+    <nav class="breadcrumbs" id="breadcrumbs">
+        <a href="index.html">Home</a> / <a href="results.html">Providers</a> / <span id="bc-name">Loading...</span>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <!-- Provider Info -->
+        <article class="provider-main">
+            <!-- Photo Gallery -->
+            <div class="photo-gallery" id="photoGallery">
+                <div class="photo-fallback" id="mainPhotoFallback">?</div>
+                <span class="photo-count" id="photoCount">0 photos</span>
+            </div>
+            
+            <!-- Provider Details -->
+            <div class="provider-details">
+                <div class="provider-header-info">
+                    <div>
+                        <span class="provider-category" id="providerCategory">Dumpster Rental</span>
+                        <h1 class="provider-name" id="providerName">Loading...</h1>
+                        <p class="provider-location" id="providerLocation">📍 Loading...</p>
+                    </div>
+                    <div class="rating-block" id="ratingBlock">
+                        <div class="rating-big" id="ratingBig">--</div>
+                        <div class="rating-stars" id="ratingStars">☆☆☆☆☆</div>
+                        <div class="review-count" id="reviewCount">No reviews yet</div>
+                    </div>
+                </div>
+                
+                <div class="info-grid">
+                    <div class="info-item">
+                        <div class="info-icon">📍</div>
+                        <span id="infoAddress">--</span>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-icon">🏙️</div>
+                        <span id="infoCity">--</span>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-icon">📞</div>
+                        <span id="infoPhone">--</span>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-icon">🌐</div>
+                        <span id="infoWebsite">--</span>
+                    </div>
+                </div>
+                
+                <!-- Map -->
+                <div id="providerMap" class="provider-map"></div>
+                
+                <!-- External Links -->
+                <div class="external-links">
+                    <a href="#" class="external-link" id="linkGoogleMaps" target="_blank">
+                        📍 View on Google Maps
+                    </a>
+                    <a href="#" class="external-link" id="linkReviews" target="_blank" style="display:none;">
+                        ⭐ Read Reviews
+                    </a>
+                    <a href="#" class="external-link" id="linkWebsite" target="_blank" style="display:none;">
+                        🌐 Visit Website
+                    </a>
+                </div>
+            </div>
+        </article>
+        
+        <!-- Quote Sidebar -->
+        <aside class="quote-sidebar">
+            <div class="quote-card">
+                <h3>🚛 Get Your Free Quote</h3>
+                <p class="subtitle">No obligation • Fast response</p>
+                
+                <form id="quoteForm" onsubmit="submitQuote(event)">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>First Name *</label>
+                            <input type="text" name="firstName" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Last Name *</label>
+                            <input type="text" name="lastName" required>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Phone *</label>
+                        <input type="tel" name="phone" required placeholder="(555) 123-4567">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Email *</label>
+                        <input type="email" name="email" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Delivery ZIP Code *</label>
+                        <input type="text" name="zip" required pattern="[0-9]{5}" maxlength="5" id="formZip">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Dumpster Size</label>
+                        <select name="size">
+                            <option value="">Not sure yet</option>
+                            <option value="10">10 Yard - Small cleanout</option>
+                            <option value="20">20 Yard - Multi-room / roofing</option>
+                            <option value="30">30 Yard - Large renovation</option>
+                            <option value="40">40 Yard - Construction / demo</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Project Type</label>
+                        <select name="projectType">
+                            <option value="">Select one...</option>
+                            <option value="cleanout">Home cleanout</option>
+                            <option value="renovation">Renovation / remodel</option>
+                            <option value="roofing">Roofing</option>
+                            <option value="construction">New construction</option>
+                            <option value="demolition">Demolition</option>
+                            <option value="landscaping">Landscaping / yard waste</option>
+                            <option value="moving">Moving</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>When do you need it?</label>
+                        <select name="timeline">
+                            <option value="asap">ASAP / This week</option>
+                            <option value="next-week">Next week</option>
+                            <option value="2-weeks">Within 2 weeks</option>
+                            <option value="planning">Just planning ahead</option>
+                        </select>
+                    </div>
+                    
+                    <input type="hidden" name="providerId" id="formProviderId">
+                    <input type="hidden" name="providerName" id="formProviderName">
+                    
+                    <button type="submit" class="submit-btn">Get My Free Quote →</button>
+                    <p class="form-note">🔒 Your info is secure. Provider contacts you directly.</p>
+                </form>
+                
+                <div class="success-message" id="quoteSuccess" style="display:none;">
+                    <div class="checkmark">✓</div>
+                    <h3>Quote Request Sent!</h3>
+                    <p>The provider will contact you shortly.</p>
+                    <button class="btn btn-secondary" onclick="window.location.href='results.html'" style="margin-top:1rem;">
+                        Find More Providers
+                    </button>
+                </div>
+                
+                <div class="trust-badges">
+                    <span class="trust-badge">✓ Free quotes</span>
+                    <span class="trust-badge">✓ No spam</span>
+                    <span class="trust-badge">✓ Verified providers</span>
+                </div>
+            </div>
+        </aside>
+    </main>
+    
+    <!-- Lightbox -->
+    <div class="lightbox" id="lightbox">
+        <button class="lightbox-close" onclick="closeLightbox()">×</button>
+        <button class="lightbox-nav lightbox-prev" onclick="prevPhoto()">‹</button>
+        <img id="lightboxImg" src="" alt="Provider photo">
+        <button class="lightbox-nav lightbox-next" onclick="nextPhoto()">›</button>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        let provider = null;
+        let photos = [];
+        let currentPhotoIndex = 0;
+        let map = null;
+        
+        async function loadProvider() {
+            // Get provider ID from URL
+            const params = new URLSearchParams(window.location.search);
+            const providerId = params.get('id');
+            const providerSlug = params.get('slug');
+            
+            if (!providerId && !providerSlug) {
+                document.getElementById('providerName').textContent = 'Provider not found';
+                return;
+            }
+            
+            try {
+                const response = await fetch('data/providers.json');
+                const data = await response.json();
+                const providers = data.providers;
+                
+                // Find provider by ID or slug
+                provider = providers.find(p => 
+                    p.id === providerId || 
+                    p.slug === providerSlug ||
+                    p.slug === decodeURIComponent(providerSlug)
+                );
+                
+                if (!provider) {
+                    document.getElementById('providerName').textContent = 'Provider not found';
+                    return;
+                }
+                
+                renderProvider();
+            } catch (error) {
+                console.error('Error loading provider:', error);
+                document.getElementById('providerName').textContent = 'Error loading provider';
+            }
+        }
+        
+        function renderProvider() {
+            // Update page title and meta
+            document.getElementById('page-title').textContent = `${provider.name} - Dumpster Rental in ${provider.city}, ${provider.state} | DumpsterMap`;
+            document.getElementById('meta-desc').setAttribute('content', 
+                `Get a free quote from ${provider.name} in ${provider.city}, ${provider.state}. ${provider.rating ? `Rated ${provider.rating} stars` : 'Local dumpster rental provider'}.`
+            );
+            
+            // Breadcrumbs
+            document.getElementById('bc-name').textContent = provider.name;
+            
+            // Basic info
+            document.getElementById('providerName').textContent = provider.name;
+            document.getElementById('providerLocation').innerHTML = `📍 ${provider.city}, ${provider.state} ${provider.zip || ''}`;
+            document.getElementById('providerCategory').textContent = provider.category || 'Dumpster Rental Service';
+            
+            // Photo gallery
+            photos = [];
+            if (provider.photo) photos.push(provider.photo);
+            if (provider.logo && provider.logo !== provider.photo) photos.push(provider.logo);
+            
+            const gallery = document.getElementById('photoGallery');
+            const fallback = document.getElementById('mainPhotoFallback');
+            
+            if (photos.length > 0) {
+                fallback.style.display = 'none';
+                gallery.innerHTML = `
+                    <img src="${photos[0]}" alt="${provider.name}" class="main-photo" id="mainPhoto" onclick="openLightbox(0)" onerror="this.style.display='none'">
+                    ${photos.length > 1 ? `
+                        <div class="photo-thumbnails">
+                            ${photos.map((p, i) => `
+                                <img src="${p}" class="photo-thumb ${i === 0 ? 'active' : ''}" onclick="switchPhoto(${i})" onerror="this.style.display='none'">
+                            `).join('')}
+                        </div>
+                    ` : ''}
+                    <span class="photo-count">${photos.length} photo${photos.length > 1 ? 's' : ''}</span>
+                `;
+            } else {
+                fallback.textContent = (provider.name || '?').charAt(0);
+            }
+            
+            // Rating
+            const hasValidRating = provider.reviewCount && provider.reviewCount > 0 && provider.rating;
+            if (hasValidRating) {
+                document.getElementById('ratingBig').textContent = provider.rating.toFixed(1);
+                document.getElementById('ratingStars').textContent = getStars(provider.rating);
+                document.getElementById('reviewCount').textContent = `${provider.reviewCount.toLocaleString()} reviews`;
+            } else {
+                document.getElementById('ratingBig').textContent = 'New';
+                document.getElementById('ratingBig').style.fontSize = '1.5rem';
+                document.getElementById('ratingStars').textContent = '';
+                document.getElementById('reviewCount').textContent = 'No reviews yet';
+            }
+            
+            // Info grid
+            document.getElementById('infoAddress').textContent = provider.address || `${provider.city}, ${provider.state}`;
+            document.getElementById('infoCity').textContent = `${provider.city}, ${provider.state}`;
+            document.getElementById('infoPhone').textContent = provider.phone || 'Request quote for contact';
+            document.getElementById('infoWebsite').textContent = provider.website ? 'Website available' : 'Request quote';
+            
+            // External links
+            if (provider.googleMapsLink) {
+                document.getElementById('linkGoogleMaps').href = provider.googleMapsLink;
+                document.getElementById('linkGoogleMaps').style.display = 'flex';
+            }
+            
+            if (provider.reviewsLink) {
+                document.getElementById('linkReviews').href = provider.reviewsLink;
+                document.getElementById('linkReviews').style.display = 'flex';
+            }
+            
+            if (provider.website) {
+                document.getElementById('linkWebsite').href = provider.website;
+                document.getElementById('linkWebsite').style.display = 'flex';
+            }
+            
+            // Form
+            document.getElementById('formProviderId').value = provider.id;
+            document.getElementById('formProviderName').value = provider.name;
+            if (provider.zip) {
+                document.getElementById('formZip').value = provider.zip;
+            }
+            
+            // Map
+            initMap();
+        }
+        
+        function getStars(rating) {
+            const full = Math.floor(rating);
+            const hasHalf = rating % 1 >= 0.5;
+            let stars = '★'.repeat(full);
+            if (hasHalf) stars += '½';
+            stars += '☆'.repeat(5 - full - (hasHalf ? 1 : 0));
+            return stars;
+        }
+        
+        function initMap() {
+            if (!provider.lat || !provider.lng) {
+                document.getElementById('providerMap').innerHTML = '<div style="padding:2rem;text-align:center;color:#6b7280;">Map not available</div>';
+                return;
+            }
+            
+            map = L.map('providerMap').setView([provider.lat, provider.lng], 14);
+            
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+                attribution: '© OpenStreetMap © CARTO'
+            }).addTo(map);
+            
+            const icon = L.divIcon({
+                html: `<div style="background:var(--primary);border:3px solid white;border-radius:50%;width:24px;height:24px;box-shadow:0 2px 8px rgba(0,0,0,0.3);"></div>`,
+                className: '',
+                iconSize: [24, 24],
+                iconAnchor: [12, 12]
+            });
+            
+            L.marker([provider.lat, provider.lng], { icon }).addTo(map)
+                .bindPopup(`<strong>${provider.name}</strong><br>${provider.address || ''}`);
+        }
+        
+        function switchPhoto(index) {
+            currentPhotoIndex = index;
+            document.getElementById('mainPhoto').src = photos[index];
+            document.querySelectorAll('.photo-thumb').forEach((t, i) => {
+                t.classList.toggle('active', i === index);
+            });
+        }
+        
+        function openLightbox(index) {
+            currentPhotoIndex = index;
+            document.getElementById('lightboxImg').src = photos[index];
+            document.getElementById('lightbox').classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
+        
+        function closeLightbox() {
+            document.getElementById('lightbox').classList.remove('active');
+            document.body.style.overflow = '';
+        }
+        
+        function prevPhoto() {
+            currentPhotoIndex = (currentPhotoIndex - 1 + photos.length) % photos.length;
+            document.getElementById('lightboxImg').src = photos[currentPhotoIndex];
+        }
+        
+        function nextPhoto() {
+            currentPhotoIndex = (currentPhotoIndex + 1) % photos.length;
+            document.getElementById('lightboxImg').src = photos[currentPhotoIndex];
+        }
+        
+        function submitQuote(e) {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            const data = Object.fromEntries(formData);
+            
+            // Log the lead
+            console.log('=== LEAD CAPTURED ===', data);
+            
+            // TODO: Send to backend API
+            // fetch('/api/leads', { method: 'POST', body: JSON.stringify(data) });
+            
+            // Show success
+            document.getElementById('quoteForm').style.display = 'none';
+            document.getElementById('quoteSuccess').style.display = 'block';
+        }
+        
+        // Keyboard navigation for lightbox
+        document.addEventListener('keydown', (e) => {
+            if (!document.getElementById('lightbox').classList.contains('active')) return;
+            if (e.key === 'Escape') closeLightbox();
+            if (e.key === 'ArrowLeft') prevPhoto();
+            if (e.key === 'ArrowRight') nextPhoto();
+        });
+        
+        // Load on page load
+        document.addEventListener('DOMContentLoaded', loadProvider);
+    </script>
+</body>
+</html>
