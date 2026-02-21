@@ -1,0 +1,13 @@
+# DumpsterMap.io Robots
+User-agent: *
+Allow: /
+
+# Sitemaps
+Sitemap: https://dumpstermap.io/sitemap.xml
+
+# Crawl-delay for polite crawling
+Crawl-delay: 1
+
+# Block admin/API endpoints
+Disallow: /api/
+Disallow: /admin/
