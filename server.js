@@ -1168,7 +1168,8 @@ app.get('/api/health', (req, res) => {
     status: 'ok', 
     timestamp: new Date().toISOString(),
     database: !!db,
-    email: !!emailTransporter
+    email: useResend || !!emailTransporter,
+    emailProvider: useResend ? 'resend' : (emailTransporter ? 'smtp' : 'none')
   });
 });
 
