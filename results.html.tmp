@@ -1,0 +1,330 @@
+<!-- Quote Request Modal - Include in results.html -->
+<style>
+.modal-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0,0,0,0.6);
+    z-index: 9999;
+    align-items: center;
+    justify-content: center;
+}
+.modal-overlay.active {
+    display: flex;
+}
+.quote-modal {
+    background: white;
+    border-radius: 16px;
+    max-width: 500px;
+    width: 90%;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+}
+.modal-header {
+    padding: 1.5rem;
+    border-bottom: 1px solid #e5e7eb;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.modal-header h2 {
+    font-size: 1.25rem;
+    margin: 0;
+}
+.modal-close {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+    color: #6b7280;
+}
+.modal-body {
+    padding: 1.5rem;
+}
+.provider-preview {
+    display: flex;
+    gap: 1rem;
+    padding: 1rem;
+    background: #f9fafb;
+    border-radius: 8px;
+    margin-bottom: 1.5rem;
+}
+.provider-preview img {
+    width: 60px;
+    height: 60px;
+    border-radius: 8px;
+    object-fit: cover;
+}
+.provider-preview-info h3 {
+    font-size: 1rem;
+    margin: 0 0 0.25rem;
+}
+.provider-preview-info p {
+    color: #6b7280;
+    font-size: 0.875rem;
+    margin: 0;
+}
+.form-group {
+    margin-bottom: 1rem;
+}
+.form-group label {
+    display: block;
+    font-weight: 500;
+    margin-bottom: 0.5rem;
+    font-size: 0.875rem;
+}
+.form-group input,
+.form-group select,
+.form-group textarea {
+    width: 100%;
+    padding: 0.75rem;
+    border: 2px solid #e5e7eb;
+    border-radius: 8px;
+    font-size: 1rem;
+    transition: border-color 0.2s;
+}
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+    outline: none;
+    border-color: #2563eb;
+}
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+}
+.submit-btn {
+    width: 100%;
+    padding: 1rem;
+    background: #2563eb;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+.submit-btn:hover {
+    background: #1d4ed8;
+}
+.form-note {
+    text-align: center;
+    font-size: 0.75rem;
+    color: #6b7280;
+    margin-top: 1rem;
+}
+.success-message {
+    text-align: center;
+    padding: 2rem;
+}
+.success-message .checkmark {
+    width: 64px;
+    height: 64px;
+    background: #10b981;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 1rem;
+    font-size: 2rem;
+    color: white;
+}
+.success-message h3 {
+    margin: 0 0 0.5rem;
+}
+.success-message p {
+    color: #6b7280;
+}
+</style>
+
+<div class="modal-overlay" id="quoteModal">
+    <div class="quote-modal">
+        <div class="modal-header">
+            <h2>🚛 Get Your Free Quote</h2>
+            <button class="modal-close" onclick="closeQuoteModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="provider-preview" id="modalProviderPreview">
+                <!-- Filled by JS -->
+            </div>
+            
+            <form id="quoteForm" onsubmit="submitQuote(event)">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>First Name *</label>
+                        <input type="text" name="firstName" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Last Name *</label>
+                        <input type="text" name="lastName" required>
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Phone *</label>
+                        <input type="tel" name="phone" required placeholder="(555) 123-4567">
+                    </div>
+                    <div class="form-group">
+                        <label>Email *</label>
+                        <input type="email" name="email" required>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label>ZIP Code *</label>
+                    <input type="text" name="zip" required pattern="[0-9]{5}" maxlength="5">
+                </div>
+                
+                <div class="form-group">
+                    <label>Dumpster Size</label>
+                    <select name="size">
+                        <option value="">Not sure yet</option>
+                        <option value="10">10 Yard - Small cleanout</option>
+                        <option value="15">15 Yard - Single room reno</option>
+                        <option value="20">20 Yard - Multi-room / roofing</option>
+                        <option value="30">30 Yard - Large reno</option>
+                        <option value="40">40 Yard - Major construction</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label>Project Type</label>
+                    <select name="projectType">
+                        <option value="">Select type</option>
+                        <option value="home-cleanout">Home Cleanout</option>
+                        <option value="renovation">Renovation</option>
+                        <option value="roofing">Roofing</option>
+                        <option value="construction">Construction</option>
+                        <option value="demolition">Demolition</option>
+                        <option value="yard-waste">Yard Waste</option>
+                        <option value="other">Other</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label>When do you need it?</label>
+                    <select name="timeline">
+                        <option value="asap">ASAP / This week</option>
+                        <option value="next-week">Next week</option>
+                        <option value="2-weeks">Within 2 weeks</option>
+                        <option value="month">Within a month</option>
+                        <option value="planning">Just planning ahead</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label>Anything else we should know?</label>
+                    <textarea name="notes" rows="2" placeholder="Access issues, specific materials, etc."></textarea>
+                </div>
+                
+                <input type="hidden" name="providerId" id="quoteProviderId">
+                <input type="hidden" name="providerName" id="quoteProviderName">
+                
+                <button type="submit" class="submit-btn">Get My Free Quote →</button>
+                
+                <p class="form-note">
+                    🔒 Your info is secure. The provider will contact you directly.
+                    <br>By submitting, you agree to our Terms of Service.
+                </p>
+            </form>
+            
+            <div class="success-message" id="quoteSuccess" style="display:none;">
+                <div class="checkmark">✓</div>
+                <h3>Quote Request Sent!</h3>
+                <p>The provider will contact you shortly.<br>Check your phone and email.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let currentProvider = null;
+
+function openQuoteModal(provider) {
+    currentProvider = provider;
+    
+    // Fill provider preview
+    const preview = document.getElementById('modalProviderPreview');
+    const rating = provider.rating || 0;
+    const stars = '⭐'.repeat(Math.min(5, Math.round(rating)));
+    
+    preview.innerHTML = `
+        ${provider.photo ? `<img src="${provider.photo}" alt="${provider.name}">` : ''}
+        <div class="provider-preview-info">
+            <h3>${provider.name}</h3>
+            <p>📍 ${provider.city}, ${provider.state}</p>
+            <p>${stars} ${rating.toFixed(1)} (${provider.reviewCount || 0} reviews)</p>
+        </div>
+    `;
+    
+    // Set hidden fields
+    document.getElementById('quoteProviderId').value = provider.id;
+    document.getElementById('quoteProviderName').value = provider.name;
+    
+    // Pre-fill ZIP if we have it
+    const urlParams = new URLSearchParams(window.location.search);
+    const zip = urlParams.get('location');
+    if (zip && /^\d{5}$/.test(zip)) {
+        document.querySelector('input[name="zip"]').value = zip;
+    }
+    
+    // Show modal
+    document.getElementById('quoteModal').classList.add('active');
+    document.body.style.overflow = 'hidden';
+    
+    // Reset form state
+    document.getElementById('quoteForm').style.display = 'block';
+    document.getElementById('quoteSuccess').style.display = 'none';
+}
+
+function closeQuoteModal() {
+    document.getElementById('quoteModal').classList.remove('active');
+    document.body.style.overflow = '';
+}
+
+function submitQuote(e) {
+    e.preventDefault();
+    
+    const form = e.target;
+    const formData = new FormData(form);
+    const data = Object.fromEntries(formData);
+    
+    // Log the lead (in production, send to your backend)
+    console.log('=== LEAD CAPTURED ===', data);
+    
+    // TODO: Send to backend API
+    // fetch('/api/leads', { method: 'POST', body: JSON.stringify(data) });
+    
+    // Show success
+    document.getElementById('quoteForm').style.display = 'none';
+    document.getElementById('quoteSuccess').style.display = 'block';
+    
+    // Close after 3 seconds
+    setTimeout(() => {
+        closeQuoteModal();
+        // Reset form for next use
+        form.reset();
+        document.getElementById('quoteForm').style.display = 'block';
+        document.getElementById('quoteSuccess').style.display = 'none';
+    }, 3000);
+}
+
+// Close on overlay click
+document.getElementById('quoteModal').addEventListener('click', (e) => {
+    if (e.target === document.getElementById('quoteModal')) {
+        closeQuoteModal();
+    }
+});
+
+// Close on Escape key
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closeQuoteModal();
+});
+</script>

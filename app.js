@@ -79,7 +79,7 @@ function getProviderImage(provider) {
     return null;
 }
 
-// Render provider card with REAL data
+// Render provider card - NO direct contact, use quote form
 function renderProviderCard(provider) {
     const image = getProviderImage(provider);
     const rating = provider.rating || 0;
@@ -98,17 +98,13 @@ function renderProviderCard(provider) {
            </div>`
         : `<div class="provider-rating"><span class="no-rating">No reviews yet</span></div>`;
     
-    const phoneHtml = provider.phone 
-        ? `<a href="tel:${provider.phone}" class="btn btn-primary">📞 Call Now</a>`
-        : '';
+    // Badges based on rating/reviews
+    const badges = [];
+    if (rating >= 4.8 && reviewCount >= 50) badges.push('<span class="badge badge-top">⭐ Top Rated</span>');
+    if (reviewCount >= 100) badges.push('<span class="badge badge-popular">🔥 Popular</span>');
     
-    const websiteHtml = provider.website 
-        ? `<a href="${provider.website}" target="_blank" class="btn btn-secondary">🌐 Website</a>`
-        : '';
-    
-    const reviewsLinkHtml = provider.reviewsLink
-        ? `<a href="${provider.reviewsLink}" target="_blank" class="reviews-link">See all reviews →</a>`
-        : '';
+    // Store provider data for quote form (JSON escaped)
+    const providerData = JSON.stringify(provider).replace(/'/g, "\\'").replace(/"/g, '&quot;');
     
     return `
         <div class="provider-card" data-id="${provider.id}">
@@ -117,17 +113,21 @@ function renderProviderCard(provider) {
                     ${imageHtml}
                 </div>
                 <div class="provider-info">
-                    <h3>${provider.name || 'Unknown Provider'}</h3>
+                    <h3>${provider.name || 'Local Provider'}</h3>
                     <div class="provider-location">📍 ${provider.city || ''}${provider.city && provider.state ? ', ' : ''}${provider.state || ''}</div>
                     ${ratingHtml}
-                    ${reviewsLinkHtml}
+                    ${badges.length ? `<div class="provider-badges">${badges.join('')}</div>` : ''}
                 </div>
             </div>
             <div class="provider-body">
-                ${provider.category ? `<div class="provider-category">${provider.category}</div>` : ''}
+                <div class="provider-features">
+                    <span class="feature">✓ Free quotes</span>
+                    <span class="feature">✓ Same-day available</span>
+                </div>
                 <div class="provider-actions">
-                    ${phoneHtml}
-                    ${websiteHtml}
+                    <button class="btn btn-primary btn-quote" onclick='openQuoteModal(${providerData})'>
+                        Get Free Quote →
+                    </button>
                 </div>
             </div>
         </div>
