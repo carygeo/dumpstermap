@@ -1122,7 +1122,17 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-app.use(express.static(path.join(__dirname), { extensions: ['html'] }));
+// Static files with caching
+app.use(express.static(path.join(__dirname), { 
+  extensions: ['html'],
+  maxAge: '1d',  // Cache static assets for 1 day
+  setHeaders: (res, filePath) => {
+    // Longer cache for immutable assets
+    if (filePath.endsWith('.json') && filePath.includes('/data/')) {
+      res.setHeader('Cache-Control', 'public, max-age=3600'); // 1 hour for data
+    }
+  }
+}));
 
 app.get('*', (req, res) => {
   const htmlPath = path.join(__dirname, req.path + '.html');
