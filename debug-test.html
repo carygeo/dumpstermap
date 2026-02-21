@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+<head><title>Debug Test</title></head>
+<body>
+<div id="results"></div>
+<script>
+(async function() {
+    const log = msg => {
+        document.getElementById('results').innerHTML += '<br>' + msg;
+        console.log(msg);
+    };
+    
+    log('Starting test...');
+    
+    try {
+        log('Fetching providers.json...');
+        const response = await fetch('data/providers.json');
+        log('Response status: ' + response.status);
+        
+        const data = await response.json();
+        log('Parsed JSON, providers count: ' + (data.providers ? data.providers.length : 'NO PROVIDERS KEY'));
+        
+        if (data.providers && data.providers.length > 0) {
+            const providers = data.providers;
+            log('First provider: ' + JSON.stringify({name: providers[0].name, city: providers[0].city}));
+            
+            // Filter for Dallas
+            const dallas = providers.filter(p => p.city === 'Dallas' && p.state === 'Texas');
+            log('Dallas, Texas providers: ' + dallas.length);
+        }
+    } catch (err) {
+        log('ERROR: ' + err.message);
+    }
+})();
+</script>
+</body>
+</html>
