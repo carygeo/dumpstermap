@@ -896,8 +896,8 @@
         async function init() {
             cityConfig = parseCityFromUrl();
             updatePageContent();
-            initMap();
             
+            // Load providers BEFORE initializing map to avoid race condition
             await loadProviders();
             
             // Get coordinates if not provided
@@ -925,6 +925,9 @@
             
             // Store for updateCardListFromMap to use
             localProvidersList = localProviders;
+            
+            // Initialize map AFTER providers are loaded and filtered
+            initMap();
             
             updateStats(localProviders);
             addMarkersToMap(localProviders);
