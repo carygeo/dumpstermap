@@ -222,6 +222,60 @@
             accent-color: var(--primary);
         }
         
+        .filter-summary {
+            font-size: 0.8rem;
+            color: var(--text-light);
+            margin-bottom: 1rem;
+            padding-bottom: 0.75rem;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .filter-count {
+            font-size: 0.75rem;
+            color: var(--text-light);
+            margin-left: auto;
+        }
+        
+        .filter-option {
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+        }
+        
+        .filter-option span:first-of-type {
+            flex: 1;
+        }
+        
+        .active-filters {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+        
+        .filter-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.25rem;
+            padding: 0.25rem 0.5rem;
+            background: var(--primary);
+            color: white;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+        
+        .filter-tag button {
+            background: none;
+            border: none;
+            color: white;
+            cursor: pointer;
+            font-size: 1rem;
+            line-height: 1;
+            padding: 0;
+            margin-left: 0.25rem;
+        }
+        
         .price-range {
             display: flex;
             gap: 0.5rem;
@@ -578,27 +632,9 @@
                         <option value="name">Name A-Z</option>
                     </select>
                 </div>
-                <div class="filter-group">
-                    <label>Category:</label>
-                    <select id="category-filter">
-                        <option value="all">All Types</option>
-                        <option value="Dumpster rental service">Dumpster Rental</option>
-                        <option value="Waste management service">Waste Management</option>
-                        <option value="Junk removal service">Junk Removal</option>
-                        <option value="Garbage collection service">Garbage Collection</option>
-                        <option value="Debris removal service">Debris Removal</option>
-                        <option value="Demolition contractor">Demolition</option>
-                    </select>
-                </div>
-                <div class="filter-group">
-                    <label>Rating:</label>
-                    <select id="rating-filter">
-                        <option value="all">Any Rating</option>
-                        <option value="4.5">4.5+ ⭐</option>
-                        <option value="4">4+ ⭐</option>
-                        <option value="3">3+ ⭐</option>
-                    </select>
-                </div>
+                <button class="btn btn-secondary" id="clear-filters-btn" style="display:none;">
+                    Clear Filters
+                </button>
             </div>
         </div>
     </div>
@@ -607,29 +643,33 @@
     <div class="main-content">
         <!-- Sidebar -->
         <aside class="sidebar">
-            <h3>Filter Results</h3>
+            <h3>🔍 Filter Results</h3>
+            <p class="filter-summary" id="filter-summary">Showing all providers</p>
             
             <div class="filter-section">
                 <h4>Service Type</h4>
                 <label class="filter-option">
-                    <input type="checkbox" data-category="Dumpster rental service" checked> Dumpster Rental
+                    <input type="checkbox" data-category="all" checked> <span>All Types</span> <span class="filter-count" id="count-all"></span>
                 </label>
                 <label class="filter-option">
-                    <input type="checkbox" data-category="Waste management service"> Waste Management
+                    <input type="checkbox" data-category="Dumpster rental service"> <span>Dumpster Rental</span> <span class="filter-count" id="count-dumpster"></span>
                 </label>
                 <label class="filter-option">
-                    <input type="checkbox" data-category="Junk removal service"> Junk Removal
+                    <input type="checkbox" data-category="Waste management service"> <span>Waste Management</span> <span class="filter-count" id="count-waste"></span>
                 </label>
                 <label class="filter-option">
-                    <input type="checkbox" data-category="Debris removal service"> Debris Removal
+                    <input type="checkbox" data-category="Garbage collection service"> <span>Garbage Collection</span> <span class="filter-count" id="count-garbage"></span>
                 </label>
                 <label class="filter-option">
-                    <input type="checkbox" data-category="Demolition contractor"> Demolition
+                    <input type="checkbox" data-category="Debris removal service"> <span>Debris Removal</span> <span class="filter-count" id="count-debris"></span>
+                </label>
+                <label class="filter-option">
+                    <input type="checkbox" data-category="Demolition contractor"> <span>Demolition</span> <span class="filter-count" id="count-demo"></span>
                 </label>
             </div>
             
             <div class="filter-section">
-                <h4>Minimum Rating</h4>
+                <h4>⭐ Minimum Rating</h4>
                 <label class="filter-option">
                     <input type="radio" name="min-rating" value="0" checked> Any rating
                 </label>
@@ -645,7 +685,7 @@
             </div>
             
             <div class="filter-section">
-                <h4>Reviews</h4>
+                <h4>💬 Minimum Reviews</h4>
                 <label class="filter-option">
                     <input type="radio" name="min-reviews" value="0" checked> Any
                 </label>
@@ -659,6 +699,17 @@
                     <input type="radio" name="min-reviews" value="100"> 100+ reviews
                 </label>
             </div>
+            
+            <div class="filter-section">
+                <h4>📸 Has Photo</h4>
+                <label class="filter-option">
+                    <input type="checkbox" id="filter-has-photo"> Only show providers with photos
+                </label>
+            </div>
+            
+            <button class="btn btn-secondary" id="reset-filters" style="width:100%;margin-top:1rem;">
+                Reset All Filters
+            </button>
         </aside>
 
         <!-- Results -->
@@ -754,22 +805,138 @@
             }
         }
         
-        // Filter cards to show only providers visible in current map bounds
+        // Current filter state
+        let currentFilters = {
+            categories: ['all'],
+            minRating: 0,
+            minReviews: 0,
+            hasPhoto: false,
+            sortBy: 'rating'
+        };
+        
+        // Get current filter values from DOM
+        function readFiltersFromDOM() {
+            // Categories
+            const allCheckbox = document.querySelector('input[data-category="all"]');
+            if (allCheckbox && allCheckbox.checked) {
+                currentFilters.categories = ['all'];
+            } else {
+                currentFilters.categories = Array.from(
+                    document.querySelectorAll('input[data-category]:checked')
+                ).map(el => el.dataset.category).filter(c => c !== 'all');
+            }
+            
+            // Rating
+            const ratingRadio = document.querySelector('input[name="min-rating"]:checked');
+            currentFilters.minRating = ratingRadio ? parseFloat(ratingRadio.value) || 0 : 0;
+            
+            // Reviews
+            const reviewsRadio = document.querySelector('input[name="min-reviews"]:checked');
+            currentFilters.minReviews = reviewsRadio ? parseInt(reviewsRadio.value) || 0 : 0;
+            
+            // Photo
+            const photoCheckbox = document.getElementById('filter-has-photo');
+            currentFilters.hasPhoto = photoCheckbox ? photoCheckbox.checked : false;
+            
+            // Sort
+            const sortSelect = document.getElementById('sort-select');
+            currentFilters.sortBy = sortSelect ? sortSelect.value : 'rating';
+        }
+        
+        // Apply filters to a list of providers
+        function applyFilters(providerList) {
+            return providerList.filter(p => {
+                // Category filter
+                if (!currentFilters.categories.includes('all') && currentFilters.categories.length > 0) {
+                    const pCat = (p.category || '').toLowerCase();
+                    const matchesCategory = currentFilters.categories.some(cat => 
+                        pCat.includes(cat.toLowerCase()) || cat.toLowerCase().includes(pCat)
+                    );
+                    if (!matchesCategory) return false;
+                }
+                
+                // Rating filter
+                if (currentFilters.minRating > 0) {
+                    if (!p.rating || p.rating < currentFilters.minRating) return false;
+                }
+                
+                // Reviews filter
+                if (currentFilters.minReviews > 0) {
+                    if (!p.reviewCount || p.reviewCount < currentFilters.minReviews) return false;
+                }
+                
+                // Photo filter
+                if (currentFilters.hasPhoto) {
+                    if (!p.photo && !p.logo) return false;
+                }
+                
+                return true;
+            });
+        }
+        
+        // Sort providers
+        function sortProvidersList(providerList) {
+            const sorted = [...providerList];
+            switch (currentFilters.sortBy) {
+                case 'rating':
+                    return sorted.sort((a, b) => (b.rating || 0) - (a.rating || 0));
+                case 'reviews':
+                    return sorted.sort((a, b) => (b.reviewCount || 0) - (a.reviewCount || 0));
+                case 'name':
+                    return sorted.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+                default:
+                    return sorted;
+            }
+        }
+        
+        // Update filter summary text
+        function updateFilterSummary(total, filtered) {
+            const summary = document.getElementById('filter-summary');
+            if (!summary) return;
+            
+            const activeFilters = [];
+            if (!currentFilters.categories.includes('all')) {
+                activeFilters.push(`${currentFilters.categories.length} types`);
+            }
+            if (currentFilters.minRating > 0) {
+                activeFilters.push(`${currentFilters.minRating}+ stars`);
+            }
+            if (currentFilters.minReviews > 0) {
+                activeFilters.push(`${currentFilters.minReviews}+ reviews`);
+            }
+            if (currentFilters.hasPhoto) {
+                activeFilters.push('with photos');
+            }
+            
+            if (activeFilters.length === 0) {
+                summary.textContent = `Showing ${filtered.toLocaleString()} providers`;
+            } else {
+                summary.innerHTML = `<strong>${filtered.toLocaleString()}</strong> of ${total.toLocaleString()} match: ${activeFilters.join(', ')}`;
+            }
+        }
+        
+        // Filter cards to show only providers visible in current map bounds + filters
         function updateCardListFromMap() {
             if (!map || !allMapProviders.length) return;
             
+            readFiltersFromDOM();
+            
             const bounds = map.getBounds();
-            const visibleProviders = allMapProviders.filter(p => {
+            let visibleProviders = allMapProviders.filter(p => {
                 if (!p.lat || !p.lng) return false;
                 return bounds.contains([p.lat, p.lng]);
             });
             
-            // Sort by rating, then reviews
-            visibleProviders.sort((a, b) => {
-                const ratingDiff = (b.rating || 0) - (a.rating || 0);
-                if (ratingDiff !== 0) return ratingDiff;
-                return (b.reviewCount || 0) - (a.reviewCount || 0);
-            });
+            const totalInView = visibleProviders.length;
+            
+            // Apply filters
+            visibleProviders = applyFilters(visibleProviders);
+            
+            // Sort
+            visibleProviders = sortProvidersList(visibleProviders);
+            
+            // Update filter summary
+            updateFilterSummary(totalInView, visibleProviders.length);
             
             // Update the card list (max 100 for performance)
             const displayList = visibleProviders.slice(0, 100);
@@ -779,6 +946,72 @@
             const countEl = document.getElementById('results-count');
             if (countEl) {
                 countEl.textContent = `${visibleProviders.length.toLocaleString()} providers in view`;
+            }
+        }
+        
+        // Wire up filter controls
+        function initFilters() {
+            // Category checkboxes
+            const allCheckbox = document.querySelector('input[data-category="all"]');
+            const categoryCheckboxes = document.querySelectorAll('input[data-category]:not([data-category="all"])');
+            
+            if (allCheckbox) {
+                allCheckbox.addEventListener('change', () => {
+                    if (allCheckbox.checked) {
+                        categoryCheckboxes.forEach(cb => cb.checked = false);
+                    }
+                    updateCardListFromMap();
+                });
+            }
+            
+            categoryCheckboxes.forEach(cb => {
+                cb.addEventListener('change', () => {
+                    if (cb.checked && allCheckbox) {
+                        allCheckbox.checked = false;
+                    }
+                    // If nothing selected, select "all"
+                    const anySelected = Array.from(categoryCheckboxes).some(c => c.checked);
+                    if (!anySelected && allCheckbox) {
+                        allCheckbox.checked = true;
+                    }
+                    updateCardListFromMap();
+                });
+            });
+            
+            // Rating radios
+            document.querySelectorAll('input[name="min-rating"]').forEach(radio => {
+                radio.addEventListener('change', updateCardListFromMap);
+            });
+            
+            // Reviews radios
+            document.querySelectorAll('input[name="min-reviews"]').forEach(radio => {
+                radio.addEventListener('change', updateCardListFromMap);
+            });
+            
+            // Photo checkbox
+            const photoCheckbox = document.getElementById('filter-has-photo');
+            if (photoCheckbox) {
+                photoCheckbox.addEventListener('change', updateCardListFromMap);
+            }
+            
+            // Sort select
+            const sortSelect = document.getElementById('sort-select');
+            if (sortSelect) {
+                sortSelect.addEventListener('change', updateCardListFromMap);
+            }
+            
+            // Reset button
+            const resetBtn = document.getElementById('reset-filters');
+            if (resetBtn) {
+                resetBtn.addEventListener('click', () => {
+                    if (allCheckbox) allCheckbox.checked = true;
+                    categoryCheckboxes.forEach(cb => cb.checked = false);
+                    document.querySelector('input[name="min-rating"][value="0"]').checked = true;
+                    document.querySelector('input[name="min-reviews"][value="0"]').checked = true;
+                    if (photoCheckbox) photoCheckbox.checked = false;
+                    if (sortSelect) sortSelect.value = 'rating';
+                    updateCardListFromMap();
+                });
             }
         }
         
@@ -887,6 +1120,7 @@
             console.log('URL:', window.location.href);
             console.log('Search params:', window.location.search);
             initMap();
+            initFilters();
             
             // Show search location in UI for debugging
             const params = new URLSearchParams(window.location.search);
