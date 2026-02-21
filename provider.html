@@ -470,6 +470,51 @@
         .lightbox-prev { left: 1rem; }
         .lightbox-next { right: 1rem; }
         
+        /* Contact CTA Box */
+        .contact-cta {
+            margin-top: 1.5rem;
+        }
+        
+        .cta-box {
+            background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
+            border: 2px solid #10b981;
+            border-radius: 12px;
+            padding: 1.5rem;
+            text-align: center;
+        }
+        
+        .cta-box h4 {
+            color: #047857;
+            margin-bottom: 0.5rem;
+        }
+        
+        .cta-box p {
+            color: #065f46;
+            font-size: 0.9rem;
+            margin-bottom: 1rem;
+        }
+        
+        .contact-revealed {
+            margin-top: 1.5rem;
+            padding: 1.5rem;
+            background: #f0fdf4;
+            border-radius: 12px;
+            border: 2px solid #10b981;
+        }
+        
+        .contact-revealed h4 {
+            color: #047857;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .contact-revealed .info-grid {
+            margin: 0;
+            background: white;
+        }
+        
         /* Responsive */
         @media (max-width: 968px) {
             .main-content {
@@ -531,28 +576,46 @@
                 
                 <div class="info-grid">
                     <div class="info-item">
-                        <div class="info-icon">📍</div>
-                        <span id="infoAddress">--</span>
-                    </div>
-                    <div class="info-item">
                         <div class="info-icon">🏙️</div>
                         <span id="infoCity">--</span>
                     </div>
                     <div class="info-item">
-                        <div class="info-icon">📞</div>
-                        <span id="infoPhone">--</span>
+                        <div class="info-icon">✅</div>
+                        <span>Verified Provider</span>
                     </div>
                     <div class="info-item">
-                        <div class="info-icon">🌐</div>
-                        <span id="infoWebsite">--</span>
+                        <div class="info-icon">🚛</div>
+                        <span>Roll-Off Dumpsters</span>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-icon">📋</div>
+                        <span>Free Quotes Available</span>
+                    </div>
+                </div>
+                
+                <!-- Contact Info - Hidden until lead captured -->
+                <div id="contactInfo" class="contact-gated" style="display:none;">
+                    <div class="info-grid">
+                        <div class="info-item">
+                            <div class="info-icon">📍</div>
+                            <span id="infoAddress">--</span>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-icon">📞</div>
+                            <span id="infoPhone">--</span>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-icon">🌐</div>
+                            <a id="infoWebsiteLink" href="#" target="_blank">--</a>
+                        </div>
                     </div>
                 </div>
                 
                 <!-- Map -->
                 <div id="providerMap" class="provider-map"></div>
                 
-                <!-- External Links -->
-                <div class="external-links">
+                <!-- External Links - Hidden until lead captured -->
+                <div class="external-links" id="externalLinks" style="display:none;">
                     <a href="#" class="external-link" id="linkGoogleMaps" target="_blank">
                         📍 View on Google Maps
                     </a>
@@ -562,6 +625,17 @@
                     <a href="#" class="external-link" id="linkWebsite" target="_blank" style="display:none;">
                         🌐 Visit Website
                     </a>
+                </div>
+                
+                <!-- CTA to submit quote form -->
+                <div class="contact-cta" id="contactCta">
+                    <div class="cta-box">
+                        <h4>📞 Get Contact Information</h4>
+                        <p>Submit a free quote request to receive this provider's phone number and website.</p>
+                        <button class="btn btn-success" onclick="document.querySelector('#quoteForm input[name=firstName]').focus()">
+                            Request Free Quote →
+                        </button>
+                    </div>
                 </div>
             </div>
         </article>
@@ -646,6 +720,7 @@
                     <div class="checkmark">✓</div>
                     <h3>Quote Request Sent!</h3>
                     <p>The provider will contact you shortly.</p>
+                    <p style="color:#059669;font-weight:600;margin-top:0.5rem;">📞 Contact info revealed below!</p>
                     <button class="btn btn-secondary" onclick="window.location.href='results.html'" style="margin-top:1rem;">
                         Find More Providers
                     </button>
@@ -763,27 +838,17 @@
                 document.getElementById('reviewCount').textContent = 'No reviews yet';
             }
             
-            // Info grid
-            document.getElementById('infoAddress').textContent = provider.address || `${provider.city}, ${provider.state}`;
+            // Info grid - only show city (contact info gated)
             document.getElementById('infoCity').textContent = `${provider.city}, ${provider.state}`;
-            document.getElementById('infoPhone').textContent = provider.phone || 'Request quote for contact';
-            document.getElementById('infoWebsite').textContent = provider.website ? 'Website available' : 'Request quote';
             
-            // External links
-            if (provider.googleMapsLink) {
-                document.getElementById('linkGoogleMaps').href = provider.googleMapsLink;
-                document.getElementById('linkGoogleMaps').style.display = 'flex';
-            }
-            
-            if (provider.reviewsLink) {
-                document.getElementById('linkReviews').href = provider.reviewsLink;
-                document.getElementById('linkReviews').style.display = 'flex';
-            }
-            
-            if (provider.website) {
-                document.getElementById('linkWebsite').href = provider.website;
-                document.getElementById('linkWebsite').style.display = 'flex';
-            }
+            // Store contact info for reveal after lead capture
+            window.providerContact = {
+                address: provider.address || `${provider.city}, ${provider.state}`,
+                phone: provider.phone,
+                website: provider.website,
+                googleMapsLink: provider.googleMapsLink,
+                reviewsLink: provider.reviewsLink
+            };
             
             // Form
             document.getElementById('formProviderId').value = provider.id;
@@ -872,6 +937,52 @@
             // Show success
             document.getElementById('quoteForm').style.display = 'none';
             document.getElementById('quoteSuccess').style.display = 'block';
+            
+            // Reveal contact information
+            revealContactInfo();
+        }
+        
+        function revealContactInfo() {
+            const contact = window.providerContact;
+            if (!contact) return;
+            
+            // Hide the CTA
+            const cta = document.getElementById('contactCta');
+            if (cta) cta.style.display = 'none';
+            
+            // Populate and show contact info
+            document.getElementById('infoAddress').textContent = contact.address;
+            document.getElementById('infoPhone').textContent = contact.phone || 'Not listed';
+            
+            const websiteLink = document.getElementById('infoWebsiteLink');
+            if (contact.website) {
+                websiteLink.href = contact.website;
+                websiteLink.textContent = contact.website.replace(/^https?:\/\//, '').replace(/\/$/, '');
+            } else {
+                websiteLink.textContent = 'Not listed';
+            }
+            
+            document.getElementById('contactInfo').style.display = 'block';
+            
+            // Show external links
+            const links = document.getElementById('externalLinks');
+            if (links) {
+                links.style.display = 'flex';
+                
+                if (contact.googleMapsLink) {
+                    document.getElementById('linkGoogleMaps').href = contact.googleMapsLink;
+                }
+                if (contact.reviewsLink) {
+                    const reviewLink = document.getElementById('linkReviews');
+                    reviewLink.href = contact.reviewsLink;
+                    reviewLink.style.display = 'flex';
+                }
+                if (contact.website) {
+                    const webLink = document.getElementById('linkWebsite');
+                    webLink.href = contact.website;
+                    webLink.style.display = 'flex';
+                }
+            }
         }
         
         // Keyboard navigation for lightbox
