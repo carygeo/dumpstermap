@@ -223,6 +223,52 @@
             overflow-y: auto;
         }
         
+        /* Compact provider cards */
+        .provider-card-compact {
+            background: white;
+            border-radius: 10px;
+            border: 1px solid #e5e7eb;
+            display: flex;
+            align-items: center;
+            padding: 0.75rem;
+            gap: 0.75rem;
+            transition: all 0.2s;
+        }
+        .provider-card-compact:hover {
+            border-color: var(--primary);
+            box-shadow: 0 4px 12px rgba(37,99,235,0.15);
+        }
+        .card-link {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            flex: 1;
+            text-decoration: none;
+            color: inherit;
+            min-width: 0;
+        }
+        .card-photo { width: 48px; height: 48px; flex-shrink: 0; }
+        .card-photo img { width: 48px; height: 48px; border-radius: 8px; object-fit: cover; }
+        .card-photo .provider-logo-fallback { 
+            width: 48px; height: 48px; border-radius: 8px;
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            color: white; display: flex; align-items: center; justify-content: center;
+            font-weight: 700; font-size: 1.25rem;
+        }
+        .card-info { flex: 1; min-width: 0; }
+        .card-name { 
+            font-weight: 600; font-size: 0.95rem; color: #1f2937;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        .card-meta { font-size: 0.8rem; color: #6b7280; margin-top: 2px; }
+        .card-quote-btn {
+            background: var(--primary); color: white; border: none;
+            padding: 0.5rem 1rem; border-radius: 6px; font-weight: 600;
+            font-size: 0.85rem; cursor: pointer; white-space: nowrap;
+            transition: background 0.2s;
+        }
+        .card-quote-btn:hover { background: var(--primary-dark); }
+        
         .provider-card {
             background: white !important;
             border-radius: 12px;
@@ -721,21 +767,15 @@
             const providerUrl = `${basePath}provider.html?id=${encodeURIComponent(p.id)}`;
             
             return `
-                <div class="provider-card">
-                    <a href="${providerUrl}" class="provider-header provider-link">
-                        <div class="provider-image-container">${imageHtml}</div>
-                        <div class="provider-info">
-                            <h3>${p.name || 'Local Provider'}</h3>
-                            <div class="provider-location">📍 ${p.city || ''}, ${p.state || ''}</div>
-                            ${ratingHtml}
+                <div class="provider-card-compact">
+                    <a href="${providerUrl}" class="card-link">
+                        <div class="card-photo">${imageHtml}</div>
+                        <div class="card-info">
+                            <div class="card-name">${p.name || 'Local Provider'}</div>
+                            <div class="card-meta">📍 ${p.city || ''} · ${hasValidRating ? `⭐ ${rating.toFixed(1)} (${reviewCount})` : 'New'}</div>
                         </div>
                     </a>
-                    <div class="provider-body">
-                        <div class="provider-actions">
-                            <a href="${providerUrl}" class="btn btn-secondary">View Details</a>
-                            <button class="btn btn-primary" onclick='openQuoteModal(${providerData})'>Get Quote →</button>
-                        </div>
-                    </div>
+                    <button class="card-quote-btn" onclick='openQuoteModal(${providerData})'>Quote</button>
                 </div>
             `;
         }
