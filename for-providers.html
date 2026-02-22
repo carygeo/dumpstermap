@@ -500,8 +500,21 @@
                         
                         <h3 style="margin-top: 1.5rem; padding-bottom: 0.5rem; border-bottom: 2px solid var(--border);">Choose Your Plan</h3>
                         
+                        <!-- Try It Out - Single Lead -->
+                        <p style="font-size: 0.875rem; color: var(--text-light); margin: 0.75rem 0 0.5rem;">🎯 <strong>Just Want to Try It?</strong></p>
+                        <label class="pack-option" style="display: block; padding: 0.75rem 1rem; border: 2px solid var(--border); border-radius: 8px; cursor: pointer; transition: all 0.2s; margin-bottom: 1rem; background: #f0f9ff;">
+                            <input type="radio" name="selectedPack" value="single" style="display: none;">
+                            <div style="display: flex; align-items: center; justify-content: space-between;">
+                                <div>
+                                    <div style="font-weight: 600;">Single Lead</div>
+                                    <div style="font-size: 0.8rem; color: var(--text-light);">Test the quality of our leads with no commitment</div>
+                                </div>
+                                <div style="font-weight: 800; font-size: 1.25rem; color: var(--primary);">$40</div>
+                            </div>
+                        </label>
+                        
                         <!-- One-time Credit Packs -->
-                        <p style="font-size: 0.875rem; color: var(--text-light); margin: 0.75rem 0 0.5rem;">💰 <strong>One-Time Credit Packs</strong> — Pay once, use anytime</p>
+                        <p style="font-size: 0.875rem; color: var(--text-light); margin: 0.75rem 0 0.5rem;">💰 <strong>Credit Packs</strong> — Save more, pay once</p>
                         <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.75rem; margin-bottom: 1rem;">
                             <label class="pack-option" style="display: block; padding: 1rem; border: 2px solid var(--border); border-radius: 8px; cursor: pointer; text-align: center; transition: all 0.2s;">
                                 <input type="radio" name="selectedPack" value="starter" style="display: none;">
@@ -599,7 +612,7 @@
             
             <!-- Single Lead CTA -->
             <div style="text-align: center; margin-bottom: 2.5rem; padding: 1rem; background: #f0f9ff; border-radius: 12px; max-width: 500px; margin-left: auto; margin-right: auto;">
-                <p style="margin: 0; color: #1e40af;">🎯 <strong>Just want to try it?</strong> <a href="https://buy.stripe.com/cNidR9aQ76T46IF78j5Rm04" style="color: #2563eb; font-weight: 600;">Buy a single lead for $40 →</a></p>
+                <p style="margin: 0; color: #1e40af;">🎯 <strong>Just want to try it?</strong> <a href="#registerSection" class="pack-select-btn" data-pack="single" style="color: #2563eb; font-weight: 600;">Buy a single lead for $40 →</a></p>
             </div>
             
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem; max-width: 1000px; margin: 0 auto;">

@@ -1034,6 +1034,7 @@ dumpstermap.io`;
 
 // Stripe payment links for credit packs
 const STRIPE_PACK_LINKS = {
+  single: 'https://buy.stripe.com/cNidR9aQ76T46IF78j5Rm04',    // $40 - Single lead
   starter: 'https://buy.stripe.com/00w14n5vNa5g5EB2S35Rm00',   // $200 - 5 credits
   pro: 'https://buy.stripe.com/fZu6oH7DVgtE7MJdwH5Rm02',       // $700 - 20 credits  
   premium: 'https://buy.stripe.com/bJefZh0btcdod73eAL5Rm03',   // $1500 - 60 credits
