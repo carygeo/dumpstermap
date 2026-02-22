@@ -984,6 +984,84 @@ app.post('/api/stripe-webhook', async (req, res) => {
       livemode: event.livemode
     });
     
+    // Handle subscription renewals (invoice.paid for recurring subscriptions)
+    if (event.type === 'invoice.paid') {
+      const invoice = event.data.object;
+      
+      // Only process subscription invoices (not one-time)
+      if (invoice.subscription && invoice.billing_reason !== 'subscription_create') {
+        const customerEmail = invoice.customer_email;
+        const amount = invoice.amount_paid ? invoice.amount_paid / 100 : 0;
+        const paymentId = invoice.payment_intent || invoice.id;
+        
+        // Check if already processed
+        if (isPaymentProcessed(paymentId)) {
+          console.log('Invoice already processed:', paymentId);
+          return res.json({ received: true, processed: false, reason: 'already_processed' });
+        }
+        
+        console.log('Subscription renewal:', { customerEmail, amount, invoiceId: invoice.id });
+        
+        // Match to subscription by amount
+        const subPack = SUBSCRIPTIONS[Math.round(amount)];
+        if (subPack && customerEmail) {
+          const provider = getOrCreateProvider(customerEmail);
+          
+          // Add monthly credits
+          db.prepare("UPDATE providers SET credit_balance = credit_balance + ?, last_purchase_at = datetime('now') WHERE id = ?")
+            .run(subPack.credits, provider.id);
+          
+          // Extend premium status by 30 days
+          const expiresAt = new Date();
+          expiresAt.setDate(expiresAt.getDate() + 30);
+          db.prepare(`
+            UPDATE providers SET verified = 1, priority = CASE WHEN priority < 10 THEN 10 ELSE priority END,
+            premium_expires_at = ?
+            WHERE id = ?
+          `).run(expiresAt.toISOString(), provider.id);
+          
+          // Log the purchase
+          db.prepare('INSERT INTO purchase_log (lead_id, buyer_email, amount, payment_id, status) VALUES (?, ?, ?, ?, ?)')
+            .run('SUB_RENEWAL', customerEmail, amount, paymentId, 'Credits Added');
+          
+          // Send confirmation email
+          const newBalance = provider.credit_balance + subPack.credits;
+          const html = `
+<div style="font-family: Arial, sans-serif; max-width: 600px;">
+  <h2 style="color: #16a34a;">🔄 Monthly Subscription Renewed!</h2>
+  <p>Hi ${provider.company_name},</p>
+  <p>Your Featured Partner subscription has been renewed for another month.</p>
+  <div style="background: #f0fdf4; border: 1px solid #86efac; padding: 20px; border-radius: 8px; margin: 20px 0;">
+    <strong>Credits Added:</strong> ${subPack.credits}<br>
+    <strong>New Balance:</strong> ${newBalance} credits
+  </div>
+  <p><strong>Your benefits continue:</strong></p>
+  <ul>
+    <li>✅ Verified badge on your listing</li>
+    <li>🔝 Priority placement in search results</li>
+  </ul>
+  <p>— The DumpsterMap Team</p>
+</div>`;
+          await sendEmail(customerEmail, 'Featured Partner Renewed - Credits Added', html);
+          
+          await sendAdminNotification('🔄 Subscription Renewed', 
+            `Provider: ${provider.company_name}\nEmail: ${customerEmail}\nCredits: +${subPack.credits}\nNew Balance: ${newBalance}`);
+          
+          logWebhookEvent('invoice.paid', { customerEmail, amount, reason: 'renewal' }, { processed: true, credits: subPack.credits });
+          
+          return res.json({ received: true, processed: true, type: 'subscription_renewal', credits: subPack.credits });
+        }
+      }
+      
+      // Log but don't process (might be initial subscription or non-matching)
+      logWebhookEvent('invoice.paid', { 
+        invoiceId: invoice.id,
+        reason: invoice.billing_reason 
+      }, { processed: false });
+      
+      return res.json({ received: true, processed: false, reason: 'not_renewal_or_no_match' });
+    }
+    
     if (event.type !== 'checkout.session.completed') {
       return res.json({ received: true, processed: false });
     }
@@ -1564,6 +1642,7 @@ app.get('/admin', (req, res) => {
     <a href="/admin/outreach?key=${auth}">Outreach</a>
     <a href="/admin/logs?key=${auth}">System Logs</a>
     <a href="/admin/funnel?key=${auth}">📊 Funnel</a>
+    <a href="/api/admin/subscriptions?key=${auth}" target="_blank">🔄 Subscriptions</a>
     <a href="/api/admin/stats?key=${auth}" target="_blank">📈 API Stats</a>
   </div>
   
@@ -3509,6 +3588,76 @@ app.get('/api/admin/premium-status', (req, res) => {
   });
 });
 
+// Admin endpoint: View subscription statistics
+app.get('/api/admin/subscriptions', (req, res) => {
+  const auth = req.query.key || req.headers['x-admin-key'];
+  if (auth !== ADMIN_PASSWORD) return res.status(401).json({ error: 'Unauthorized' });
+  
+  // Get all subscription-related purchases
+  const subscriptionPurchases = db.prepare(`
+    SELECT * FROM purchase_log 
+    WHERE lead_id LIKE 'SUB_%' 
+    ORDER BY id DESC 
+    LIMIT 100
+  `).all();
+  
+  // Get active premium providers
+  const activePremium = db.prepare(`
+    SELECT id, company_name, email, credit_balance, premium_expires_at, last_purchase_at
+    FROM providers 
+    WHERE premium_expires_at > datetime('now')
+    AND verified = 1
+    ORDER BY premium_expires_at ASC
+  `).all();
+  
+  // Get expiring soon (within 7 days)
+  const expiringSoon = db.prepare(`
+    SELECT id, company_name, email, premium_expires_at
+    FROM providers 
+    WHERE premium_expires_at BETWEEN datetime('now') AND datetime('now', '+7 days')
+  `).all();
+  
+  // Revenue stats
+  const monthlyRevenue = db.prepare(`
+    SELECT COALESCE(SUM(amount), 0) as total FROM purchase_log 
+    WHERE lead_id LIKE 'SUB_%' AND timestamp > datetime('now', '-30 days')
+  `).get().total;
+  
+  const totalRevenue = db.prepare(`
+    SELECT COALESCE(SUM(amount), 0) as total FROM purchase_log 
+    WHERE lead_id LIKE 'SUB_%'
+  `).get().total;
+  
+  res.json({
+    activePremiumCount: activePremium.length,
+    expiringSoonCount: expiringSoon.length,
+    monthlyRecurringRevenue: monthlyRevenue,
+    totalSubscriptionRevenue: totalRevenue,
+    activePremium: activePremium.map(p => ({
+      id: p.id,
+      company: p.company_name,
+      email: p.email,
+      credits: p.credit_balance,
+      expiresAt: p.premium_expires_at,
+      daysLeft: Math.ceil((new Date(p.premium_expires_at) - new Date()) / (1000 * 60 * 60 * 24))
+    })),
+    expiringSoon: expiringSoon.map(p => ({
+      id: p.id,
+      company: p.company_name,
+      email: p.email,
+      expiresAt: p.premium_expires_at,
+      daysLeft: Math.ceil((new Date(p.premium_expires_at) - new Date()) / (1000 * 60 * 60 * 24))
+    })),
+    recentPurchases: subscriptionPurchases.slice(0, 20).map(p => ({
+      timestamp: p.timestamp,
+      email: p.buyer_email,
+      amount: p.amount,
+      type: p.lead_id,
+      status: p.status
+    }))
+  });
+});
+
 // Admin endpoint: Manually expire premium status
 app.post('/api/admin/expire-premium', (req, res) => {
   const auth = req.query.key || req.headers['x-admin-key'];
@@ -3988,6 +4137,71 @@ app.post('/api/admin/test-emails', async (req, res) => {
     success: results.failed.length === 0,
     sentTo: testEmail,
     results 
+  });
+});
+
+// Daily health check endpoint (cron-friendly, returns alerts)
+app.get('/api/admin/health-check', (req, res) => {
+  const auth = req.query.key || req.headers['x-admin-key'];
+  if (auth !== ADMIN_PASSWORD) return res.status(401).json({ error: 'Unauthorized' });
+  
+  const alerts = [];
+  const metrics = {};
+  
+  // Check providers with credits but no ZIPs (they paid but can't receive leads)
+  const providersNoZips = db.prepare(`
+    SELECT COUNT(*) as cnt FROM providers 
+    WHERE status = 'Active' AND credit_balance > 0 AND (service_zips IS NULL OR service_zips = '')
+  `).get().cnt;
+  if (providersNoZips > 0) {
+    alerts.push({ level: 'critical', message: `${providersNoZips} provider(s) have credits but no service ZIPs` });
+  }
+  metrics.providersNeedingZips = providersNoZips;
+  
+  // Check for errors in last 24h
+  const recentErrors = db.prepare(`SELECT COUNT(*) as cnt FROM error_log WHERE timestamp > datetime('now', '-24 hours')`).get().cnt;
+  if (recentErrors > 5) {
+    alerts.push({ level: 'warning', message: `${recentErrors} errors in last 24 hours` });
+  }
+  metrics.errorsLast24h = recentErrors;
+  
+  // Check webhook health
+  let lastWebhook = null;
+  try {
+    lastWebhook = db.prepare(`SELECT MAX(processed_at) as last FROM webhook_log`).get().last;
+  } catch (e) {}
+  metrics.lastWebhookEvent = lastWebhook;
+  
+  // Check leads today
+  const leadsToday = db.prepare(`SELECT COUNT(*) as cnt FROM leads WHERE date(created_at) = date('now')`).get().cnt;
+  metrics.leadsToday = leadsToday;
+  
+  // Check revenue today
+  const revenueToday = db.prepare(`
+    SELECT COALESCE(SUM(amount), 0) as total FROM purchase_log 
+    WHERE date(timestamp) = date('now') AND (status LIKE '%Success%' OR status = 'Credits Added')
+  `).get().total;
+  metrics.revenueToday = revenueToday;
+  
+  // Check premium expiring soon
+  const expiringSoon = db.prepare(`
+    SELECT COUNT(*) as cnt FROM providers 
+    WHERE premium_expires_at BETWEEN datetime('now') AND datetime('now', '+3 days')
+  `).get().cnt;
+  if (expiringSoon > 0) {
+    alerts.push({ level: 'info', message: `${expiringSoon} premium subscription(s) expiring in next 3 days` });
+  }
+  metrics.premiumExpiringSoon = expiringSoon;
+  
+  // Overall health status
+  const hasCritical = alerts.some(a => a.level === 'critical');
+  const hasWarning = alerts.some(a => a.level === 'warning');
+  
+  res.json({
+    status: hasCritical ? 'critical' : hasWarning ? 'warning' : 'healthy',
+    timestamp: new Date().toISOString(),
+    alerts,
+    metrics
   });
 });
 
