@@ -1083,6 +1083,17 @@ app.get('/admin/edit-provider/:id', (req, res) => {
     </div>
   </div>
   
+  <div class="card">
+    <h3>🧪 Test Lead Flow</h3>
+    <p style="color: #64748b; font-size: 14px; margin-bottom: 10px;">Send a test lead to verify email templates are working.</p>
+    <form action="/api/admin/send-test-lead?key=${req.query.key}" method="POST" style="display: flex; gap: 10px; align-items: center;">
+      <input type="hidden" name="provider_id" value="${provider.id}">
+      <input name="zip" placeholder="Test ZIP (default: 34102)" style="width: 160px;">
+      <button type="submit" class="btn" style="background: #9333ea;">Send Test Lead Email</button>
+      <span style="font-size: 12px; color: #64748b;">(${provider.credit_balance > 0 ? 'Will send full lead' : 'Will send teaser'})</span>
+    </form>
+  </div>
+  
   <div class="card" style="border: 2px solid #fecaca;">
     <h3 style="color: #dc2626;">Danger Zone</h3>
     <form action="/admin/delete-provider/${provider.id}?key=${req.query.key}" method="POST" onsubmit="return confirm('Delete this provider?')">
@@ -1681,6 +1692,53 @@ app.get('/api/admin/stats', (req, res) => {
   });
 });
 
+// ZIP coverage analysis - which zips have active providers
+app.get('/api/admin/zip-coverage', (req, res) => {
+  const auth = req.query.key || req.headers['x-admin-key'];
+  if (auth !== ADMIN_PASSWORD) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+  
+  const providers = db.prepare("SELECT id, company_name, email, service_zips, credit_balance FROM providers WHERE status = 'Active'").all();
+  
+  // Build zip -> providers map
+  const zipMap = {};
+  for (const p of providers) {
+    const zips = (p.service_zips || '').split(',').map(z => z.trim()).filter(z => /^\d{5}$/.test(z));
+    for (const zip of zips) {
+      if (!zipMap[zip]) zipMap[zip] = [];
+      zipMap[zip].push({
+        id: p.id,
+        name: p.company_name,
+        credits: p.credit_balance,
+        hasCredits: p.credit_balance > 0
+      });
+    }
+  }
+  
+  // Get leads by zip (last 30 days)
+  const recentLeads = db.prepare("SELECT zip, COUNT(*) as count FROM leads WHERE created_at > datetime('now', '-30 days') GROUP BY zip").all();
+  const leadsByZip = Object.fromEntries(recentLeads.map(r => [r.zip, r.count]));
+  
+  // Identify gaps - zips with leads but no providers (exclude nulls)
+  const gaps = Object.keys(leadsByZip)
+    .filter(z => !zipMap[z] && z && z !== 'null' && /^\d{5}$/.test(z))
+    .map(z => ({
+      zip: z,
+      leadCount: leadsByZip[z]
+    }))
+    .sort((a, b) => b.leadCount - a.leadCount);
+  
+  res.json({
+    totalZipsCovered: Object.keys(zipMap).length,
+    totalActiveProviders: providers.length,
+    providersWithCredits: providers.filter(p => p.credit_balance > 0).length,
+    coverage: zipMap,
+    gaps,
+    timestamp: new Date().toISOString()
+  });
+});
+
 // Daily summary for monitoring/cron
 app.get('/api/admin/daily-summary', (req, res) => {
   const auth = req.query.key || req.headers['x-admin-key'];
@@ -1757,6 +1815,53 @@ app.post('/api/admin/test-webhook', async (req, res) => {
   };
   
   res.json({ test: true, ...result });
+});
+
+// Send a test lead to a provider (admin only)
+app.post('/api/admin/send-test-lead', async (req, res) => {
+  const auth = req.query.key || req.headers['x-admin-key'];
+  if (auth !== ADMIN_PASSWORD) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+  
+  const { provider_id, zip } = req.body;
+  const provider = db.prepare('SELECT * FROM providers WHERE id = ?').get(provider_id);
+  if (!provider) {
+    return res.status(404).json({ error: 'Provider not found' });
+  }
+  
+  const testLead = {
+    lead_id: 'TEST-' + Date.now().toString(36).toUpperCase(),
+    firstName: 'Test',
+    lastName: 'Customer',
+    name: 'Test Customer',
+    phone: '239-555-' + String(Math.floor(1000 + Math.random() * 9000)),
+    email: 'test@example.com',
+    zip: zip || '34102',
+    size: ['10', '15', '20', '30'][Math.floor(Math.random() * 4)],
+    timeframe: ['asap', 'this-week', 'this-month'][Math.floor(Math.random() * 3)],
+    projectType: ['Home Renovation', 'Construction', 'Cleanout', 'Roofing'][Math.floor(Math.random() * 4)]
+  };
+  
+  let result = { provider: provider.company_name, testLead };
+  
+  if (provider.credit_balance > 0) {
+    await sendFullLeadToProvider(provider, testLead.lead_id, testLead);
+    result.emailType = 'full_lead';
+    result.note = 'Sent full lead (provider has credits)';
+  } else {
+    await sendTeaserToProvider(provider, testLead.lead_id, testLead);
+    result.emailType = 'teaser';
+    result.note = 'Sent teaser (provider has no credits)';
+  }
+  
+  console.log(`Test lead sent to ${provider.email}:`, result);
+  
+  // If submitted via form, redirect back
+  if (req.headers['content-type']?.includes('form')) {
+    return res.redirect(`/admin/edit-provider/${provider_id}?key=${req.query.key}&msg=test_sent`);
+  }
+  res.json({ success: true, ...result });
 });
 
 // Test email templates (admin only)
