@@ -1511,6 +1511,14 @@ app.get('/admin', (req, res) => {
   const providersNoZipsList = db.prepare("SELECT id, company_name, email FROM providers WHERE status = 'Active' AND (service_zips IS NULL OR service_zips = '') ORDER BY id DESC LIMIT 10").all();
   const providersWithCreditsNoZips = db.prepare("SELECT COUNT(*) as cnt FROM providers WHERE status = 'Active' AND credit_balance > 0 AND (service_zips IS NULL OR service_zips = '')").get().cnt;
   
+  // Outreach stats
+  const outreachPending = db.prepare("SELECT COUNT(*) as cnt FROM outreach WHERE email_status = 'Pending'").get().cnt;
+  const outreachSentToday = db.prepare("SELECT COUNT(*) as cnt FROM outreach WHERE date(email_sent_at) = date('now')").get().cnt;
+  const outreachConverted = db.prepare("SELECT COUNT(*) as cnt FROM outreach WHERE converted = 1").get().cnt;
+  
+  // Provider states breakdown
+  const providersByState = db.prepare("SELECT UPPER(state) as state, COUNT(*) as cnt FROM providers WHERE status = 'Active' AND state IS NOT NULL AND state != '' GROUP BY UPPER(state) ORDER BY cnt DESC LIMIT 5").all();
+  
   const html = `
 <!DOCTYPE html>
 <html>
@@ -1556,6 +1564,23 @@ app.get('/admin', (req, res) => {
     <a href="/admin/outreach?key=${auth}">Outreach</a>
     <a href="/admin/logs?key=${auth}">System Logs</a>
     <a href="/admin/funnel?key=${auth}">📊 Funnel</a>
+    <a href="/api/admin/stats?key=${auth}" target="_blank">📈 API Stats</a>
+  </div>
+  
+  <!-- Quick Actions -->
+  <div class="card" style="background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); border-left: 4px solid #16a34a;">
+    <h3 style="margin: 0 0 15px 0; color: #16a34a;">⚡ Quick Actions</h3>
+    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+      <form action="/api/admin/maintenance?key=${auth}" method="POST" style="display: inline;">
+        <button class="btn btn-sm btn-green" title="Run premium expiration, send reminders, cleanup logs">🔧 Run Maintenance</button>
+      </form>
+      <a href="/api/admin/daily-summary?key=${auth}" class="btn btn-sm" target="_blank" title="View today's summary JSON">📊 Daily Summary</a>
+      <a href="/api/admin/zip-coverage?key=${auth}" class="btn btn-sm" target="_blank" title="See ZIP coverage gaps">🗺️ ZIP Coverage</a>
+      <a href="/api/admin/stripe-status?key=${auth}" class="btn btn-sm" target="_blank" title="Check Stripe webhook config">💳 Stripe Status</a>
+      <form action="/api/admin/expire-premium?key=${auth}" method="POST" style="display: inline;">
+        <button class="btn btn-sm" style="background: #f59e0b;">⏱️ Expire Premium</button>
+      </form>
+    </div>
   </div>
   
   <!-- Today's Activity -->
@@ -1565,6 +1590,7 @@ app.get('/admin', (req, res) => {
       <div><span style="font-size: 24px; font-weight: bold; color: #1e40af;">${leadsToday}</span><br><span style="color: #64748b; font-size: 13px;">Leads Today</span></div>
       <div><span style="font-size: 24px; font-weight: bold; color: #16a34a;">$${revenueToday.toFixed(0)}</span><br><span style="color: #64748b; font-size: 13px;">Revenue Today</span></div>
       <div><span style="font-size: 24px; font-weight: bold; color: #9333ea;">${newProvidersToday}</span><br><span style="color: #64748b; font-size: 13px;">New Providers</span></div>
+      <div><span style="font-size: 24px; font-weight: bold; color: #2563eb;">${outreachSentToday}</span><br><span style="color: #64748b; font-size: 13px;">Outreach Sent</span><br><span style="color: #94a3b8; font-size: 11px;">${outreachPending} pending, ${outreachConverted} converted</span></div>
       ${providersNoZips > 0 ? `<div style="background: #fef3c7; padding: 8px 12px; border-radius: 6px;"><span style="font-size: 18px; font-weight: bold; color: #b45309;">⚠️ ${providersNoZips}</span><br><span style="color: #92400e; font-size: 13px;">Providers without ZIPs</span>${providersWithCreditsNoZips > 0 ? `<br><span style="color: #dc2626; font-size: 12px; font-weight: bold;">🚨 ${providersWithCreditsNoZips} have credits!</span>` : ''}</div>` : ''}
     </div>
   </div>
@@ -1589,6 +1615,7 @@ app.get('/admin', (req, res) => {
     <div class="stat"><div class="stat-value">$${totalRevenue.toFixed(0)}</div><div class="stat-label">Revenue</div></div>
     <div class="stat"><div class="stat-value">${providers.length}</div><div class="stat-label">Providers</div></div>
     <div class="stat"><div class="stat-value">${totalCredits}</div><div class="stat-label">Credits Outstanding</div></div>
+    <div class="stat" style="min-width: 140px;"><div style="font-size: 13px; color: #64748b;">Top States</div><div style="font-size: 12px; margin-top: 6px;">${providersByState.length > 0 ? providersByState.map(s => `<span style="background: #e0e7ff; padding: 2px 6px; border-radius: 4px; margin: 2px;">${s.state}: ${s.cnt}</span>`).join(' ') : '<em>None set</em>'}</div></div>
   </div>
   
   <h2 id="leads">Leads (${leads.length})</h2>
