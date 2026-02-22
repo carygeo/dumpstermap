@@ -597,7 +597,7 @@
                         <li style="padding: 0.5rem 0; border-bottom: 1px solid var(--border);">✓ Customer name, phone & details</li>
                         <li style="padding: 0.5rem 0;">✓ No expiration on credits</li>
                     </ul>
-                    <a href="#" class="btn btn-primary stripe-link" data-product="starter" style="display: block; text-decoration: none;">Buy Starter Pack →</a>
+                    <a href="#registerSection" class="btn btn-primary pack-select-btn" data-pack="starter" style="display: block; text-decoration: none;">Buy Starter Pack →</a>
                 </div>
                 
                 <!-- Pro Pack -->
@@ -613,7 +613,7 @@
                         <li style="padding: 0.5rem 0; border-bottom: 1px solid var(--border);">✓ Customer name, phone & details</li>
                         <li style="padding: 0.5rem 0;">✓ Email + SMS notifications</li>
                     </ul>
-                    <a href="#" class="btn btn-primary stripe-link" data-product="pro" style="display: block; text-decoration: none;">Buy Pro Pack →</a>
+                    <a href="#registerSection" class="btn btn-primary pack-select-btn" data-pack="pro" style="display: block; text-decoration: none;">Buy Pro Pack →</a>
                 </div>
                 
                 <!-- Premium Pack -->
@@ -629,7 +629,7 @@
                         <li style="padding: 0.5rem 0; border-bottom: 1px solid var(--border);">✓ <strong>🔝 Priority Placement</strong> in search</li>
                         <li style="padding: 0.5rem 0;">✓ Dedicated account manager</li>
                     </ul>
-                    <a href="#" class="btn btn-primary stripe-link" data-product="premium" style="display: block; text-decoration: none;">Buy Premium Pack →</a>
+                    <a href="#registerSection" class="btn btn-primary pack-select-btn" data-pack="premium" style="display: block; text-decoration: none;">Buy Premium Pack →</a>
                 </div>
             </div>
             
@@ -644,7 +644,7 @@
             <p style="max-width: 600px; margin: 0 auto 1.5rem; opacity: 0.9;">Don't want to pay upfront? Get verified badge, priority placement, and 3 leads every month with flexible monthly billing.</p>
             <div style="font-size: 2.5rem; font-weight: 800; margin-bottom: 0.5rem;">$99<span style="font-size: 1rem; font-weight: 400;">/month</span></div>
             <p style="opacity: 0.8; font-size: 0.875rem; margin-bottom: 1rem;">Cancel anytime • No long-term commitment</p>
-            <a href="#" class="stripe-link" data-product="featured" style="display: inline-block; background: white; color: var(--primary); padding: 1rem 2rem; border-radius: 8px; font-weight: 600; text-decoration: none;">Subscribe Monthly →</a>
+            <a href="#registerSection" class="pack-select-btn" data-pack="pro" style="display: inline-block; background: white; color: var(--primary); padding: 1rem 2rem; border-radius: 8px; font-weight: 600; text-decoration: none;">Get Started →</a>
         </section>
 
         <!-- FAQ Section -->
@@ -688,32 +688,10 @@
         </p>
     </footer>
     
-    <!-- Stripe Payment Links Configuration -->
+    <!-- Pack selection and registration flow -->
     <script>
-        // UPDATE THESE WITH YOUR ACTUAL STRIPE PAYMENT LINK URLs
-        const STRIPE_LINKS = {
-            single: 'https://buy.stripe.com/cNidR9aQ76T46IF78j5Rm04',
-            starter: 'https://buy.stripe.com/00w14n5vNa5g5EB2S35Rm00',
-            pro: 'https://buy.stripe.com/fZu6oH7DVgtE7MJdwH5Rm02',
-            premium: 'https://buy.stripe.com/bJefZh0btcdod73eAL5Rm03',
-            featured: 'https://buy.stripe.com/28EdR9e2jelwgjfgIT5Rm01'
-        };
-        
-        // Apply Stripe links when page loads
-        document.addEventListener('DOMContentLoaded', function() {
-            document.querySelectorAll('.stripe-link').forEach(link => {
-                const product = link.dataset.product;
-                if (STRIPE_LINKS[product] && !STRIPE_LINKS[product].includes('YOUR_')) {
-                    link.href = STRIPE_LINKS[product];
-                } else {
-                    // Stripe not configured yet - show contact instead
-                    link.addEventListener('click', function(e) {
-                        e.preventDefault();
-                        alert('Payment links coming soon! Contact partners@dumpstermap.io to get started.');
-                    });
-                }
-            });
-        });
+        // Single lead still goes direct to Stripe (no registration needed for one-off)
+        const SINGLE_LEAD_LINK = 'https://buy.stripe.com/cNidR9aQ76T46IF78j5Rm04';
     </script>
 
     <script>
@@ -749,6 +727,36 @@
                 if (this.checked) {
                     this.closest('.pack-option').style.borderColor = 'var(--primary)';
                     this.closest('.pack-option').style.background = '#eff6ff';
+                }
+            });
+        });
+        
+        // Function to select a pack programmatically
+        function selectPack(packName) {
+            const radio = document.querySelector(`input[name="selectedPack"][value="${packName}"]`);
+            if (radio) {
+                radio.checked = true;
+                radio.dispatchEvent(new Event('change'));
+            }
+        }
+        
+        // Handle clicks on pricing section buttons - scroll to form and select pack
+        document.querySelectorAll('.pack-select-btn').forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                e.preventDefault();
+                const pack = this.dataset.pack;
+                
+                // Scroll to registration form
+                const registerSection = document.getElementById('registerSection');
+                if (registerSection) {
+                    registerSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    
+                    // Select the pack after a short delay (for smooth UX)
+                    setTimeout(() => {
+                        selectPack(pack);
+                        // Focus on first input
+                        document.getElementById('regCompanyName')?.focus();
+                    }, 500);
                 }
             });
         });
