@@ -245,6 +245,10 @@ fly ssh console -C "sqlite3 /data/dumpstermap.db '.tables'"
 | `/api/admin/zip-coverage` | GET | ZIP coverage analysis (providers per zip, gaps) - requires key |
 | `/api/admin/send-test-lead` | POST | Send test lead to provider for verification - requires key |
 | `/api/admin/pricing` | GET | View credit pack pricing config and Stripe product mappings - requires key |
+| `/api/admin/errors` | GET | View recent errors (?hours=24&limit=50) - requires key |
+| `/api/admin/errors/cleanup` | POST | Delete errors older than 7 days - requires key |
+| `/api/admin/provider/:id` | GET | Get detailed provider info by ID - requires key |
+| `/api/admin/premium-status` | GET | View premium/verified providers - requires key |
 | `/api/admin/test-webhook` | POST | Test webhook detection (dev only) - requires key |
 | `/api/health` | GET | Health check |
 | `/admin` | GET | Admin dashboard |

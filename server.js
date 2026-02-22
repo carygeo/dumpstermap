@@ -2065,6 +2065,95 @@ app.get('/api/admin/pricing', (req, res) => {
   });
 });
 
+// Error log viewer API (admin)
+app.get('/api/admin/errors', (req, res) => {
+  const auth = req.query.key || req.headers['x-admin-key'];
+  if (auth !== ADMIN_PASSWORD) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+  
+  const limit = Math.min(parseInt(req.query.limit) || 50, 200);
+  const hours = parseInt(req.query.hours) || 24;
+  
+  const errors = db.prepare(`
+    SELECT * FROM error_log 
+    WHERE timestamp > datetime('now', '-${hours} hours')
+    ORDER BY id DESC 
+    LIMIT ?
+  `).all(limit);
+  
+  res.json({
+    count: errors.length,
+    timeRange: `Last ${hours} hours`,
+    errors: errors.map(e => ({
+      timestamp: e.timestamp,
+      type: e.type,
+      message: e.message,
+      context: e.context ? JSON.parse(e.context) : null
+    }))
+  });
+});
+
+// Clear old error logs (admin) - keeps last 7 days
+app.post('/api/admin/errors/cleanup', (req, res) => {
+  const auth = req.query.key || req.headers['x-admin-key'];
+  if (auth !== ADMIN_PASSWORD) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+  
+  const result = db.prepare("DELETE FROM error_log WHERE timestamp < datetime('now', '-7 days')").run();
+  res.json({ success: true, deleted: result.changes });
+});
+
+// Admin endpoint: Get provider details by ID
+app.get('/api/admin/provider/:id', (req, res) => {
+  const auth = req.query.key || req.headers['x-admin-key'];
+  if (auth !== ADMIN_PASSWORD) return res.status(401).json({ error: 'Unauthorized' });
+  
+  const provider = db.prepare('SELECT * FROM providers WHERE id = ?').get(req.params.id);
+  if (!provider) return res.status(404).json({ error: 'Provider not found' });
+  
+  // Get recent leads for this provider
+  const recentLeads = db.prepare(`
+    SELECT lead_id, created_at, name, zip, status 
+    FROM leads 
+    WHERE assigned_provider = ? OR assigned_provider_id = ?
+    ORDER BY id DESC LIMIT 20
+  `).all(provider.company_name, provider.id);
+  
+  // Get purchase history
+  const purchases = db.prepare(`
+    SELECT timestamp, lead_id, amount, status 
+    FROM purchase_log 
+    WHERE LOWER(buyer_email) = LOWER(?)
+    ORDER BY id DESC LIMIT 20
+  `).all(provider.email);
+  
+  // Parse service zips
+  const serviceZips = (provider.service_zips || '').split(',').map(z => z.trim()).filter(z => z);
+  
+  res.json({
+    id: provider.id,
+    companyName: provider.company_name,
+    email: provider.email,
+    phone: provider.phone,
+    address: provider.address,
+    serviceZips,
+    serviceZipCount: serviceZips.length,
+    creditBalance: provider.credit_balance,
+    totalLeads: provider.total_leads,
+    status: provider.status,
+    verified: !!provider.verified,
+    priority: provider.priority || 0,
+    premiumExpiresAt: provider.premium_expires_at,
+    lastPurchaseAt: provider.last_purchase_at,
+    createdAt: provider.created_at,
+    notes: provider.notes,
+    recentLeads,
+    purchases
+  });
+});
+
 // Admin endpoint: View and manage premium status
 app.get('/api/admin/premium-status', (req, res) => {
   const auth = req.query.key || req.headers['x-admin-key'];
