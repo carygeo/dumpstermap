@@ -142,6 +142,28 @@ function initDatabase() {
     // Column already exists, ignore
   }
   
+  // Migration: Add broken-down address fields for registration form
+  try {
+    db.exec('ALTER TABLE providers ADD COLUMN street_address TEXT');
+    console.log('Migration: Added street_address column to providers');
+  } catch (e) {}
+  try {
+    db.exec('ALTER TABLE providers ADD COLUMN city TEXT');
+    console.log('Migration: Added city column to providers');
+  } catch (e) {}
+  try {
+    db.exec('ALTER TABLE providers ADD COLUMN state TEXT');
+    console.log('Migration: Added state column to providers');
+  } catch (e) {}
+  try {
+    db.exec('ALTER TABLE providers ADD COLUMN business_zip TEXT');
+    console.log('Migration: Added business_zip column to providers');
+  } catch (e) {}
+  try {
+    db.exec('ALTER TABLE providers ADD COLUMN website TEXT');
+    console.log('Migration: Added website column to providers');
+  } catch (e) {}
+  
   // Migration: Add stripe_customer_id for recurring billing
   try {
     db.exec('ALTER TABLE providers ADD COLUMN stripe_customer_id TEXT');
@@ -1378,7 +1400,36 @@ app.get('/admin', (req, res) => {
   </table>
   
   <h2 id="providers">Providers (${providers.length})</h2>
-  <table>
+  <div style="margin-bottom: 15px;">
+    <input type="text" id="providerSearch" placeholder="Search providers..." style="padding: 10px; width: 300px; border: 1px solid #d1d5db; border-radius: 4px;" onkeyup="filterProviders()">
+    <select id="providerFilter" style="padding: 10px; margin-left: 10px;" onchange="filterProviders()">
+      <option value="">All Status</option>
+      <option value="active">Active Only</option>
+      <option value="credits">Has Credits</option>
+      <option value="nozips">Missing ZIPs</option>
+      <option value="premium">Premium/Verified</option>
+    </select>
+  </div>
+  <script>
+    function filterProviders() {
+      const search = document.getElementById('providerSearch').value.toLowerCase();
+      const filter = document.getElementById('providerFilter').value;
+      const rows = document.querySelectorAll('#providerTable tbody tr');
+      rows.forEach(row => {
+        const text = row.textContent.toLowerCase();
+        const credits = parseInt(row.querySelector('.credit-badge')?.textContent || '0');
+        const hasZips = !row.innerHTML.includes('none!');
+        const isPremium = row.innerHTML.includes('✓ Verified') || row.innerHTML.includes('⭐');
+        let show = text.includes(search);
+        if (filter === 'active') show = show && row.innerHTML.includes('Active');
+        if (filter === 'credits') show = show && credits > 0;
+        if (filter === 'nozips') show = show && !hasZips;
+        if (filter === 'premium') show = show && isPremium;
+        row.style.display = show ? '' : 'none';
+      });
+    }
+  </script>
+  <table id="providerTable">
     <tr><th>ID</th><th>Company</th><th>Email</th><th>Phone</th><th>Address</th><th>Zips</th><th>Credits</th><th>Leads</th><th>Premium Status</th><th>Last Purchase</th><th>Actions</th></tr>
     ${providers.map(p => {
       const verifiedBadge = p.verified ? '<span title="Verified" style="color:#16a34a">✓</span> ' : '';
@@ -1435,11 +1486,12 @@ app.get('/admin', (req, res) => {
   <div class="card">
     <h3>Add New Provider</h3>
     <form action="/admin/add-provider?key=${auth}" method="POST" style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
-      <input name="company_name" placeholder="Company Name" required>
-      <input name="email" placeholder="Email" required>
+      <input name="company_name" placeholder="Company Name" required style="min-width: 180px;">
+      <input name="email" placeholder="Email" required type="email">
       <input name="phone" placeholder="Phone">
-      <input name="address" placeholder="Address" style="min-width: 200px;">
-      <input name="service_zips" placeholder="Zips (comma-separated)">
+      <input name="city" placeholder="City">
+      <input name="state" placeholder="ST" style="width: 50px;" maxlength="2">
+      <input name="service_zips" placeholder="Service ZIPs (comma-sep)" style="min-width: 180px;">
       <input name="credit_balance" placeholder="Credits" type="number" value="0" style="width: 80px;">
       <button class="btn btn-green">Add Provider</button>
     </form>
@@ -1528,8 +1580,26 @@ app.get('/admin/edit-provider/:id', (req, res) => {
       <label>Phone</label>
       <input name="phone" value="${provider.phone || ''}">
       
-      <label>Address</label>
-      <input name="address" value="${provider.address || ''}" placeholder="123 Main St, City, State ZIP">
+      <label>Street Address</label>
+      <input name="street_address" value="${provider.street_address || ''}" placeholder="123 Main St">
+      
+      <div style="display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 10px;">
+        <div>
+          <label>City</label>
+          <input name="city" value="${provider.city || ''}" placeholder="Naples">
+        </div>
+        <div>
+          <label>State</label>
+          <input name="state" value="${provider.state || ''}" placeholder="FL" maxlength="2" style="text-transform: uppercase;">
+        </div>
+        <div>
+          <label>Business ZIP</label>
+          <input name="business_zip" value="${provider.business_zip || ''}" placeholder="34102">
+        </div>
+      </div>
+      
+      <label>Website</label>
+      <input name="website" value="${provider.website || ''}" placeholder="https://example.com" type="url">
       
       <label>Service Zips (comma-separated)</label>
       <input name="service_zips" value="${provider.service_zips || ''}" placeholder="10001, 10002, 10003">
@@ -1607,11 +1677,25 @@ app.get('/admin/edit-provider/:id', (req, res) => {
 app.post('/admin/update-provider/:id', (req, res) => {
   if (req.query.key !== ADMIN_PASSWORD) return res.status(401).send('Unauthorized');
   
-  const { company_name, email, phone, address, service_zips, credit_balance, status, priority, verified, notes } = req.body;
+  const { company_name, email, phone, street_address, city, state, business_zip, website, service_zips, credit_balance, status, priority, verified, notes } = req.body;
+  
+  // Build composite address for legacy compatibility
+  const address = [street_address, city, state, business_zip].filter(Boolean).join(', ');
+  
   db.prepare(`
-    UPDATE providers SET company_name = ?, email = ?, phone = ?, address = ?, service_zips = ?, credit_balance = ?, status = ?, priority = ?, verified = ?, notes = ?
+    UPDATE providers SET 
+      company_name = ?, email = ?, phone = ?, 
+      street_address = ?, city = ?, state = ?, business_zip = ?, website = ?,
+      address = ?, service_zips = ?, credit_balance = ?, 
+      status = ?, priority = ?, verified = ?, notes = ?
     WHERE id = ?
-  `).run(company_name, email, phone, address, service_zips, parseInt(credit_balance) || 0, status, parseInt(priority) || 0, verified ? 1 : 0, notes, req.params.id);
+  `).run(
+    company_name, email, phone, 
+    street_address || null, city || null, (state || '').toUpperCase() || null, business_zip || null, website || null,
+    address || null, service_zips, parseInt(credit_balance) || 0, 
+    status, parseInt(priority) || 0, verified ? 1 : 0, notes, 
+    req.params.id
+  );
   
   console.log(`Provider ${req.params.id} updated`);
   res.redirect(`/admin?key=${req.query.key}`);
@@ -2209,12 +2293,14 @@ app.get('/admin/logs', (req, res) => {
 app.post('/admin/add-provider', (req, res) => {
   if (req.query.key !== ADMIN_PASSWORD) return res.status(401).send('Unauthorized');
   
-  const { company_name, email, phone, address, service_zips, credit_balance } = req.body;
-  db.prepare(`
-    INSERT INTO providers (company_name, email, phone, address, service_zips, credit_balance)
-    VALUES (?, ?, ?, ?, ?, ?)
-  `).run(company_name, email, phone, address, service_zips, parseInt(credit_balance) || 0);
+  const { company_name, email, phone, city, state, service_zips, credit_balance } = req.body;
   
+  db.prepare(`
+    INSERT INTO providers (company_name, email, phone, city, state, service_zips, credit_balance, status)
+    VALUES (?, ?, ?, ?, ?, ?, ?, 'Active')
+  `).run(company_name, email.toLowerCase().trim(), phone, city || null, (state || '').toUpperCase() || null, service_zips, parseInt(credit_balance) || 0);
+  
+  console.log(`Provider added: ${company_name} (${email})`);
   res.redirect(`/admin?key=${req.query.key}`);
 });
 
@@ -2246,6 +2332,92 @@ app.get('/admin/export/:type', (req, res) => {
   res.setHeader('Content-Type', 'text/csv');
   res.setHeader('Content-Disposition', `attachment; filename=${filename}`);
   res.send(csv);
+});
+
+// ============================================
+// PUBLIC PROVIDER DIRECTORY
+// ============================================
+
+// List providers serving a specific ZIP (for public directory)
+app.get('/api/providers/by-zip/:zip', (req, res) => {
+  const zip = req.params.zip;
+  if (!/^\d{5}$/.test(zip)) {
+    return res.status(400).json({ error: 'Invalid ZIP code format' });
+  }
+  
+  const providers = db.prepare(`
+    SELECT id, company_name, phone, website, verified, priority, city, state
+    FROM providers WHERE status = 'Active'
+  `).all();
+  
+  // Filter by ZIP and sort by priority/verified
+  const matching = providers
+    .filter(p => {
+      const provider = db.prepare('SELECT service_zips FROM providers WHERE id = ?').get(p.id);
+      const zips = (provider?.service_zips || '').split(',').map(z => z.trim());
+      return zips.includes(zip);
+    })
+    .map(p => ({
+      id: p.id,
+      companyName: p.company_name,
+      phone: p.phone,
+      website: p.website,
+      location: [p.city, p.state].filter(Boolean).join(', ') || null,
+      verified: !!p.verified,
+      featured: p.priority > 0
+    }))
+    .sort((a, b) => {
+      // Featured first, then verified, then alphabetical
+      if (a.featured !== b.featured) return b.featured ? 1 : -1;
+      if (a.verified !== b.verified) return b.verified ? 1 : -1;
+      return a.companyName.localeCompare(b.companyName);
+    });
+  
+  res.json({
+    zip,
+    count: matching.length,
+    providers: matching
+  });
+});
+
+// List all active providers (paginated)
+app.get('/api/providers/directory', (req, res) => {
+  const page = Math.max(1, parseInt(req.query.page) || 1);
+  const limit = Math.min(50, Math.max(10, parseInt(req.query.limit) || 20));
+  const offset = (page - 1) * limit;
+  const state = (req.query.state || '').toUpperCase();
+  
+  let whereClause = "status = 'Active'";
+  const params = [];
+  
+  if (state && /^[A-Z]{2}$/.test(state)) {
+    whereClause += " AND UPPER(state) = ?";
+    params.push(state);
+  }
+  
+  const total = db.prepare(`SELECT COUNT(*) as cnt FROM providers WHERE ${whereClause}`).get(...params).cnt;
+  
+  const providers = db.prepare(`
+    SELECT id, company_name, city, state, verified, priority
+    FROM providers 
+    WHERE ${whereClause}
+    ORDER BY priority DESC, verified DESC, company_name ASC
+    LIMIT ? OFFSET ?
+  `).all(...params, limit, offset);
+  
+  res.json({
+    page,
+    limit,
+    total,
+    totalPages: Math.ceil(total / limit),
+    providers: providers.map(p => ({
+      id: p.id,
+      companyName: p.company_name,
+      location: [p.city, p.state].filter(Boolean).join(', ') || null,
+      verified: !!p.verified,
+      featured: p.priority > 0
+    }))
+  });
 });
 
 // ============================================
