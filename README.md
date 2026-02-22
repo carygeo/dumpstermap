@@ -264,6 +264,7 @@ fly ssh console -C "sqlite3 /data/dumpstermap.db '.tables'"
 | `/api/admin/pricing` | GET | View credit pack pricing config and Stripe product mappings - requires key |
 | `/api/admin/errors` | GET | View recent errors (?hours=24&limit=50) - requires key |
 | `/api/admin/errors/cleanup` | POST | Delete errors older than 7 days - requires key |
+| `/api/admin/maintenance` | POST | Run all cleanup tasks (premium expiration, log cleanup, reminders) - requires key |
 | `/api/admin/provider/:id` | GET | Get detailed provider info by ID - requires key |
 | `/api/admin/premium-status` | GET | View premium/verified providers - requires key |
 | `/api/admin/test-webhook` | POST | Test webhook detection (dev only) - requires key |

@@ -3814,6 +3814,76 @@ app.post('/api/admin/test-emails', async (req, res) => {
   });
 });
 
+// Admin maintenance endpoint - run all cleanup tasks
+app.post('/api/admin/maintenance', async (req, res) => {
+  const auth = req.query.key || req.headers['x-admin-key'];
+  if (auth !== ADMIN_PASSWORD) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+  
+  const results = {
+    timestamp: new Date().toISOString(),
+    tasks: {}
+  };
+  
+  // 1. Expire premium status for providers past their 30-day window
+  try {
+    const expiredCount = expirePremiumStatus();
+    results.tasks.premiumExpiration = { success: true, expiredCount };
+  } catch (e) {
+    results.tasks.premiumExpiration = { success: false, error: e.message };
+  }
+  
+  // 2. Clean up old error logs (older than 7 days)
+  try {
+    const errorCleanup = db.prepare("DELETE FROM error_log WHERE timestamp < datetime('now', '-7 days')").run();
+    results.tasks.errorLogCleanup = { success: true, deleted: errorCleanup.changes };
+  } catch (e) {
+    results.tasks.errorLogCleanup = { success: false, error: e.message };
+  }
+  
+  // 3. Clean up old webhook logs (older than 7 days)
+  try {
+    const webhookCleanup = db.prepare("DELETE FROM webhook_log WHERE processed_at < datetime('now', '-7 days')").run();
+    results.tasks.webhookLogCleanup = { success: true, deleted: webhookCleanup.changes };
+  } catch (e) {
+    results.tasks.webhookLogCleanup = { success: false, error: e.message };
+  }
+  
+  // 4. Send premium expiration reminders
+  try {
+    const reminders = await sendPremiumReminders();
+    results.tasks.premiumReminders = { success: true, sent: reminders.length, details: reminders };
+  } catch (e) {
+    results.tasks.premiumReminders = { success: false, error: e.message };
+  }
+  
+  // 5. Count providers with credits but no ZIPs (action needed)
+  try {
+    const problemProviders = db.prepare(`
+      SELECT id, company_name, email, credit_balance 
+      FROM providers 
+      WHERE status = 'Active' 
+      AND credit_balance > 0 
+      AND (service_zips IS NULL OR service_zips = '')
+    `).all();
+    results.tasks.providersNeedingZips = { 
+      success: true, 
+      count: problemProviders.length,
+      providers: problemProviders.map(p => ({ id: p.id, name: p.company_name, credits: p.credit_balance }))
+    };
+  } catch (e) {
+    results.tasks.providersNeedingZips = { success: false, error: e.message };
+  }
+  
+  // Summary
+  const allSuccessful = Object.values(results.tasks).every(t => t.success);
+  results.status = allSuccessful ? 'ok' : 'partial';
+  
+  console.log('[Maintenance]', JSON.stringify(results.tasks));
+  res.json(results);
+});
+
 // Serve uploaded photos
 app.use('/uploads', express.static(UPLOADS_DIR, { maxAge: '7d' }));
 
