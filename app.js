@@ -29,6 +29,7 @@ async function loadProviders() {
                 zip: p.address?.match(/\d{5}/)?.[0] || '',
                 phone: p.phone,
                 website: p.website,
+                photo: p.photo,  // Provider photo from API
                 verified: p.verified,
                 featured: p.featured,
                 priority: p.featured ? 1 : 0,  // For card styling

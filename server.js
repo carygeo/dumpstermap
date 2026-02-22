@@ -3,6 +3,32 @@ const path = require('path');
 const Database = require('better-sqlite3');
 const nodemailer = require('nodemailer');
 const crypto = require('crypto');
+const multer = require('multer');
+
+// Configure photo uploads
+const UPLOADS_DIR = process.env.NODE_ENV === 'production' ? '/data/uploads' : path.join(__dirname, 'uploads');
+const fs = require('fs');
+if (!fs.existsSync(UPLOADS_DIR)) fs.mkdirSync(UPLOADS_DIR, { recursive: true });
+
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => cb(null, UPLOADS_DIR),
+  filename: (req, file, cb) => {
+    const ext = path.extname(file.originalname).toLowerCase();
+    const name = `provider-${Date.now()}-${crypto.randomBytes(4).toString('hex')}${ext}`;
+    cb(null, name);
+  }
+});
+
+const upload = multer({
+  storage,
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB max
+  fileFilter: (req, file, cb) => {
+    const allowed = ['.jpg', '.jpeg', '.png', '.webp'];
+    const ext = path.extname(file.originalname).toLowerCase();
+    if (allowed.includes(ext)) cb(null, true);
+    else cb(new Error('Only .jpg, .jpeg, .png, .webp allowed'));
+  }
+});
 
 const app = express();
 const PORT = process.env.PORT || 8080;
@@ -222,6 +248,14 @@ function initDatabase() {
     console.log('Migration: Added lat/lng columns to providers');
   } catch (e) {
     // Columns already exist, ignore
+  }
+  
+  // Migration: Add photo_url for provider photos
+  try {
+    db.exec('ALTER TABLE providers ADD COLUMN photo_url TEXT');
+    console.log('Migration: Added photo_url column to providers');
+  } catch (e) {
+    // Column already exists, ignore
   }
   
   console.log('Database initialized:', DB_PATH);
@@ -2640,7 +2674,7 @@ app.get('/api/providers/directory', (req, res) => {
   const total = db.prepare(`SELECT COUNT(*) as cnt FROM providers WHERE ${whereClause}`).get(...params).cnt;
   
   const providers = db.prepare(`
-    SELECT id, company_name, street_address, city, state, business_zip, phone, website, verified, priority, lat, lng
+    SELECT id, company_name, street_address, city, state, business_zip, phone, website, verified, priority, lat, lng, photo_url
     FROM providers 
     WHERE ${whereClause}
     ORDER BY priority DESC, verified DESC, company_name ASC
@@ -2662,7 +2696,8 @@ app.get('/api/providers/directory', (req, res) => {
       verified: !!p.verified,
       featured: p.priority > 0,
       lat: p.lat,
-      lng: p.lng
+      lng: p.lng,
+      photo: p.photo_url
     }))
   });
 });
@@ -2888,6 +2923,76 @@ app.post('/api/admin/geocode-providers', async (req, res) => {
   }
   
   res.json({ geocoded: results.length, results });
+});
+
+// Upload provider photo
+app.post('/api/provider/upload-photo', upload.single('photo'), (req, res) => {
+  try {
+    const email = (req.body.email || '').toLowerCase().trim();
+    const phoneLast4 = (req.body.phone || '').replace(/\D/g, '').slice(-4);
+    
+    if (!email || !phoneLast4) {
+      return res.status(400).json({ error: 'Email and phone last 4 digits required for verification' });
+    }
+    
+    const provider = getProviderByEmail(email);
+    if (!provider || !provider.phone?.endsWith(phoneLast4)) {
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
+    
+    if (!req.file) {
+      return res.status(400).json({ error: 'No photo uploaded' });
+    }
+    
+    const photoUrl = `/uploads/${req.file.filename}`;
+    db.prepare('UPDATE providers SET photo_url = ? WHERE id = ?').run(photoUrl, provider.id);
+    
+    console.log(`Photo uploaded for ${provider.company_name}: ${photoUrl}`);
+    res.json({ status: 'ok', photo_url: photoUrl });
+  } catch (error) {
+    console.error('Photo upload error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Admin upload photo for any provider
+app.post('/api/admin/upload-photo/:id', upload.single('photo'), (req, res) => {
+  const auth = req.query.key || req.headers['x-admin-key'];
+  if (auth !== ADMIN_PASSWORD) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+  
+  if (!req.file) {
+    return res.status(400).json({ error: 'No photo uploaded' });
+  }
+  
+  const providerId = parseInt(req.params.id);
+  const photoUrl = `/uploads/${req.file.filename}`;
+  db.prepare('UPDATE providers SET photo_url = ? WHERE id = ?').run(photoUrl, providerId);
+  
+  const provider = db.prepare('SELECT id, company_name, photo_url FROM providers WHERE id = ?').get(providerId);
+  console.log(`Admin uploaded photo for ${provider?.company_name}: ${photoUrl}`);
+  
+  res.json({ status: 'ok', provider });
+});
+
+// Update provider priority/featured status (admin)
+app.post('/api/admin/set-featured/:id', (req, res) => {
+  const auth = req.query.key || req.headers['x-admin-key'];
+  if (auth !== ADMIN_PASSWORD) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+  
+  const providerId = parseInt(req.params.id);
+  const priority = parseInt(req.body.priority) || 10;
+  const verified = req.body.verified !== undefined ? (req.body.verified ? 1 : 0) : 1;
+  
+  db.prepare('UPDATE providers SET priority = ?, verified = ? WHERE id = ?').run(priority, verified, providerId);
+  
+  const provider = db.prepare('SELECT id, company_name, priority, verified FROM providers WHERE id = ?').get(providerId);
+  console.log(`Set featured: ${provider?.company_name} (priority=${priority}, verified=${verified})`);
+  
+  res.json({ status: 'ok', provider });
 });
 
 // Error log viewer API (admin)
@@ -3325,6 +3430,9 @@ app.post('/api/admin/test-emails', async (req, res) => {
     results 
   });
 });
+
+// Serve uploaded photos
+app.use('/uploads', express.static(UPLOADS_DIR, { maxAge: '7d' }));
 
 // Static files with caching
 app.use(express.static(path.join(__dirname), { 
