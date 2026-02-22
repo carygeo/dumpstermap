@@ -47,6 +47,7 @@ const RESEND_API_KEY = process.env.RESEND_API_KEY;
 const SMTP_USER = process.env.SMTP_USER || 'admin@dumpstermap.io';
 const SMTP_PASS = process.env.SMTP_PASS;
 const EMAIL_FROM = process.env.EMAIL_FROM || 'DumpsterMap <leads@dumpstermap.io>';
+const OUTREACH_FROM = process.env.OUTREACH_FROM || 'DumpsterMap Partners <partners@dumpstermap.io>';
 
 // Parse JSON bodies - raw for Stripe webhook verification
 app.use('/api/stripe-webhook', express.raw({ type: 'application/json' }));
@@ -427,7 +428,7 @@ function getProviderByEmail(email) {
   return db.prepare('SELECT * FROM providers WHERE LOWER(email) = LOWER(?)').get(email);
 }
 
-async function sendEmail(to, subject, html, text) {
+async function sendEmail(to, subject, html, text, fromAddress = EMAIL_FROM) {
   // Use Resend if available
   if (useResend && RESEND_API_KEY) {
     try {
@@ -438,7 +439,7 @@ async function sendEmail(to, subject, html, text) {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          from: EMAIL_FROM,
+          from: fromAddress,
           to: [to],
           subject: subject,
           html: html,
@@ -2244,7 +2245,9 @@ app.post('/admin/outreach/bulk-send', async (req, res) => {
     const success = await sendEmail(
       contact.provider_email,
       `Partner with DumpsterMap - Get Quality Dumpster Leads in ${contact.zip || 'Your Area'}`,
-      html
+      html,
+      null,
+      OUTREACH_FROM
     );
     
     if (success) {
@@ -2261,6 +2264,135 @@ app.post('/admin/outreach/bulk-send', async (req, res) => {
   
   console.log(`Bulk outreach: ${sent} sent, ${failed} failed`);
   res.redirect(`/admin/outreach?key=${req.query.key}&sent=${sent}&failed=${failed}`);
+});
+
+// API endpoint for cron job to send outreach emails
+app.post('/api/outreach/send-batch', async (req, res) => {
+  const auth = req.query.key || req.headers['x-admin-key'];
+  if (auth !== ADMIN_PASSWORD) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+  
+  const limit = Math.min(parseInt(req.body.limit) || 10, 20); // Max 20 per batch
+  
+  // Get pending outreach contacts
+  const contacts = db.prepare(`
+    SELECT * FROM outreach 
+    WHERE email_status = 'Pending' 
+    ORDER BY id ASC 
+    LIMIT ?
+  `).all(limit);
+  
+  if (contacts.length === 0) {
+    return res.json({ status: 'ok', message: 'No pending contacts', sent: 0, failed: 0 });
+  }
+  
+  let sent = 0, failed = 0;
+  const results = [];
+  
+  for (const contact of contacts) {
+    const html = generateOutreachEmail(contact);
+    const success = await sendEmail(
+      contact.provider_email,
+      `Partner with DumpsterMap - Get Quality Dumpster Leads in ${contact.zip || 'Your Area'}`,
+      html,
+      null,
+      OUTREACH_FROM
+    );
+    
+    if (success) {
+      db.prepare("UPDATE outreach SET email_status = 'Sent', email_sent_at = datetime('now') WHERE id = ?").run(contact.id);
+      sent++;
+      results.push({ id: contact.id, email: contact.provider_email, status: 'sent' });
+    } else {
+      db.prepare("UPDATE outreach SET email_status = 'Failed' WHERE id = ?").run(contact.id);
+      failed++;
+      results.push({ id: contact.id, email: contact.provider_email, status: 'failed' });
+    }
+    
+    // Small delay between emails to avoid rate limits
+    await new Promise(r => setTimeout(r, 500));
+  }
+  
+  console.log(`Outreach batch: ${sent} sent, ${failed} failed`);
+  res.json({ status: 'ok', sent, failed, results });
+});
+
+// Import providers from static JSON into outreach table
+app.post('/api/outreach/import-from-json', async (req, res) => {
+  const auth = req.query.key || req.headers['x-admin-key'];
+  if (auth !== ADMIN_PASSWORD) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+  
+  const limit = parseInt(req.body.limit) || 100;
+  const state = (req.body.state || '').toUpperCase();
+  const campaign = req.body.campaign || 'json-import';
+  
+  try {
+    const fs = require('fs');
+    const jsonPath = path.join(__dirname, 'data', 'providers.json');
+    const data = JSON.parse(fs.readFileSync(jsonPath, 'utf8'));
+    let providers = data.providers || [];
+    
+    // Filter by state if specified
+    if (state) {
+      providers = providers.filter(p => (p.state || '').toUpperCase() === state);
+    }
+    
+    // Only get providers with phone (we can look up email or skip)
+    providers = providers.filter(p => p.phone);
+    
+    // Limit and randomize to avoid always getting same ones
+    providers = providers.sort(() => Math.random() - 0.5).slice(0, limit);
+    
+    let imported = 0, skipped = 0;
+    
+    for (const p of providers) {
+      // Skip if already in outreach table
+      const existing = db.prepare('SELECT id FROM outreach WHERE provider_email = ? OR (company_name = ? AND zip = ?)').get(
+        p.email || `${p.phone}@unknown.com`,
+        p.name,
+        p.zip
+      );
+      
+      if (existing) {
+        skipped++;
+        continue;
+      }
+      
+      // Use email if available, or try to generate from website
+      let email = p.email || null;
+      if (!email && p.website) {
+        try {
+          const url = new URL(p.website);
+          const domain = url.hostname.replace('www.', '');
+          // Generate common business email pattern
+          email = `info@${domain}`;
+        } catch (e) {
+          // Invalid URL, skip
+        }
+      }
+      
+      if (!email) {
+        skipped++;
+        continue; // Skip providers without email or website
+      }
+      
+      db.prepare(`
+        INSERT INTO outreach (company_name, provider_email, phone, zip, source, campaign, email_status)
+        VALUES (?, ?, ?, ?, 'Google Maps Import', ?, 'Pending')
+      `).run(p.name, email, p.phone, p.zip, campaign);
+      
+      imported++;
+    }
+    
+    console.log(`Outreach import: ${imported} imported, ${skipped} skipped`);
+    res.json({ status: 'ok', imported, skipped, total: providers.length });
+  } catch (error) {
+    console.error('Import error:', error);
+    res.status(500).json({ error: error.message });
+  }
 });
 
 // Generate outreach email template
