@@ -797,22 +797,30 @@ app.get('/admin', (req, res) => {
   
   <h2 id="providers">Providers (${providers.length})</h2>
   <table>
-    <tr><th>ID</th><th>Company</th><th>Email</th><th>Phone</th><th>Zips</th><th>Credits</th><th>Leads</th><th>Status</th><th>Actions</th></tr>
-    ${providers.map(p => `
-      <tr>
-        <td>${p.id}</td>
-        <td>${p.company_name}</td>
-        <td>${p.email}</td>
-        <td>${p.phone || ''}</td>
-        <td>${p.service_zips || '<em style="color:#94a3b8">none</em>'}</td>
-        <td><span class="credit-badge">${p.credit_balance}</span></td>
-        <td>${p.total_leads}</td>
-        <td>${p.status}</td>
-        <td>
-          <a href="/admin/edit-provider/${p.id}?key=${auth}" class="btn btn-sm">Edit</a>
-        </td>
-      </tr>
-    `).join('')}
+    <tr><th>ID</th><th>Company</th><th>Email</th><th>Phone</th><th>Zips</th><th>Credits</th><th>Leads</th><th>Status</th><th>Last Purchase</th><th>Actions</th></tr>
+    ${providers.map(p => {
+      const verifiedBadge = p.verified ? '<span title="Verified" style="color:#16a34a">✓</span> ' : '';
+      const priorityBadge = p.priority > 0 ? `<span title="Priority: ${p.priority}" style="color:#f59e0b">⭐</span>` : '';
+      const lastPurchase = p.last_purchase_at ? p.last_purchase_at.split('T')[0] : '<em style="color:#94a3b8">never</em>';
+      const zipCount = p.service_zips ? p.service_zips.split(',').filter(z => z.trim()).length : 0;
+      const zipDisplay = zipCount > 0 ? `<span title="${p.service_zips}">${zipCount} zips</span>` : '<em style="color:#dc2626">none!</em>';
+      return `
+        <tr>
+          <td>${p.id}</td>
+          <td>${verifiedBadge}${priorityBadge}${p.company_name}</td>
+          <td>${p.email}</td>
+          <td>${p.phone || ''}</td>
+          <td>${zipDisplay}</td>
+          <td><span class="credit-badge">${p.credit_balance}</span></td>
+          <td>${p.total_leads}</td>
+          <td>${p.status}</td>
+          <td>${lastPurchase}</td>
+          <td>
+            <a href="/admin/edit-provider/${p.id}?key=${auth}" class="btn btn-sm">Edit</a>
+          </td>
+        </tr>
+      `;
+    }).join('')}
   </table>
   
   <div class="card">
@@ -926,6 +934,13 @@ app.get('/admin/edit-provider/:id', (req, res) => {
       <label>Priority (higher = gets leads first)</label>
       <input name="priority" type="number" value="${provider.priority || 0}">
       
+      <div style="display: flex; gap: 20px; margin: 15px 0;">
+        <label style="display: flex; align-items: center; gap: 8px;">
+          <input type="checkbox" name="verified" value="1" ${provider.verified ? 'checked' : ''} style="width: auto;">
+          Verified Provider ✓
+        </label>
+      </div>
+      
       <label>Notes</label>
       <textarea name="notes" rows="3">${provider.notes || ''}</textarea>
       
@@ -939,6 +954,18 @@ app.get('/admin/edit-provider/:id', (req, res) => {
       <tr><th>ID</th><th>Date</th><th>Zip</th><th>Status</th></tr>
       ${recentLeads.map(l => `<tr><td>${l.lead_id}</td><td>${l.created_at?.split('T')[0]||''}</td><td>${l.zip}</td><td>${l.status}</td></tr>`).join('')}
     </table>
+  </div>
+  
+  <div class="card">
+    <h3>📧 Provider Communication</h3>
+    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+      <form action="/admin/send-welcome/${provider.id}?key=${req.query.key}" method="POST" style="display: inline;">
+        <button type="submit" class="btn btn-green">Send Welcome Email</button>
+      </form>
+      <form action="/admin/send-low-balance/${provider.id}?key=${req.query.key}" method="POST" style="display: inline;">
+        <button type="submit" class="btn" ${provider.credit_balance > 2 ? 'disabled title="Balance not low"' : ''}>Send Low Balance Reminder</button>
+      </form>
+    </div>
   </div>
   
   <div class="card" style="border: 2px solid #fecaca;">
@@ -956,11 +983,11 @@ app.get('/admin/edit-provider/:id', (req, res) => {
 app.post('/admin/update-provider/:id', (req, res) => {
   if (req.query.key !== ADMIN_PASSWORD) return res.status(401).send('Unauthorized');
   
-  const { company_name, email, phone, service_zips, credit_balance, status, priority, notes } = req.body;
+  const { company_name, email, phone, service_zips, credit_balance, status, priority, verified, notes } = req.body;
   db.prepare(`
-    UPDATE providers SET company_name = ?, email = ?, phone = ?, service_zips = ?, credit_balance = ?, status = ?, priority = ?, notes = ?
+    UPDATE providers SET company_name = ?, email = ?, phone = ?, service_zips = ?, credit_balance = ?, status = ?, priority = ?, verified = ?, notes = ?
     WHERE id = ?
-  `).run(company_name, email, phone, service_zips, parseInt(credit_balance) || 0, status, parseInt(priority) || 0, notes, req.params.id);
+  `).run(company_name, email, phone, service_zips, parseInt(credit_balance) || 0, status, parseInt(priority) || 0, verified ? 1 : 0, notes, req.params.id);
   
   console.log(`Provider ${req.params.id} updated`);
   res.redirect(`/admin?key=${req.query.key}`);
@@ -972,6 +999,115 @@ app.post('/admin/delete-provider/:id', (req, res) => {
   db.prepare('DELETE FROM providers WHERE id = ?').run(req.params.id);
   console.log(`Provider ${req.params.id} deleted`);
   res.redirect(`/admin?key=${req.query.key}`);
+});
+
+// Send welcome email to provider
+app.post('/admin/send-welcome/:id', async (req, res) => {
+  if (req.query.key !== ADMIN_PASSWORD) return res.status(401).send('Unauthorized');
+  
+  const provider = db.prepare('SELECT * FROM providers WHERE id = ?').get(req.params.id);
+  if (!provider) return res.status(404).send('Provider not found');
+  
+  const html = `
+<div style="font-family: Arial, sans-serif; max-width: 600px;">
+  <h2 style="color: #16a34a;">Welcome to DumpsterMap! 🗑️</h2>
+  <p>Hi ${provider.company_name},</p>
+  <p>Thanks for joining DumpsterMap! We connect you with customers actively looking for dumpster rentals in your area.</p>
+  
+  <div style="background: #f0fdf4; border: 1px solid #86efac; padding: 20px; border-radius: 8px; margin: 20px 0;">
+    <strong>Your Account:</strong><br>
+    Credits: ${provider.credit_balance}<br>
+    Service Zips: ${provider.service_zips || 'Not set - reply with your zip codes!'}
+  </div>
+  
+  <h3>How It Works</h3>
+  <ol style="line-height: 1.8;">
+    <li><strong>We send you leads</strong> – Customers searching for dumpster rentals in your area</li>
+    <li><strong>You get full contact info</strong> – Name, phone, email, project details</li>
+    <li><strong>Close the deal</strong> – Call within 5 minutes for best results</li>
+  </ol>
+  
+  <div style="background: #fef3c7; border: 1px solid #fcd34d; padding: 15px; border-radius: 8px; margin: 20px 0;">
+    <strong>⚡ Quick Start:</strong><br>
+    Reply to this email with the zip codes you serve, and we'll set up your account to receive leads automatically.
+  </div>
+  
+  <p>
+    <a href="https://dumpstermap.io/for-providers" style="display: inline-block; background: #16a34a; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">Buy Credits</a>
+    <a href="https://dumpstermap.io/balance" style="display: inline-block; background: #f1f5f9; color: #1e293b; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin-left: 10px;">Check Balance</a>
+  </p>
+  
+  <p style="color: #64748b; font-size: 14px; margin-top: 30px;">
+    Questions? Just reply to this email.<br>
+    — The DumpsterMap Team
+  </p>
+</div>`;
+
+  const sent = await sendEmail(provider.email, 'Welcome to DumpsterMap! 🗑️', html);
+  console.log(`Welcome email ${sent ? 'sent' : 'FAILED'} to ${provider.email}`);
+  
+  res.redirect(`/admin/edit-provider/${req.params.id}?key=${req.query.key}&msg=welcome_${sent ? 'sent' : 'failed'}`);
+});
+
+// Send low balance reminder to provider
+app.post('/admin/send-low-balance/:id', async (req, res) => {
+  if (req.query.key !== ADMIN_PASSWORD) return res.status(401).send('Unauthorized');
+  
+  const provider = db.prepare('SELECT * FROM providers WHERE id = ?').get(req.params.id);
+  if (!provider) return res.status(404).send('Provider not found');
+  
+  const html = `
+<div style="font-family: Arial, sans-serif; max-width: 600px;">
+  <p>Hi ${provider.company_name},</p>
+  
+  <div style="background: #fef3c7; border: 1px solid #fcd34d; padding: 20px; border-radius: 8px; margin: 20px 0;">
+    <strong>⚠️ Low Credit Balance</strong><br>
+    You have <strong>${provider.credit_balance} credit${provider.credit_balance === 1 ? '' : 's'}</strong> remaining.
+  </div>
+  
+  <p>Don't miss out on leads! When your balance hits zero, you'll only receive teaser notifications instead of full contact details.</p>
+  
+  <h3>Credit Packs</h3>
+  <table style="width: 100%; border-collapse: collapse; margin: 15px 0;">
+    <tr style="background: #f1f5f9;">
+      <th style="padding: 10px; text-align: left; border: 1px solid #e2e8f0;">Pack</th>
+      <th style="padding: 10px; text-align: left; border: 1px solid #e2e8f0;">Credits</th>
+      <th style="padding: 10px; text-align: left; border: 1px solid #e2e8f0;">Price</th>
+      <th style="padding: 10px; text-align: left; border: 1px solid #e2e8f0;">Per Lead</th>
+    </tr>
+    <tr>
+      <td style="padding: 10px; border: 1px solid #e2e8f0;">Starter</td>
+      <td style="padding: 10px; border: 1px solid #e2e8f0;">5</td>
+      <td style="padding: 10px; border: 1px solid #e2e8f0;">$200</td>
+      <td style="padding: 10px; border: 1px solid #e2e8f0;">$40</td>
+    </tr>
+    <tr>
+      <td style="padding: 10px; border: 1px solid #e2e8f0;">Pro</td>
+      <td style="padding: 10px; border: 1px solid #e2e8f0;">20</td>
+      <td style="padding: 10px; border: 1px solid #e2e8f0;">$700</td>
+      <td style="padding: 10px; border: 1px solid #e2e8f0;"><strong>$35</strong></td>
+    </tr>
+    <tr style="background: #f0fdf4;">
+      <td style="padding: 10px; border: 1px solid #e2e8f0;">Premium</td>
+      <td style="padding: 10px; border: 1px solid #e2e8f0;">60</td>
+      <td style="padding: 10px; border: 1px solid #e2e8f0;">$1,500</td>
+      <td style="padding: 10px; border: 1px solid #e2e8f0;"><strong>$25</strong> 🔥</td>
+    </tr>
+  </table>
+  
+  <p>
+    <a href="https://dumpstermap.io/for-providers" style="display: inline-block; background: #16a34a; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">Buy Credits Now</a>
+  </p>
+  
+  <p style="color: #64748b; font-size: 14px; margin-top: 30px;">
+    — DumpsterMap
+  </p>
+</div>`;
+
+  const sent = await sendEmail(provider.email, `Low Balance Alert: ${provider.credit_balance} credits remaining`, html);
+  console.log(`Low balance email ${sent ? 'sent' : 'FAILED'} to ${provider.email}`);
+  
+  res.redirect(`/admin/edit-provider/${req.params.id}?key=${req.query.key}&msg=lowbalance_${sent ? 'sent' : 'failed'}`);
 });
 
 // Quick add credits
