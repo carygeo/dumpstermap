@@ -493,6 +493,15 @@
                         </div>
                         
                         <div class="form-group">
+                            <label for="regPhoto">Business Photo (optional)</label>
+                            <div style="display: flex; align-items: center; gap: 1rem;">
+                                <input type="file" id="regPhoto" accept="image/jpeg,image/png,image/webp" style="flex: 1;">
+                                <img id="photoPreview" src="" alt="Preview" style="display: none; width: 60px; height: 60px; object-fit: cover; border-radius: 8px; border: 2px solid var(--border);">
+                            </div>
+                            <small style="color: var(--text-light);">Show customers your trucks, equipment, or team. JPG, PNG, or WebP (max 5MB)</small>
+                        </div>
+                        
+                        <div class="form-group">
                             <label for="regServiceZips">Service Area ZIP Codes *</label>
                             <input type="text" id="regServiceZips" placeholder="33901, 33902, 33903 (comma-separated)">
                             <small style="color: var(--text-light);">Enter all ZIP codes where you offer dumpster rental service</small>
@@ -792,6 +801,22 @@
             });
         });
         
+        // Photo preview
+        document.getElementById('regPhoto')?.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            const preview = document.getElementById('photoPreview');
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    preview.src = e.target.result;
+                    preview.style.display = 'block';
+                };
+                reader.readAsDataURL(file);
+            } else {
+                preview.style.display = 'none';
+            }
+        });
+        
         async function submitRegistration() {
             const errorDiv = document.getElementById('registerError');
             errorDiv.style.display = 'none';
@@ -809,6 +834,9 @@
                 service_areas: document.getElementById('regServiceZips').value.trim(),
                 selected_pack: document.querySelector('input[name="selectedPack"]:checked')?.value || 'starter'
             };
+            
+            // Get photo file if selected
+            const photoFile = document.getElementById('regPhoto')?.files[0];
             
             // Validation
             const required = ['company_name', 'street_address', 'city', 'state', 'business_zip', 'phone', 'email', 'service_areas'];
@@ -851,6 +879,23 @@
                 
                 if (!response.ok || result.error) {
                     throw new Error(result.error || result.message || 'Registration failed');
+                }
+                
+                // If photo was selected, upload it now
+                if (photoFile && result.provider_id) {
+                    const formData = new FormData();
+                    formData.append('photo', photoFile);
+                    formData.append('email', data.email);
+                    formData.append('phone', data.phone.slice(-4));
+                    
+                    try {
+                        await fetch('/api/provider/upload-photo', {
+                            method: 'POST',
+                            body: formData
+                        });
+                    } catch (e) {
+                        console.log('Photo upload failed, continuing anyway:', e);
+                    }
                 }
                 
                 // Success - show message and redirect

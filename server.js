@@ -3077,6 +3077,26 @@ app.post('/api/admin/upload-photo/:id', upload.single('photo'), (req, res) => {
   res.json({ status: 'ok', provider });
 });
 
+// Delete provider (admin)
+app.delete('/api/admin/provider/:id', (req, res) => {
+  const auth = req.query.key || req.headers['x-admin-key'];
+  if (auth !== ADMIN_PASSWORD) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+  
+  const providerId = parseInt(req.params.id);
+  const provider = db.prepare('SELECT id, company_name FROM providers WHERE id = ?').get(providerId);
+  
+  if (!provider) {
+    return res.status(404).json({ error: 'Provider not found' });
+  }
+  
+  db.prepare('DELETE FROM providers WHERE id = ?').run(providerId);
+  console.log(`Deleted provider: ${provider.company_name} (ID: ${providerId})`);
+  
+  res.json({ status: 'ok', deleted: provider });
+});
+
 // Update provider priority/featured status (admin)
 app.post('/api/admin/set-featured/:id', (req, res) => {
   const auth = req.query.key || req.headers['x-admin-key'];
