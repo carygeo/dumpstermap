@@ -146,6 +146,7 @@ fly ssh console -C "sqlite3 /data/dumpstermap.db '.tables'"
 | `/api/admin/daily-summary` | GET | Daily metrics summary for monitoring - requires key |
 | `/api/admin/zip-coverage` | GET | ZIP coverage analysis (providers per zip, gaps) - requires key |
 | `/api/admin/send-test-lead` | POST | Send test lead to provider for verification - requires key |
+| `/api/admin/pricing` | GET | View credit pack pricing config and Stripe product mappings - requires key |
 | `/api/admin/test-webhook` | POST | Test webhook detection (dev only) - requires key |
 | `/api/health` | GET | Health check |
 | `/admin` | GET | Admin dashboard |
