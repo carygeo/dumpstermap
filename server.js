@@ -1444,6 +1444,8 @@ app.get('/admin', (req, res) => {
   const revenueToday = db.prepare("SELECT COALESCE(SUM(amount), 0) as total FROM purchase_log WHERE date(timestamp) = date('now') AND (status LIKE '%Success%' OR status = 'Credits Added')").get().total;
   const newProvidersToday = db.prepare("SELECT COUNT(*) as cnt FROM providers WHERE date(created_at) = date('now')").get().cnt;
   const providersNoZips = db.prepare("SELECT COUNT(*) as cnt FROM providers WHERE status = 'Active' AND (service_zips IS NULL OR service_zips = '')").get().cnt;
+  const providersNoZipsList = db.prepare("SELECT id, company_name, email FROM providers WHERE status = 'Active' AND (service_zips IS NULL OR service_zips = '') ORDER BY id DESC LIMIT 10").all();
+  const providersWithCreditsNoZips = db.prepare("SELECT COUNT(*) as cnt FROM providers WHERE status = 'Active' AND credit_balance > 0 AND (service_zips IS NULL OR service_zips = '')").get().cnt;
   
   const html = `
 <!DOCTYPE html>
@@ -1499,9 +1501,24 @@ app.get('/admin', (req, res) => {
       <div><span style="font-size: 24px; font-weight: bold; color: #1e40af;">${leadsToday}</span><br><span style="color: #64748b; font-size: 13px;">Leads Today</span></div>
       <div><span style="font-size: 24px; font-weight: bold; color: #16a34a;">$${revenueToday.toFixed(0)}</span><br><span style="color: #64748b; font-size: 13px;">Revenue Today</span></div>
       <div><span style="font-size: 24px; font-weight: bold; color: #9333ea;">${newProvidersToday}</span><br><span style="color: #64748b; font-size: 13px;">New Providers</span></div>
-      ${providersNoZips > 0 ? `<div style="background: #fef3c7; padding: 8px 12px; border-radius: 6px;"><span style="font-size: 18px; font-weight: bold; color: #b45309;">⚠️ ${providersNoZips}</span><br><span style="color: #92400e; font-size: 13px;">Providers without ZIPs</span></div>` : ''}
+      ${providersNoZips > 0 ? `<div style="background: #fef3c7; padding: 8px 12px; border-radius: 6px;"><span style="font-size: 18px; font-weight: bold; color: #b45309;">⚠️ ${providersNoZips}</span><br><span style="color: #92400e; font-size: 13px;">Providers without ZIPs</span>${providersWithCreditsNoZips > 0 ? `<br><span style="color: #dc2626; font-size: 12px; font-weight: bold;">🚨 ${providersWithCreditsNoZips} have credits!</span>` : ''}</div>` : ''}
     </div>
   </div>
+  
+  ${providersWithCreditsNoZips > 0 ? `
+  <div class="card" style="background: linear-gradient(135deg, #fef2f2 0%, #fecaca 100%); border-left: 4px solid #dc2626; margin-bottom: 20px;">
+    <h3 style="margin: 0 0 10px 0; color: #dc2626;">🚨 Action Needed: ${providersWithCreditsNoZips} Provider${providersWithCreditsNoZips > 1 ? 's' : ''} with Credits but No Service ZIPs</h3>
+    <p style="color: #7f1d1d; font-size: 13px; margin-bottom: 10px;">These providers paid for leads but won't receive any until their service ZIPs are configured:</p>
+    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+      ${providersNoZipsList.filter(p => providers.find(pr => pr.id === p.id)?.credit_balance > 0).slice(0, 5).map(p => `
+        <a href="/admin/edit-provider/${p.id}?key=${auth}" style="background: white; padding: 8px 12px; border-radius: 4px; text-decoration: none; color: #1e293b; font-size: 13px; box-shadow: 0 1px 2px rgba(0,0,0,0.1);">
+          <strong>${p.company_name}</strong><br>
+          <span style="color: #64748b; font-size: 11px;">${p.email}</span>
+        </a>
+      `).join('')}
+    </div>
+  </div>
+  ` : ''}
   
   <div class="stats">
     <div class="stat"><div class="stat-value">${totalLeads}</div><div class="stat-label">Total Leads</div></div>
@@ -1646,6 +1663,21 @@ app.get('/admin', (req, res) => {
       <input name="credits" type="number" placeholder="Credits" required style="width: 100px;">
       <input name="reason" placeholder="Reason (optional)" style="width: 200px;">
       <button class="btn btn-green">Add Credits</button>
+    </form>
+  </div>
+  
+  <div class="card" id="bulk-credits">
+    <h3>📦 Bulk Add Credits</h3>
+    <p style="color: #64748b; font-size: 13px; margin-bottom: 10px;">Add credits to multiple providers at once. Hold Ctrl/Cmd to select multiple.</p>
+    <form action="/admin/bulk-add-credits?key=${auth}" method="POST" style="display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-start;">
+      <select name="provider_ids" multiple required style="min-width: 280px; height: 120px;">
+        ${providers.filter(p => p.status === 'Active').map(p => `<option value="${p.id}">${p.company_name} (${p.credit_balance} cr)</option>`).join('')}
+      </select>
+      <div style="display: flex; flex-direction: column; gap: 8px;">
+        <input name="credits" type="number" placeholder="Credits each" required style="width: 120px;">
+        <input name="reason" placeholder="Reason" style="width: 200px;">
+        <button class="btn btn-green">Add to Selected</button>
+      </div>
     </form>
   </div>
   
@@ -2012,6 +2044,40 @@ app.post('/admin/add-credits', (req, res) => {
   );
   
   console.log(`Added ${creditAmount} credits to provider ${provider_id}: ${reason || 'no reason'}`);
+  res.redirect(`/admin?key=${req.query.key}`);
+});
+
+// Bulk add credits (form version)
+app.post('/admin/bulk-add-credits', (req, res) => {
+  if (req.query.key !== ADMIN_PASSWORD) return res.status(401).send('Unauthorized');
+  
+  let { provider_ids, credits, reason } = req.body;
+  
+  // Handle both array (multiple select) and single value
+  if (!Array.isArray(provider_ids)) {
+    provider_ids = provider_ids ? [provider_ids] : [];
+  }
+  
+  const creditAmount = parseInt(credits) || 0;
+  if (creditAmount <= 0 || provider_ids.length === 0) {
+    return res.redirect(`/admin?key=${req.query.key}`);
+  }
+  
+  let updated = 0;
+  for (const id of provider_ids) {
+    try {
+      db.prepare('UPDATE providers SET credit_balance = credit_balance + ? WHERE id = ?').run(creditAmount, id);
+      const provider = db.prepare('SELECT email FROM providers WHERE id = ?').get(id);
+      db.prepare('INSERT INTO purchase_log (lead_id, buyer_email, amount, payment_id, status) VALUES (?, ?, ?, ?, ?)').run(
+        'BULK_ADD', provider?.email || '', 0, 'admin-bulk-' + Date.now(), `Bulk: +${creditAmount} credits. ${reason || ''}`
+      );
+      updated++;
+    } catch (e) {
+      console.log(`Failed to add credits to provider ${id}:`, e.message);
+    }
+  }
+  
+  console.log(`Bulk added ${creditAmount} credits to ${updated} providers: ${reason || 'no reason'}`);
   res.redirect(`/admin?key=${req.query.key}`);
 });
 
@@ -2463,6 +2529,12 @@ app.get('/admin/logs', (req, res) => {
   const purchases = db.prepare('SELECT * FROM purchase_log ORDER BY id DESC LIMIT 200').all();
   const errors = db.prepare('SELECT * FROM error_log ORDER BY id DESC LIMIT 100').all();
   
+  // Get webhook events (may not exist yet)
+  let webhookEvents = [];
+  try {
+    webhookEvents = db.prepare('SELECT * FROM webhook_log ORDER BY id DESC LIMIT 50').all();
+  } catch (e) { /* table may not exist */ }
+  
   // Calculate revenue breakdown
   const singleLeadRev = db.prepare("SELECT SUM(amount) as total FROM purchase_log WHERE lead_id LIKE 'LEAD-%' AND (status LIKE '%Success%' OR status = 'Credits Added')").get().total || 0;
   const starterRev = db.prepare("SELECT SUM(amount) as total FROM purchase_log WHERE lead_id = 'PACK_5' AND status = 'Credits Added'").get().total || 0;
@@ -2557,6 +2629,35 @@ app.get('/admin/logs', (req, res) => {
         <td style="font-size: 10px; max-width: 300px; overflow: hidden; text-overflow: ellipsis;">${e.context || ''}</td>
       </tr>
     `).join('')}
+  </table>
+  ` : ''}
+  
+  ${webhookEvents.length > 0 ? `
+  <h2>🔌 Webhook Events (${webhookEvents.length})</h2>
+  <table>
+    <tr><th>Time</th><th>Event Type</th><th>Data</th><th>Result</th></tr>
+    ${webhookEvents.map(e => {
+      let dataPreview = '';
+      try {
+        const data = JSON.parse(e.event_data || '{}');
+        dataPreview = data.customerEmail || data.eventId || JSON.stringify(data).slice(0, 50);
+      } catch { dataPreview = (e.event_data || '').slice(0, 50); }
+      
+      let resultPreview = '';
+      try {
+        const result = JSON.parse(e.result || '{}');
+        resultPreview = result.processed ? '✅ ' + (result.type || 'processed') : (result.error || JSON.stringify(result).slice(0, 30));
+      } catch { resultPreview = (e.result || '').slice(0, 30); }
+      
+      return `
+        <tr>
+          <td style="font-size: 11px;">${e.processed_at || ''}</td>
+          <td>${e.event_type || ''}</td>
+          <td style="font-size: 10px; max-width: 200px; overflow: hidden; text-overflow: ellipsis;" title="${(e.event_data || '').replace(/"/g, '&quot;')}">${dataPreview}...</td>
+          <td style="font-size: 11px;">${resultPreview}</td>
+        </tr>
+      `;
+    }).join('')}
   </table>
   ` : ''}
 </body>
