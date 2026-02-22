@@ -43,6 +43,17 @@ else
 fi
 echo ""
 
+# Outreach activity
+echo ">>> Outreach Activity"
+SUMMARY=$(curl -s "$BASE_URL/api/admin/daily-summary?key=$ADMIN_KEY")
+OUTREACH_SENT=$(echo "$SUMMARY" | jq -r '.outreach.sentToday // 0')
+OUTREACH_PENDING=$(echo "$SUMMARY" | jq -r '.outreach.pending // 0')
+OUTREACH_CONVERTED=$(echo "$SUMMARY" | jq -r '.outreach.convertedToday // 0')
+echo "Emails sent today: $OUTREACH_SENT"
+echo "Pending outreach: $OUTREACH_PENDING"
+echo "Converted today: $OUTREACH_CONVERTED"
+echo ""
+
 # Stripe webhook status
 echo ">>> Stripe Webhook Status"
 STRIPE=$(curl -s "$BASE_URL/api/admin/stripe-status?key=$ADMIN_KEY")

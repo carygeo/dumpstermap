@@ -3161,6 +3161,17 @@ app.get('/api/admin/daily-summary', (req, res) => {
   // Lead status breakdown
   const leadsByStatus = db.prepare("SELECT status, COUNT(*) as count FROM leads WHERE date(created_at) = date('now') GROUP BY status").all();
   
+  // Outreach activity
+  const outreachSentToday = db.prepare("SELECT COUNT(*) as cnt FROM outreach WHERE date(email_sent_at) = date('now')").get().cnt;
+  const outreachConvertedToday = db.prepare("SELECT COUNT(*) as cnt FROM outreach WHERE converted = 1 AND date(created_at) = date('now')").get().cnt;
+  const outreachPending = db.prepare("SELECT COUNT(*) as cnt FROM outreach WHERE email_status = 'Pending'").get().cnt;
+  
+  // Providers needing attention (has credits but no ZIPs)
+  const providersNeedingZips = db.prepare(`
+    SELECT id, company_name, email, credit_balance FROM providers 
+    WHERE status = 'Active' AND credit_balance > 0 AND (service_zips IS NULL OR service_zips = '')
+  `).all();
+  
   res.json({
     date: today,
     leads: {
@@ -3174,7 +3185,13 @@ app.get('/api/admin/daily-summary', (req, res) => {
     },
     providers: {
       new: newProviders.map(p => ({ name: p.company_name, email: p.email })),
-      lowBalance: lowBalanceProviders
+      lowBalance: lowBalanceProviders,
+      needingZips: providersNeedingZips.map(p => ({ id: p.id, name: p.company_name, credits: p.credit_balance }))
+    },
+    outreach: {
+      sentToday: outreachSentToday,
+      convertedToday: outreachConvertedToday,
+      pending: outreachPending
     },
     errors: errorsToday,
     timestamp: new Date().toISOString()
