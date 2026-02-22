@@ -250,6 +250,9 @@ fly ssh console -C "sqlite3 /data/dumpstermap.db '.tables'"
 | `/api/admin/provider/:id` | GET | Get detailed provider info by ID - requires key |
 | `/api/admin/premium-status` | GET | View premium/verified providers - requires key |
 | `/api/admin/test-webhook` | POST | Test webhook detection (dev only) - requires key |
+| `/api/admin/webhook-log` | GET | View recent webhook events - requires key |
+| `/api/admin/registration-funnel` | GET | Registration-to-purchase funnel stats - requires key |
+| `/api/admin/bulk-add-credits` | POST | Add credits to multiple providers at once - requires key |
 | `/api/health` | GET | Health check |
 | `/admin` | GET | Admin dashboard |
 | `/admin/outreach` | GET | Provider outreach tracking |

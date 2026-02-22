@@ -1,15 +1,51 @@
 // DumpsterMap.io - Main Application JavaScript
 
-// Provider data (loaded from JSON)
+// Provider data (loaded from JSON + API)
 let providers = [];
 let filteredProviders = [];
 
-// Load provider data
+// Load provider data from both static JSON and registered providers API
 async function loadProviders() {
     try {
-        const response = await fetch('data/providers.json');
-        const data = await response.json();
-        providers = data.providers;
+        // Fetch both sources in parallel
+        const [staticResponse, registeredResponse] = await Promise.all([
+            fetch('data/providers.json'),
+            fetch('/api/providers/directory?limit=50').catch(() => null)
+        ]);
+        
+        const staticData = await staticResponse.json();
+        const staticProviders = staticData.providers || [];
+        
+        // Transform registered providers to match static format
+        let registeredProviders = [];
+        if (registeredResponse && registeredResponse.ok) {
+            const regData = await registeredResponse.json();
+            registeredProviders = (regData.providers || []).map(p => ({
+                id: `reg-${p.id}`,
+                name: p.companyName,
+                address: p.address,
+                city: p.location?.split(',')[0]?.trim() || '',
+                state: p.location?.split(',')[1]?.trim() || '',
+                zip: p.address?.match(/\d{5}/)?.[0] || '',
+                phone: p.phone,
+                website: p.website,
+                verified: p.verified,
+                featured: p.featured,
+                priority: p.featured ? 1 : 0,  // For card styling
+                isRegistered: true,
+                // Registered providers show at top with high rating
+                rating: p.featured ? 5.0 : (p.verified ? 4.8 : 4.5),
+                reviewCount: 0,
+                category: 'Dumpster rental service',
+                // Generate lat/lng from address for map (will need geocoding)
+                lat: null,
+                lng: null
+            }));
+        }
+        
+        // Merge: registered providers first, then static
+        providers = [...registeredProviders, ...staticProviders];
+        console.log(`Loaded ${registeredProviders.length} registered + ${staticProviders.length} static providers`);
         return providers;
     } catch (error) {
         console.error('Error loading providers:', error);

@@ -120,6 +120,25 @@ function initDatabase() {
       context TEXT
     );
     
+    CREATE TABLE IF NOT EXISTS webhook_log (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      processed_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      event_type TEXT,
+      event_data TEXT,
+      result TEXT
+    );
+    
+    CREATE TABLE IF NOT EXISTS registration_events (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      timestamp TEXT DEFAULT CURRENT_TIMESTAMP,
+      event_type TEXT NOT NULL,
+      provider_id INTEGER,
+      email TEXT,
+      selected_pack TEXT,
+      source TEXT,
+      metadata TEXT
+    );
+    
     CREATE INDEX IF NOT EXISTS idx_leads_lead_id ON leads(lead_id);
     CREATE INDEX IF NOT EXISTS idx_outreach_email ON outreach(provider_email);
     CREATE INDEX IF NOT EXISTS idx_leads_zip ON leads(zip);
@@ -630,9 +649,26 @@ const CREDIT_PACKS = {
 // Map Stripe product IDs to credit packs (more reliable than amount matching)
 // Add your Stripe product/price IDs here as you create them in Stripe
 const STRIPE_PRODUCT_MAP = {
+  // Starter Pack ($200 → 5 credits)
+  // Pro Pack ($700 → 20 credits)
+  // Premium Pack ($1500 → 60 credits)
+  // Featured Partner ($99/mo → 3 credits + perks)
   // Format: 'price_xxx' or 'prod_xxx' => { credits: X, name: 'Y' }
-  // Example: 'price_1234567890': { credits: 5, name: 'Starter Pack' }
+  // Add IDs from Stripe dashboard as they're created
 };
+
+// Webhook event log for debugging payment issues
+function logWebhookEvent(eventType, data, result = null) {
+  try {
+    db.prepare(`
+      INSERT INTO webhook_log (event_type, event_data, result, processed_at)
+      VALUES (?, ?, ?, datetime('now'))
+    `).run(eventType, JSON.stringify(data), result ? JSON.stringify(result) : null);
+  } catch (e) {
+    // Table might not exist yet, that's fine
+    console.log('Webhook log skipped (table may not exist):', eventType);
+  }
+}
 
 // Match credit pack by product name, metadata, or amount
 // Works regardless of coupons/discounts
@@ -820,6 +856,13 @@ app.post('/api/stripe-webhook', async (req, res) => {
       }
     }
     
+    // Log all webhook events for debugging
+    logWebhookEvent(event.type, { 
+      eventId: event.id,
+      created: event.created,
+      livemode: event.livemode
+    });
+    
     if (event.type !== 'checkout.session.completed') {
       return res.json({ received: true, processed: false });
     }
@@ -962,6 +1005,26 @@ app.post('/api/stripe-webhook', async (req, res) => {
         `${purchaseType} ${pack.name} Purchased${isNewProvider ? ' (NEW PROVIDER)' : ''}`,
         `Buyer: ${customerEmail}\nAmount: $${amount}\nCredits: ${pack.credits}\nNew Balance: ${provider.credit_balance + pack.credits}\nType: ${isSubscription ? 'Monthly Subscription' : 'One-time Pack'}\n${isNewProvider ? '⭐ Auto-created provider account' : ''}`
       );
+      
+      // Log successful webhook processing
+      logWebhookEvent('checkout.session.completed', {
+        customerEmail,
+        amount,
+        type: isSubscription ? 'subscription' : 'credit_pack',
+        packName: pack.name
+      }, { processed: true, credits: pack.credits, emailSent });
+      
+      // Track conversion event if this was from a pre-registered provider
+      if (leadId && leadId.startsWith('PROVIDER-')) {
+        try {
+          db.prepare(`
+            INSERT INTO registration_events (event_type, provider_id, email, selected_pack, source, metadata)
+            VALUES ('purchase', ?, ?, ?, 'stripe', ?)
+          `).run(provider.id, customerEmail, packType, JSON.stringify({ amount, packName: pack.name }));
+        } catch (e) {
+          console.log('Purchase tracking skipped:', e.message);
+        }
+      }
       
       return res.json({ received: true, processed: true, type: isSubscription ? 'subscription' : 'credit_pack', credits: pack.credits, emailSent });
     }
@@ -1147,6 +1210,20 @@ app.post('/api/provider/register', async (req, res) => {
     
     const providerId = result.lastInsertRowid;
     console.log(`New provider created: ${providerId} - ${company_name}`);
+    
+    // Track registration event for funnel analysis
+    try {
+      db.prepare(`
+        INSERT INTO registration_events (event_type, provider_id, email, selected_pack, source, metadata)
+        VALUES ('registration', ?, ?, ?, 'website', ?)
+      `).run(providerId, emailLower, selected_pack || 'starter', JSON.stringify({
+        company_name: company_name.trim(),
+        city: city?.trim(),
+        state: state?.trim()?.toUpperCase()
+      }));
+    } catch (e) {
+      console.log('Registration tracking skipped:', e.message);
+    }
     
     // Build redirect URL to Stripe with provider ID
     const packLink = STRIPE_PACK_LINKS[selected_pack] || STRIPE_PACK_LINKS.starter;
@@ -2752,6 +2829,127 @@ app.post('/api/admin/send-premium-reminders', async (req, res) => {
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
+});
+
+// Admin endpoint: View webhook event log
+app.get('/api/admin/webhook-log', (req, res) => {
+  const auth = req.query.key || req.headers['x-admin-key'];
+  if (auth !== ADMIN_PASSWORD) return res.status(401).json({ error: 'Unauthorized' });
+  
+  const limit = Math.min(parseInt(req.query.limit) || 50, 200);
+  
+  try {
+    const events = db.prepare(`
+      SELECT * FROM webhook_log ORDER BY id DESC LIMIT ?
+    `).all(limit);
+    
+    res.json({
+      count: events.length,
+      events: events.map(e => ({
+        id: e.id,
+        processedAt: e.processed_at,
+        eventType: e.event_type,
+        data: e.event_data ? JSON.parse(e.event_data) : null,
+        result: e.result ? JSON.parse(e.result) : null
+      }))
+    });
+  } catch (e) {
+    res.json({ error: 'Table may not exist yet', message: e.message, events: [] });
+  }
+});
+
+// Admin endpoint: Registration funnel stats
+app.get('/api/admin/registration-funnel', (req, res) => {
+  const auth = req.query.key || req.headers['x-admin-key'];
+  if (auth !== ADMIN_PASSWORD) return res.status(401).json({ error: 'Unauthorized' });
+  
+  const days = parseInt(req.query.days) || 30;
+  
+  try {
+    // Total registrations
+    const registrations = db.prepare(`
+      SELECT COUNT(*) as count FROM registration_events 
+      WHERE event_type = 'registration' 
+      AND timestamp > datetime('now', '-' || ? || ' days')
+    `).get(days).count;
+    
+    // Purchases from registered providers
+    const purchases = db.prepare(`
+      SELECT COUNT(*) as count FROM registration_events 
+      WHERE event_type = 'purchase' 
+      AND timestamp > datetime('now', '-' || ? || ' days')
+    `).get(days).count;
+    
+    // Registrations by pack
+    const byPack = db.prepare(`
+      SELECT selected_pack, COUNT(*) as count FROM registration_events 
+      WHERE event_type = 'registration' 
+      AND timestamp > datetime('now', '-' || ? || ' days')
+      GROUP BY selected_pack
+    `).all(days);
+    
+    // Daily breakdown
+    const dailyRegistrations = db.prepare(`
+      SELECT date(timestamp) as date, COUNT(*) as count FROM registration_events 
+      WHERE event_type = 'registration' 
+      AND timestamp > datetime('now', '-' || ? || ' days')
+      GROUP BY date(timestamp)
+      ORDER BY date DESC
+    `).all(days);
+    
+    const conversionRate = registrations > 0 ? ((purchases / registrations) * 100).toFixed(1) : 0;
+    
+    res.json({
+      timeRange: `Last ${days} days`,
+      registrations,
+      purchases,
+      conversionRate: `${conversionRate}%`,
+      byPack: Object.fromEntries(byPack.map(p => [p.selected_pack || 'unknown', p.count])),
+      dailyBreakdown: dailyRegistrations,
+      timestamp: new Date().toISOString()
+    });
+  } catch (e) {
+    res.json({ 
+      error: 'Tables may not exist yet', 
+      message: e.message,
+      registrations: 0,
+      purchases: 0,
+      conversionRate: '0%'
+    });
+  }
+});
+
+// Admin endpoint: Bulk add credits to multiple providers
+app.post('/api/admin/bulk-add-credits', (req, res) => {
+  const auth = req.query.key || req.headers['x-admin-key'];
+  if (auth !== ADMIN_PASSWORD) return res.status(401).json({ error: 'Unauthorized' });
+  
+  const { provider_ids, credits, reason } = req.body;
+  if (!provider_ids || !Array.isArray(provider_ids) || provider_ids.length === 0) {
+    return res.status(400).json({ error: 'provider_ids array required' });
+  }
+  
+  const creditAmount = parseInt(credits) || 0;
+  if (creditAmount <= 0) {
+    return res.status(400).json({ error: 'credits must be positive' });
+  }
+  
+  let updated = 0;
+  for (const id of provider_ids) {
+    try {
+      db.prepare('UPDATE providers SET credit_balance = credit_balance + ? WHERE id = ?').run(creditAmount, id);
+      const provider = db.prepare('SELECT email FROM providers WHERE id = ?').get(id);
+      db.prepare('INSERT INTO purchase_log (lead_id, buyer_email, amount, payment_id, status) VALUES (?, ?, ?, ?, ?)').run(
+        'BULK_ADD', provider?.email || '', 0, 'admin-bulk-' + Date.now(), `Bulk: +${creditAmount} credits. ${reason || ''}`
+      );
+      updated++;
+    } catch (e) {
+      console.log(`Failed to add credits to provider ${id}:`, e.message);
+    }
+  }
+  
+  console.log(`Bulk added ${creditAmount} credits to ${updated} providers`);
+  res.json({ success: true, updated, credits: creditAmount, reason });
 });
 
 // ============================================
