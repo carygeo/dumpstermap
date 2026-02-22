@@ -3226,7 +3226,7 @@ app.post('/api/admin/clear-test-data', (req, res) => {
   const purchasesDeleted = db.prepare("DELETE FROM purchase_log WHERE buyer_email IN ('carygreenwood@gmail.com', 'ogpressvinyl@gmail.com')").run().changes;
   
   // Clear webhook logs older than 1 day
-  const webhooksDeleted = db.prepare("DELETE FROM webhook_log WHERE timestamp < datetime('now', '-1 day')").run().changes;
+  const webhooksDeleted = db.prepare("DELETE FROM webhook_log WHERE processed_at < datetime('now', '-1 day')").run().changes;
   
   console.log(`Cleared test data: ${leadsDeleted} leads, ${purchasesDeleted} purchases, ${webhooksDeleted} webhooks`);
   
