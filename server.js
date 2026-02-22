@@ -200,6 +200,74 @@ function expirePremiumStatus() {
   return expired.length;
 }
 
+// Helper: Send premium expiration reminder emails (7 days and 3 days before)
+async function sendPremiumReminders() {
+  const reminders = [];
+  
+  // Find providers expiring in 7 days (±12 hours window to avoid duplicates)
+  const sevenDays = db.prepare(`
+    SELECT id, company_name, email, premium_expires_at FROM providers 
+    WHERE premium_expires_at IS NOT NULL 
+    AND premium_expires_at BETWEEN datetime('now', '+6 days', '+12 hours') AND datetime('now', '+7 days', '+12 hours')
+    AND verified = 1
+  `).all();
+  
+  // Find providers expiring in 3 days
+  const threeDays = db.prepare(`
+    SELECT id, company_name, email, premium_expires_at FROM providers 
+    WHERE premium_expires_at IS NOT NULL 
+    AND premium_expires_at BETWEEN datetime('now', '+2 days', '+12 hours') AND datetime('now', '+3 days', '+12 hours')
+    AND verified = 1
+  `).all();
+  
+  for (const provider of sevenDays) {
+    const daysLeft = 7;
+    const html = generatePremiumReminderEmail(provider, daysLeft);
+    const sent = await sendEmail(provider.email, `Your Featured Partner status expires in ${daysLeft} days`, html);
+    if (sent) reminders.push({ provider: provider.company_name, daysLeft });
+  }
+  
+  for (const provider of threeDays) {
+    const daysLeft = 3;
+    const html = generatePremiumReminderEmail(provider, daysLeft);
+    const sent = await sendEmail(provider.email, `⚠️ Featured Partner expiring in ${daysLeft} days - Renew now`, html);
+    if (sent) reminders.push({ provider: provider.company_name, daysLeft });
+  }
+  
+  return reminders;
+}
+
+function generatePremiumReminderEmail(provider, daysLeft) {
+  const urgency = daysLeft <= 3 ? 'urgent' : 'reminder';
+  const color = daysLeft <= 3 ? '#dc2626' : '#f59e0b';
+  
+  return `
+<div style="font-family: Arial, sans-serif; max-width: 600px; line-height: 1.6; color: #333;">
+  <p>Hi ${provider.company_name},</p>
+  
+  <div style="background: ${daysLeft <= 3 ? '#fef2f2' : '#fffbeb'}; border-left: 4px solid ${color}; padding: 16px; margin: 20px 0;">
+    <strong style="color: ${color};">Your Featured Partner status expires in ${daysLeft} days</strong>
+  </div>
+  
+  <p>Your premium benefits are set to expire on <strong>${new Date(provider.premium_expires_at).toLocaleDateString()}</strong>.</p>
+  
+  <p><strong>What you'll lose:</strong></p>
+  <ul>
+    <li>✓ Verified badge on your listing</li>
+    <li>🔝 Priority placement in search results</li>
+    <li>Higher visibility to customers</li>
+  </ul>
+  
+  <p style="margin: 24px 0;">
+    <a href="https://dumpstermap.io/for-providers#pricing" style="background: ${color}; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">Renew Featured Partner →</a>
+  </p>
+  
+  <p>Questions? Reply to this email.</p>
+  
+  <p>— The DumpsterMap Team</p>
+</div>`;
+}
+
 // ============================================
 // EMAIL SETUP (Resend primary, SMTP fallback)
 // ============================================
@@ -2033,6 +2101,19 @@ app.post('/api/admin/expire-premium', (req, res) => {
   res.json({ success: true, expiredCount });
 });
 
+// Admin endpoint: Send premium expiration reminders now
+app.post('/api/admin/send-premium-reminders', async (req, res) => {
+  const auth = req.query.key || req.headers['x-admin-key'];
+  if (auth !== ADMIN_PASSWORD) return res.status(401).json({ error: 'Unauthorized' });
+  
+  try {
+    const reminders = await sendPremiumReminders();
+    res.json({ success: true, remindersSent: reminders.length, details: reminders });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // ============================================
 // HEALTH & DEBUG
 // ============================================
@@ -2241,11 +2322,22 @@ if (expiredCount > 0) {
   console.log(`Expired premium status for ${expiredCount} providers`);
 }
 
-// Check premium expiration daily (every 24 hours)
-setInterval(() => {
+// Check premium expiration and send reminders daily (every 24 hours)
+setInterval(async () => {
+  // Expire any past-due premium status
   const expired = expirePremiumStatus();
   if (expired > 0) {
     console.log(`[Daily check] Expired premium status for ${expired} providers`);
+  }
+  
+  // Send reminder emails for upcoming expirations
+  try {
+    const reminders = await sendPremiumReminders();
+    if (reminders.length > 0) {
+      console.log(`[Daily check] Sent ${reminders.length} premium expiration reminders`);
+    }
+  } catch (e) {
+    console.error('[Daily check] Error sending reminders:', e.message);
   }
 }, 24 * 60 * 60 * 1000);
 
