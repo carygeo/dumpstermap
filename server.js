@@ -629,31 +629,52 @@ app.post('/api/stripe-webhook', async (req, res) => {
       return res.json({ received: true, error: 'Lead not found' });
     }
     
-    // Send full lead details
+    // Send full lead details - minimal HTML for inbox delivery
     const html = `
-<div style="font-family: Arial, sans-serif; max-width: 600px;">
-  <p>Thanks for your purchase! Here's your lead:</p>
-  <div style="background: #f0fdf4; border: 1px solid #86efac; padding: 20px; border-radius: 8px; margin: 20px 0;">
-    <strong>Contact:</strong><br>
-    Name: ${lead.name}<br>
+<div style="font-family: Arial, sans-serif; max-width: 600px; line-height: 1.6; color: #333;">
+  <p>Here are the contact details for your lead:</p>
+  
+  <p style="margin: 16px 0; padding: 12px; background: #f9f9f9;">
+    <strong>${lead.name}</strong><br>
     Phone: ${lead.phone}<br>
     Email: ${lead.email}
-  </div>
-  <div style="background: #f9f9f9; padding: 20px; border-radius: 8px;">
-    Location: ${lead.zip}<br>
-    Size: ${lead.size || 'TBD'}<br>
-    Timeline: ${lead.timeframe || 'TBD'}<br>
-    Project: ${lead.project_type || 'Not specified'}
-  </div>
-  <p><strong>Tip:</strong> Call within 5 minutes!</p>
-  <p style="margin-top: 20px;">
-    <a href="https://dumpstermap.io/for-providers" style="color: #2563eb;">Buy more credits</a> | 
-    <a href="https://dumpstermap.io" style="color: #2563eb;">Visit DumpsterMap.io</a>
   </p>
-  <p style="color: #64748b; font-size: 12px; margin-top: 20px;">— DumpsterMap | <a href="https://dumpstermap.io" style="color: #64748b;">dumpstermap.io</a></p>
+  
+  <p>
+    Location: ${lead.zip}<br>
+    Size: ${lead.size || 'Not specified'}<br>
+    Timeline: ${lead.timeframe || 'Not specified'}<br>
+    Project: ${lead.project_type || 'General'}
+  </p>
+  
+  <p>Call them soon - they're actively looking for service.</p>
+  
+  <p>— DumpsterMap<br>
+  <a href="https://dumpstermap.io">dumpstermap.io</a></p>
+  
+  <p style="font-size: 13px; color: #666; margin-top: 20px;">
+    Questions? Reply to this email.
+  </p>
 </div>`;
+
+    // Plain text version
+    const text = \`Here are the contact details for your lead:
+
+${lead.name}
+Phone: ${lead.phone}
+Email: ${lead.email}
+
+Location: ${lead.zip}
+Size: ${lead.size || 'Not specified'}
+Timeline: ${lead.timeframe || 'Not specified'}
+Project: ${lead.project_type || 'General'}
+
+Call them soon - they're actively looking for service.
+
+— DumpsterMap
+dumpstermap.io\`;
     
-    const emailSent = await sendEmail(customerEmail, `Your lead details - ${leadId}`, html);
+    const emailSent = await sendEmail(customerEmail, \`Lead details - ${lead.name} in ${lead.zip}\`, html, text);
     
     // Update lead
     db.prepare(`
