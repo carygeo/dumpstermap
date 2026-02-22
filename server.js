@@ -612,36 +612,79 @@ const STRIPE_PRODUCT_MAP = {
   // Example: 'price_1234567890': { credits: 5, name: 'Starter Pack' }
 };
 
-// Flexible amount matching (handles minor Stripe fee variations and coupons)
+// Match credit pack by product name, metadata, or amount
+// Works regardless of coupons/discounts
 function matchCreditPack(amount, session = null) {
-  // First, check Stripe product/price IDs if available (most reliable)
   if (session) {
+    // 1. Check session metadata (most reliable if set during checkout creation)
+    const metadata = session.metadata || {};
+    if (metadata.pack_type) {
+      console.log(`Matched by metadata: ${metadata.pack_type}`);
+      if (metadata.pack_type === 'starter') return CREDIT_PACKS[200];
+      if (metadata.pack_type === 'pro') return CREDIT_PACKS[700];
+      if (metadata.pack_type === 'premium') return CREDIT_PACKS[1500];
+      if (metadata.pack_type === 'featured') return { ...SUBSCRIPTIONS[99], isSubscription: true };
+    }
+    if (metadata.credits) {
+      const credits = parseInt(metadata.credits);
+      console.log(`Matched by metadata credits: ${credits}`);
+      if (credits === 5) return CREDIT_PACKS[200];
+      if (credits === 20) return CREDIT_PACKS[700];
+      if (credits === 60) return CREDIT_PACKS[1500];
+      if (credits === 3) return { ...SUBSCRIPTIONS[99], isSubscription: true };
+    }
+    
+    // 2. Check line items for product name (if expanded)
     const lineItems = session.line_items?.data || [];
     for (const item of lineItems) {
+      const productName = (
+        item.description ||
+        item.price?.product?.name ||
+        item.price?.nickname ||
+        ''
+      ).toLowerCase();
+      
+      if (productName) console.log(`Checking product name: "${productName}"`);
+      
+      if (productName.includes('starter') || productName.includes('5 credit') || productName.includes('5-credit')) {
+        console.log('Matched: Starter Pack by product name');
+        return CREDIT_PACKS[200];
+      }
+      if (productName.includes('pro pack') || productName.includes('20 credit') || productName.includes('20-credit')) {
+        console.log('Matched: Pro Pack by product name');
+        return CREDIT_PACKS[700];
+      }
+      if (productName.includes('premium') || productName.includes('60 credit') || productName.includes('60-credit')) {
+        console.log('Matched: Premium Pack by product name');
+        return CREDIT_PACKS[1500];
+      }
+      if (productName.includes('featured') || productName.includes('partner')) {
+        console.log('Matched: Featured Partner by product name');
+        return { ...SUBSCRIPTIONS[99], isSubscription: true };
+      }
+      
+      // Check product/price IDs
       const priceId = item.price?.id;
       const productId = item.price?.product;
       if (priceId && STRIPE_PRODUCT_MAP[priceId]) return STRIPE_PRODUCT_MAP[priceId];
       if (productId && STRIPE_PRODUCT_MAP[productId]) return STRIPE_PRODUCT_MAP[productId];
-      
-      // Fallback: Check product/price description or nickname for pack identification
-      // This handles coupon codes where amount doesn't match
-      const description = (item.description || item.price?.nickname || '').toLowerCase();
-      if (description.includes('starter') || description.includes('5 credit')) {
-        return CREDIT_PACKS[200];
-      }
-      if (description.includes('pro') || description.includes('20 credit')) {
-        return CREDIT_PACKS[700];
-      }
-      if (description.includes('premium') || description.includes('60 credit')) {
-        return CREDIT_PACKS[1500];
-      }
     }
     
-    // Also check original amount before discount (amount_subtotal vs amount_total)
+    // 3. Check original amount before discount (amount_subtotal)
     const originalAmount = session.amount_subtotal ? session.amount_subtotal / 100 : null;
-    if (originalAmount && CREDIT_PACKS[originalAmount]) {
-      console.log(`Matched by original amount before discount: $${originalAmount}`);
-      return CREDIT_PACKS[originalAmount];
+    if (originalAmount) {
+      console.log(`Checking original amount before discount: $${originalAmount}`);
+      if (CREDIT_PACKS[originalAmount]) {
+        console.log(`Matched by original amount: $${originalAmount}`);
+        return CREDIT_PACKS[originalAmount];
+      }
+      // Also check with tolerance
+      for (const [price, pack] of Object.entries(CREDIT_PACKS)) {
+        if (Math.abs(originalAmount - parseInt(price)) <= 5) {
+          console.log(`Matched by original amount (with tolerance): $${originalAmount} -> $${price}`);
+          return pack;
+        }
+      }
     }
   }
   
@@ -764,10 +807,25 @@ app.post('/api/stripe-webhook', async (req, res) => {
     const customerEmail = session.customer_details?.email || session.customer_email;
     const customerName = session.customer_details?.name;
     const amount = session.amount_total ? session.amount_total / 100 : 0;
+    const originalAmount = session.amount_subtotal ? session.amount_subtotal / 100 : 0;
     const paymentId = session.payment_intent || session.id;
     const paymentStatus = session.payment_status;
     
-    console.log('Payment:', { leadId, customerEmail, amount, paymentStatus });
+    // Log detailed session info for debugging
+    console.log('Payment:', { 
+      leadId, 
+      customerEmail, 
+      amount, 
+      originalAmount,
+      paymentStatus,
+      hasLineItems: !!session.line_items,
+      metadata: session.metadata
+    });
+    
+    // Log line items if present
+    if (session.line_items?.data) {
+      console.log('Line items:', JSON.stringify(session.line_items.data, null, 2));
+    }
     
     // Idempotency check - don't process same payment twice
     if (isPaymentProcessed(paymentId)) {
