@@ -384,6 +384,8 @@ async function sendFullLeadToProvider(provider, leadId, lead, options = {}) {
   
   <p><strong>${customerName}</strong> in <strong>${lead.zip}</strong> just requested a quote — they need a dumpster <strong>${timeframe}</strong>.</p>
   
+  ${leadType === 'exclusive' ? '<p style="font-size: 13px; color: #059669;"><em>This lead was sent exclusively to you based on the customer\'s selection.</em></p>' : ''}
+  
   <div style="background: #f0fdf4; border-left: 4px solid #22c55e; padding: 16px; margin: 20px 0;">
     <strong style="font-size: 16px;">📞 Contact Info</strong><br><br>
     <strong>Name:</strong> ${customerName}<br>
@@ -427,6 +429,8 @@ async function sendTeaserToProvider(provider, leadId, lead, options = {}) {
   <p>Hi ${companyName},</p>
   
   <p>${leadTypeBadge}</p>
+  
+  ${leadType === 'exclusive' ? '<p style="font-size: 13px; color: #059669;"><em>This lead was sent exclusively to you based on the customer\'s selection.</em></p>' : ''}
   
   <p>Someone in your area just searched DumpsterMap looking for a dumpster rental. They filled out a quote request and are <strong>ready to book</strong>.</p>
   
