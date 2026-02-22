@@ -612,7 +612,7 @@ const STRIPE_PRODUCT_MAP = {
   // Example: 'price_1234567890': { credits: 5, name: 'Starter Pack' }
 };
 
-// Flexible amount matching (handles minor Stripe fee variations)
+// Flexible amount matching (handles minor Stripe fee variations and coupons)
 function matchCreditPack(amount, session = null) {
   // First, check Stripe product/price IDs if available (most reliable)
   if (session) {
@@ -622,6 +622,26 @@ function matchCreditPack(amount, session = null) {
       const productId = item.price?.product;
       if (priceId && STRIPE_PRODUCT_MAP[priceId]) return STRIPE_PRODUCT_MAP[priceId];
       if (productId && STRIPE_PRODUCT_MAP[productId]) return STRIPE_PRODUCT_MAP[productId];
+      
+      // Fallback: Check product/price description or nickname for pack identification
+      // This handles coupon codes where amount doesn't match
+      const description = (item.description || item.price?.nickname || '').toLowerCase();
+      if (description.includes('starter') || description.includes('5 credit')) {
+        return CREDIT_PACKS[200];
+      }
+      if (description.includes('pro') || description.includes('20 credit')) {
+        return CREDIT_PACKS[700];
+      }
+      if (description.includes('premium') || description.includes('60 credit')) {
+        return CREDIT_PACKS[1500];
+      }
+    }
+    
+    // Also check original amount before discount (amount_subtotal vs amount_total)
+    const originalAmount = session.amount_subtotal ? session.amount_subtotal / 100 : null;
+    if (originalAmount && CREDIT_PACKS[originalAmount]) {
+      console.log(`Matched by original amount before discount: $${originalAmount}`);
+      return CREDIT_PACKS[originalAmount];
     }
   }
   
