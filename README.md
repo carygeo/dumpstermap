@@ -61,10 +61,27 @@
 ## Lead Flow
 
 1. **Customer submits quote** → POST /api/lead → Creates lead in SQLite
-2. **Match providers** → Find active providers covering that ZIP
+2. **Match providers** → Find active providers covering that ZIP (or specific provider if direct)
 3. **If provider has credits** → Auto-send full contact info, deduct 1 credit
 4. **If no credits** → Send teaser email with payment link
 5. **Provider pays** → Stripe webhook → Deliver full lead details
+
+## Provider Registration Flow
+
+1. **Provider visits** `/for-providers` → Fills registration form
+2. **POST /api/provider/register** → Creates provider record with status "Active"
+3. **Redirect to Stripe Checkout** → With `PROVIDER-{id}` as client_reference_id
+4. **Payment completed** → Webhook fires with `checkout.session.completed`
+5. **Webhook matches provider** by PROVIDER-{id} or email → Adds credits
+6. **Confirmation email sent** → Provider ready to receive leads
+
+## Stripe Webhook Detection
+
+The webhook uses multiple methods to detect purchase type (in priority order):
+1. **Session metadata** (`pack_type` or `credits` field) - most reliable
+2. **Line item product names** (e.g., "Starter Pack", "20 credit")
+3. **Original amount before discounts** (`amount_subtotal`)
+4. **Final amount with tolerance** (±$5 for Stripe variations)
 
 ## Pricing
 
@@ -253,6 +270,7 @@ fly ssh console -C "sqlite3 /data/dumpstermap.db '.tables'"
 | `/api/admin/webhook-log` | GET | View recent webhook events - requires key |
 | `/api/admin/registration-funnel` | GET | Registration-to-purchase funnel stats - requires key |
 | `/api/admin/bulk-add-credits` | POST | Add credits to multiple providers at once - requires key |
+| `/api/admin/batch-email` | POST | Send batch email to providers (dryRun supported) - requires key |
 | `/api/health` | GET | Health check |
 | `/admin` | GET | Admin dashboard |
 | `/admin/outreach` | GET | Provider outreach tracking |

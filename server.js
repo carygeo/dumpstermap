@@ -485,13 +485,25 @@ async function sendAdminNotification(subject, body) {
   await sendEmail(NOTIFICATION_EMAIL, subject, `<pre>${body}</pre>`, body);
 }
 
-function logError(type, message, context = {}) {
+function logError(type, message, context = {}, error = null) {
+  // Include stack trace if an Error object is provided
+  const enrichedContext = {
+    ...context,
+    stack: error?.stack || null,
+    timestamp: new Date().toISOString()
+  };
+  
   try {
-    db.prepare('INSERT INTO error_log (type, message, context) VALUES (?, ?, ?)').run(type, message, JSON.stringify(context));
+    db.prepare('INSERT INTO error_log (type, message, context) VALUES (?, ?, ?)').run(
+      type, 
+      message, 
+      JSON.stringify(enrichedContext)
+    );
   } catch (e) {
     console.error('Failed to log error:', e);
   }
   console.error(`[${type}] ${message}`, context);
+  if (error?.stack) console.error('Stack trace:', error.stack);
 }
 
 // ============================================
@@ -709,14 +721,28 @@ const CREDIT_PACKS = {
 };
 
 // Map Stripe product IDs to credit packs (more reliable than amount matching)
-// Add your Stripe product/price IDs here as you create them in Stripe
+// To find your Stripe IDs: Stripe Dashboard → Products → Click product → Copy price ID (starts with price_)
+// This is the MOST RELIABLE way to identify purchases (works even with coupons/discounts)
 const STRIPE_PRODUCT_MAP = {
-  // Starter Pack ($200 → 5 credits)
-  // Pro Pack ($700 → 20 credits)
-  // Premium Pack ($1500 → 60 credits)
-  // Featured Partner ($99/mo → 3 credits + perks)
-  // Format: 'price_xxx' or 'prod_xxx' => { credits: X, name: 'Y' }
-  // Add IDs from Stripe dashboard as they're created
+  // =====================================================
+  // HOW TO ADD YOUR STRIPE PRODUCTS:
+  // 1. Go to Stripe Dashboard → Products
+  // 2. Click on a product → Find "API ID" (price_xxx)
+  // 3. Add it below in format: 'price_xxx': { credits: X, name: 'Pack Name' }
+  // =====================================================
+  
+  // Example format (replace with your actual Stripe price IDs):
+  // 'price_1ABC123xyz': { credits: 5, name: 'Starter Pack' },
+  // 'price_2DEF456xyz': { credits: 20, name: 'Pro Pack', perks: true },
+  // 'price_3GHI789xyz': { credits: 60, name: 'Premium Pack', perks: true },
+  // 'price_4JKL012xyz': { credits: 3, name: 'Featured Partner', perks: ['verified', 'priority'] },
+  
+  // Current DumpsterMap Stripe links (update with actual price IDs when available):
+  // Single lead: https://buy.stripe.com/cNidR9aQ76T46IF78j5Rm04 ($40)
+  // Starter Pack: https://buy.stripe.com/00w14n5vNa5g5EB2S35Rm00 ($200 → 5 credits)
+  // Pro Pack: https://buy.stripe.com/fZu6oH7DVgtE7MJdwH5Rm02 ($700 → 20 credits)
+  // Premium Pack: https://buy.stripe.com/bJefZh0btcdod73eAL5Rm03 ($1500 → 60 credits)
+  // Featured Partner: https://buy.stripe.com/28EdR9e2jelwgjfgIT5Rm01 ($99/mo subscription)
 };
 
 // Webhook event log for debugging payment issues
@@ -1170,7 +1196,11 @@ dumpstermap.io`;
     res.json({ received: true, processed: true, type: 'single_lead', emailSent });
   } catch (error) {
     console.error('Webhook error:', error);
-    await sendAdminNotification('❌ Webhook Error', error.toString());
+    logError('webhook', error.message, { 
+      eventType: event?.type,
+      sessionId: event?.data?.object?.id
+    }, error);
+    await sendAdminNotification('❌ Webhook Error', `${error.message}\n\nStack: ${error.stack?.slice(0, 500)}`);
     res.json({ received: true, error: error.message });
   }
 });
@@ -3503,6 +3533,75 @@ app.get('/api/admin/registration-funnel', (req, res) => {
       conversionRate: '0%'
     });
   }
+});
+
+// Admin endpoint: Send batch email to providers (announcements, promotions)
+app.post('/api/admin/batch-email', async (req, res) => {
+  const auth = req.query.key || req.headers['x-admin-key'];
+  if (auth !== ADMIN_PASSWORD) return res.status(401).json({ error: 'Unauthorized' });
+  
+  const { subject, html, filter, dryRun } = req.body;
+  
+  if (!subject || !html) {
+    return res.status(400).json({ error: 'subject and html required' });
+  }
+  
+  // Build query based on filter
+  let whereClause = "status = 'Active'";
+  const params = [];
+  
+  if (filter === 'with_credits') {
+    whereClause += " AND credit_balance > 0";
+  } else if (filter === 'no_credits') {
+    whereClause += " AND credit_balance = 0";
+  } else if (filter === 'premium') {
+    whereClause += " AND (verified = 1 OR priority > 0)";
+  } else if (filter === 'low_balance') {
+    whereClause += " AND credit_balance > 0 AND credit_balance <= 2";
+  }
+  
+  const providers = db.prepare(`SELECT id, company_name, email FROM providers WHERE ${whereClause}`).all(...params);
+  
+  // Dry run - just return who would receive
+  if (dryRun) {
+    return res.json({
+      dryRun: true,
+      wouldSendTo: providers.length,
+      recipients: providers.map(p => ({ id: p.id, name: p.company_name, email: p.email }))
+    });
+  }
+  
+  // Send emails
+  let sent = 0, failed = 0;
+  const results = [];
+  
+  for (const provider of providers) {
+    // Replace {{company_name}} placeholder
+    const personalizedHtml = html.replace(/\{\{company_name\}\}/g, provider.company_name);
+    const success = await sendEmail(provider.email, subject, personalizedHtml);
+    
+    if (success) {
+      sent++;
+      results.push({ email: provider.email, status: 'sent' });
+    } else {
+      failed++;
+      results.push({ email: provider.email, status: 'failed' });
+    }
+    
+    // Rate limit: 2 emails per second
+    await new Promise(r => setTimeout(r, 500));
+  }
+  
+  console.log(`Batch email sent: ${sent}/${providers.length} (${failed} failed)`);
+  
+  res.json({
+    success: true,
+    sent,
+    failed,
+    total: providers.length,
+    filter: filter || 'all_active',
+    results
+  });
 });
 
 // Admin endpoint: Bulk add credits to multiple providers
