@@ -1129,6 +1129,12 @@ app.get('/admin', (req, res) => {
   const totalRevenue = db.prepare("SELECT SUM(amount) as total FROM purchase_log WHERE status LIKE '%Success%' OR status LIKE '%credit%'").get().total || 0;
   const totalCredits = providers.reduce((sum, p) => sum + (p.credit_balance || 0), 0);
   
+  // Today's activity
+  const leadsToday = db.prepare("SELECT COUNT(*) as cnt FROM leads WHERE date(created_at) = date('now')").get().cnt;
+  const revenueToday = db.prepare("SELECT COALESCE(SUM(amount), 0) as total FROM purchase_log WHERE date(timestamp) = date('now') AND (status LIKE '%Success%' OR status = 'Credits Added')").get().total;
+  const newProvidersToday = db.prepare("SELECT COUNT(*) as cnt FROM providers WHERE date(created_at) = date('now')").get().cnt;
+  const providersNoZips = db.prepare("SELECT COUNT(*) as cnt FROM providers WHERE status = 'Active' AND (service_zips IS NULL OR service_zips = '')").get().cnt;
+  
   const html = `
 <!DOCTYPE html>
 <html>
@@ -1173,6 +1179,17 @@ app.get('/admin', (req, res) => {
     <a href="#purchases">Purchases</a>
     <a href="/admin/outreach?key=${auth}">Outreach</a>
     <a href="/admin/logs?key=${auth}">System Logs</a>
+  </div>
+  
+  <!-- Today's Activity -->
+  <div class="card" style="background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%); border-left: 4px solid #2563eb;">
+    <h3 style="margin: 0 0 15px 0; color: #1e40af;">📊 Today's Activity</h3>
+    <div style="display: flex; gap: 30px; flex-wrap: wrap;">
+      <div><span style="font-size: 24px; font-weight: bold; color: #1e40af;">${leadsToday}</span><br><span style="color: #64748b; font-size: 13px;">Leads Today</span></div>
+      <div><span style="font-size: 24px; font-weight: bold; color: #16a34a;">$${revenueToday.toFixed(0)}</span><br><span style="color: #64748b; font-size: 13px;">Revenue Today</span></div>
+      <div><span style="font-size: 24px; font-weight: bold; color: #9333ea;">${newProvidersToday}</span><br><span style="color: #64748b; font-size: 13px;">New Providers</span></div>
+      ${providersNoZips > 0 ? `<div style="background: #fef3c7; padding: 8px 12px; border-radius: 6px;"><span style="font-size: 18px; font-weight: bold; color: #b45309;">⚠️ ${providersNoZips}</span><br><span style="color: #92400e; font-size: 13px;">Providers without ZIPs</span></div>` : ''}
+    </div>
   </div>
   
   <div class="stats">
@@ -1716,12 +1733,116 @@ app.get('/admin/outreach', (req, res) => {
     }).join('')}
   </table>
   
+  <div class="card">
+    <h3>📧 Bulk Send Outreach Emails</h3>
+    <p style="color: #64748b; font-size: 14px; margin-bottom: 10px;">Send outreach emails to all contacts with "Pending" status.</p>
+    <form action="/admin/outreach/bulk-send?key=${req.query.key}" method="POST" style="display: flex; gap: 10px; align-items: center;" onsubmit="return confirm('Send outreach emails to all Pending contacts?')">
+      <select name="campaign" style="min-width: 150px;">
+        <option value="">All campaigns</option>
+        ${campaigns.map(c => `<option value="${c.campaign}">${c.campaign}</option>`).join('')}
+      </select>
+      <input name="limit" type="number" placeholder="Limit (default: 10)" value="10" style="width: 120px;">
+      <button class="btn btn-green">Send Outreach Emails</button>
+    </form>
+  </div>
+  
   <h2>Export</h2>
   <a href="/admin/export/outreach?key=${req.query.key}" class="btn">Export Outreach CSV</a>
 </body>
 </html>`;
   res.send(html);
 });
+
+// Bulk send outreach emails
+app.post('/admin/outreach/bulk-send', async (req, res) => {
+  if (req.query.key !== ADMIN_PASSWORD) return res.status(401).send('Unauthorized');
+  
+  const campaign = req.body.campaign || null;
+  const limit = Math.min(parseInt(req.body.limit) || 10, 50);
+  
+  // Get pending outreach contacts
+  let query = "SELECT * FROM outreach WHERE email_status = 'Pending'";
+  const params = [];
+  if (campaign) {
+    query += " AND campaign = ?";
+    params.push(campaign);
+  }
+  query += " ORDER BY id ASC LIMIT ?";
+  params.push(limit);
+  
+  const contacts = db.prepare(query).all(...params);
+  let sent = 0, failed = 0;
+  
+  for (const contact of contacts) {
+    const html = generateOutreachEmail(contact);
+    const success = await sendEmail(
+      contact.provider_email,
+      `Partner with DumpsterMap - Get Quality Dumpster Leads in ${contact.zip || 'Your Area'}`,
+      html
+    );
+    
+    if (success) {
+      db.prepare("UPDATE outreach SET email_status = 'Sent', email_sent_at = datetime('now') WHERE id = ?").run(contact.id);
+      sent++;
+    } else {
+      db.prepare("UPDATE outreach SET email_status = 'Failed' WHERE id = ?").run(contact.id);
+      failed++;
+    }
+    
+    // Small delay between emails to avoid rate limits
+    await new Promise(r => setTimeout(r, 500));
+  }
+  
+  console.log(`Bulk outreach: ${sent} sent, ${failed} failed`);
+  res.redirect(`/admin/outreach?key=${req.query.key}&sent=${sent}&failed=${failed}`);
+});
+
+// Generate outreach email template
+function generateOutreachEmail(contact) {
+  const companyName = contact.company_name || 'there';
+  const zip = contact.zip || 'your area';
+  
+  return `
+<div style="font-family: Arial, sans-serif; max-width: 600px; line-height: 1.6; color: #333;">
+  <p>Hi ${companyName},</p>
+  
+  <p>I'm reaching out because we're connecting dumpster rental customers in <strong>${zip}</strong> with local providers like you.</p>
+  
+  <p><strong>DumpsterMap.io</strong> is a lead generation platform where homeowners and contractors search for dumpster rentals. When they submit a quote request, we send you their full contact info so you can reach out directly.</p>
+  
+  <div style="background: #f8f9fa; padding: 16px; border-radius: 6px; margin: 20px 0;">
+    <strong>How it works:</strong>
+    <ul style="margin: 10px 0 0 0; padding-left: 20px;">
+      <li>Customer fills out a quote request on DumpsterMap</li>
+      <li>We send you their name, phone, and email immediately</li>
+      <li>You call them and close the deal</li>
+      <li>Only pay for leads you receive ($40/lead or volume discounts)</li>
+    </ul>
+  </div>
+  
+  <p><strong>Why providers choose us:</strong></p>
+  <ul style="margin: 10px 0; padding-left: 20px;">
+    <li>✓ Real-time leads (customers actively searching)</li>
+    <li>✓ No contracts or monthly fees</li>
+    <li>✓ Full contact info (name, phone, email, project details)</li>
+    <li>✓ Only pay for leads in your service area</li>
+  </ul>
+  
+  <p style="margin: 24px 0;">
+    <a href="https://dumpstermap.io/for-providers" style="background: #16a34a; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">Learn More & Get Started →</a>
+  </p>
+  
+  <p>Have questions? Just reply to this email.</p>
+  
+  <p>Best,<br>
+  The DumpsterMap Team</p>
+  
+  <p style="font-size: 12px; color: #888; margin-top: 30px; border-top: 1px solid #eee; padding-top: 16px;">
+    DumpsterMap.io | <a href="https://dumpstermap.io" style="color: #888;">dumpstermap.io</a><br>
+    Reply STOP to unsubscribe.
+  </p>
+</div>`;
+}
 
 // Add outreach contact
 app.post('/admin/outreach/add', (req, res) => {
