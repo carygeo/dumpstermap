@@ -623,8 +623,8 @@ async function sendTeaserToProvider(provider, leadId, lead, options = {}) {
 // Keys are dollar amounts, but we also check Stripe product/price IDs
 const CREDIT_PACKS = {
   200: { credits: 5, name: 'Starter Pack' },
-  700: { credits: 20, name: 'Pro Pack' },
-  1500: { credits: 60, name: 'Premium Pack' }
+  700: { credits: 20, name: 'Pro Pack', perks: true },      // Includes verified badge
+  1500: { credits: 60, name: 'Premium Pack', perks: true }  // Includes verified + priority
 };
 
 // Map Stripe product IDs to credit packs (more reliable than amount matching)
