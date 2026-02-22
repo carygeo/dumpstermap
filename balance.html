@@ -11,23 +11,28 @@
             font-family: 'Inter', sans-serif;
             background: #f9fafb;
             min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 1rem;
+            padding: 2rem 1rem;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
         }
         .card {
             background: white;
             border-radius: 16px;
             box-shadow: 0 4px 6px rgba(0,0,0,0.1);
             padding: 2rem;
-            max-width: 400px;
-            width: 100%;
+            margin-bottom: 1.5rem;
         }
         h1 {
             font-size: 1.5rem;
             margin-bottom: 0.5rem;
             text-align: center;
+        }
+        h2 {
+            font-size: 1.1rem;
+            margin-bottom: 1rem;
+            color: #374151;
         }
         .subtitle {
             color: #6b7280;
@@ -66,32 +71,34 @@
             background: #059669;
         }
         .result {
-            margin-top: 1.5rem;
-            padding: 1.5rem;
-            background: #f0fdf4;
-            border-radius: 8px;
             display: none;
         }
-        .result.error {
+        .result.show {
+            display: block;
+        }
+        .result.error .card {
             background: #fef2f2;
+        }
+        .balance-display {
+            text-align: center;
+            padding: 1rem 0;
         }
         .balance {
             font-size: 3rem;
             font-weight: 700;
             color: #10b981;
-            text-align: center;
         }
         .company {
-            text-align: center;
             color: #374151;
-            margin-bottom: 1rem;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
         }
         .stats {
             display: flex;
             justify-content: space-around;
             margin-top: 1rem;
             padding-top: 1rem;
-            border-top: 1px solid #d1fae5;
+            border-top: 1px solid #e5e7eb;
         }
         .stat {
             text-align: center;
@@ -107,6 +114,7 @@
         .error-msg {
             color: #dc2626;
             text-align: center;
+            padding: 1rem;
         }
         .buy-more {
             display: block;
@@ -116,39 +124,106 @@
             text-decoration: none;
             font-weight: 500;
         }
+        .history-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.875rem;
+        }
+        .history-table th {
+            text-align: left;
+            padding: 0.5rem;
+            border-bottom: 2px solid #e5e7eb;
+            color: #6b7280;
+            font-weight: 500;
+        }
+        .history-table td {
+            padding: 0.5rem;
+            border-bottom: 1px solid #f3f4f6;
+        }
+        .status-success {
+            color: #10b981;
+            font-weight: 500;
+        }
+        .status-pending {
+            color: #f59e0b;
+        }
+        .no-data {
+            text-align: center;
+            color: #9ca3af;
+            padding: 1rem;
+        }
+        .section-title {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+        .back-link {
+            display: inline-block;
+            margin-bottom: 1rem;
+            color: #6b7280;
+            text-decoration: none;
+        }
+        .back-link:hover {
+            color: #374151;
+        }
     </style>
 </head>
 <body>
-    <div class="card">
-        <h1>🎫 Check Your Credits</h1>
-        <p class="subtitle">Enter your business email and phone to verify</p>
+    <div class="container">
+        <a href="/" class="back-link">← Back to DumpsterMap</a>
         
-        <form id="checkForm">
-            <label for="email">Business Email</label>
-            <input type="email" id="email" placeholder="you@yourcompany.com" required>
-            <label for="phone">Last 4 Digits of Phone</label>
-            <input type="text" id="phone" placeholder="1234" maxlength="4" pattern="[0-9]{4}" required>
-            <button type="submit">Check Balance</button>
-        </form>
+        <div class="card">
+            <h1>🎫 Check Your Credits</h1>
+            <p class="subtitle">Enter your business email and phone to verify</p>
+            
+            <form id="checkForm">
+                <label for="email">Business Email</label>
+                <input type="email" id="email" placeholder="you@yourcompany.com" required>
+                <label for="phone">Last 4 Digits of Phone</label>
+                <input type="text" id="phone" placeholder="1234" maxlength="4" pattern="[0-9]{4}" required>
+                <button type="submit">Check Balance</button>
+            </form>
+        </div>
         
         <div class="result" id="result">
-            <div class="company" id="company"></div>
-            <div class="balance" id="balance"></div>
-            <div class="stats">
-                <div class="stat">
-                    <div class="stat-value" id="leads">0</div>
-                    <div class="stat-label">Leads Received</div>
+            <div class="card">
+                <div class="balance-display">
+                    <div class="company" id="company"></div>
+                    <div class="balance" id="balance"></div>
                 </div>
-                <div class="stat">
-                    <div class="stat-value" id="plan">Free</div>
-                    <div class="stat-label">Plan</div>
+                <div class="stats">
+                    <div class="stat">
+                        <div class="stat-value" id="leads">0</div>
+                        <div class="stat-label">Leads Received</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-value" id="plan">Free</div>
+                        <div class="stat-label">Plan</div>
+                    </div>
+                </div>
+                <a href="/for-providers#pricing" class="buy-more">Buy More Credits →</a>
+            </div>
+            
+            <div class="card">
+                <h2 class="section-title">💰 Recent Purchases</h2>
+                <div id="purchasesContainer">
+                    <p class="no-data">No purchases yet</p>
                 </div>
             </div>
-            <a href="/for-providers.html#pricing" class="buy-more">Buy More Credits →</a>
+            
+            <div class="card">
+                <h2 class="section-title">📋 Recent Leads Received</h2>
+                <div id="leadsContainer">
+                    <p class="no-data">No leads received yet</p>
+                </div>
+            </div>
         </div>
         
         <div class="result error" id="error">
-            <p class="error-msg" id="errorMsg"></p>
+            <div class="card">
+                <p class="error-msg" id="errorMsg"></p>
+            </div>
         </div>
     </div>
     
@@ -160,11 +235,11 @@
             const email = document.getElementById('email').value.trim();
             const phone = document.getElementById('phone').value.trim();
             
-            document.getElementById('result').style.display = 'none';
-            document.getElementById('error').style.display = 'none';
+            document.getElementById('result').classList.remove('show');
+            document.getElementById('error').classList.remove('show');
             
             try {
-                const response = await fetch(`${API_URL}?action=balance&email=${encodeURIComponent(email)}&phone=${encodeURIComponent(phone)}`);
+                const response = await fetch(`${API_URL}?email=${encodeURIComponent(email)}&phone=${encodeURIComponent(phone)}`);
                 const data = await response.json();
                 
                 if (data.status === 'ok') {
@@ -172,14 +247,47 @@
                     document.getElementById('balance').textContent = data.creditBalance + ' credits';
                     document.getElementById('leads').textContent = data.totalLeadsReceived;
                     document.getElementById('plan').textContent = data.plan;
-                    document.getElementById('result').style.display = 'block';
+                    
+                    // Render purchases
+                    const purchasesHtml = data.recentPurchases && data.recentPurchases.length > 0 
+                        ? `<table class="history-table">
+                            <thead><tr><th>Date</th><th>Type</th><th>Amount</th><th>Status</th></tr></thead>
+                            <tbody>${data.recentPurchases.map(p => `
+                                <tr>
+                                    <td>${p.date}</td>
+                                    <td>${p.type}</td>
+                                    <td>$${p.amount}</td>
+                                    <td class="${p.status === 'Success' || p.status === 'Credits Added' ? 'status-success' : ''}">${p.status}</td>
+                                </tr>
+                            `).join('')}</tbody>
+                           </table>`
+                        : '<p class="no-data">No purchases yet</p>';
+                    document.getElementById('purchasesContainer').innerHTML = purchasesHtml;
+                    
+                    // Render leads
+                    const leadsHtml = data.recentLeads && data.recentLeads.length > 0
+                        ? `<table class="history-table">
+                            <thead><tr><th>Date</th><th>Lead ID</th><th>Name</th><th>Zip</th></tr></thead>
+                            <tbody>${data.recentLeads.map(l => `
+                                <tr>
+                                    <td>${l.date}</td>
+                                    <td>${l.leadId}</td>
+                                    <td>${l.name}</td>
+                                    <td>${l.zip}</td>
+                                </tr>
+                            `).join('')}</tbody>
+                           </table>`
+                        : '<p class="no-data">No leads received yet. Buy credits and set your service zips to start receiving leads!</p>';
+                    document.getElementById('leadsContainer').innerHTML = leadsHtml;
+                    
+                    document.getElementById('result').classList.add('show');
                 } else {
                     document.getElementById('errorMsg').textContent = data.message || 'Provider not found';
-                    document.getElementById('error').style.display = 'block';
+                    document.getElementById('error').classList.add('show');
                 }
             } catch (err) {
                 document.getElementById('errorMsg').textContent = 'Unable to check balance. Please try again.';
-                document.getElementById('error').style.display = 'block';
+                document.getElementById('error').classList.add('show');
             }
         });
     </script>

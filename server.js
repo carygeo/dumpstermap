@@ -658,12 +658,44 @@ app.get('/api/balance', (req, res) => {
     return res.json({ status: 'error', message: 'Phone verification failed' });
   }
   
+  // Get recent purchase history for this provider
+  const purchases = db.prepare(`
+    SELECT timestamp, lead_id, amount, status 
+    FROM purchase_log 
+    WHERE LOWER(buyer_email) = LOWER(?) 
+    ORDER BY id DESC 
+    LIMIT 10
+  `).all(email);
+  
+  // Get leads sent to this provider (credits used)
+  const leadsReceived = db.prepare(`
+    SELECT created_at, lead_id, name, zip, status 
+    FROM leads 
+    WHERE LOWER(assigned_provider) = LOWER(?) 
+    ORDER BY id DESC 
+    LIMIT 10
+  `).all(provider.company_name);
+  
   res.json({
     status: 'ok',
     companyName: provider.company_name,
     creditBalance: provider.credit_balance,
     totalLeadsReceived: provider.total_leads,
-    plan: provider.plan
+    plan: provider.plan,
+    recentPurchases: purchases.map(p => ({
+      date: p.timestamp?.split('T')[0] || '',
+      type: p.lead_id?.startsWith('PACK_') ? `Credit Pack (+${p.lead_id.replace('PACK_', '')} credits)` : 
+            p.lead_id?.startsWith('LEAD-') ? `Single Lead (${p.lead_id})` : p.lead_id,
+      amount: p.amount,
+      status: p.status
+    })),
+    recentLeads: leadsReceived.map(l => ({
+      date: l.created_at?.split('T')[0] || '',
+      leadId: l.lead_id,
+      name: l.name,
+      zip: l.zip,
+      status: l.status
+    }))
   });
 });
 
