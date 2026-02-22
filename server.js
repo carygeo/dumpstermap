@@ -305,6 +305,12 @@ app.post('/api/lead', async (req, res) => {
 
 async function sendFullLeadToProvider(provider, leadId, lead) {
   const timeframe = lead.timeframe === 'asap' ? 'ASAP' : lead.timeframe || 'soon';
+  const newBalance = (provider.credit_balance || 1) - 1;
+  const lowBalanceWarning = newBalance <= 2 && newBalance >= 0 ? `
+  <div style="background: #fef3c7; border: 1px solid #fcd34d; padding: 12px; border-radius: 6px; margin: 15px 0;">
+    ⚠️ <strong>Low Balance Alert:</strong> ${newBalance} credit${newBalance === 1 ? '' : 's'} remaining.
+    <a href="https://dumpstermap.io/for-providers" style="color: #b45309; font-weight: bold;">Buy more credits →</a>
+  </div>` : '';
   const html = `
 <div style="font-family: Arial, sans-serif; max-width: 600px;">
   <p>Hi ${provider.company_name},</p>
@@ -320,8 +326,8 @@ async function sendFullLeadToProvider(provider, leadId, lead) {
     Size: ${lead.size ? lead.size + ' yard' : 'TBD'}<br>
     Type: ${lead.projectType || 'Not specified'}
   </div>
-  <p><strong>Tip:</strong> Call within 5 minutes for best results!</p>
-  <p style="color: #666; font-size: 12px;">1 credit used. <a href="https://dumpstermap.io/balance">Check balance</a></p>
+  <p><strong>Tip:</strong> Call within 5 minutes for best results!</p>${lowBalanceWarning}
+  <p style="color: #666; font-size: 12px;">1 credit used • ${newBalance} remaining • <a href="https://dumpstermap.io/balance">Check balance</a></p>
 </div>`;
   await sendEmail(provider.email, `New lead in ${lead.zip}`, html);
 }
@@ -1395,9 +1401,11 @@ app.get('/api/stats', (req, res) => {
   });
 });
 
-// Admin stats (requires auth)
+// Admin stats (requires auth - supports query param, x-admin-key header, or Authorization bearer)
 app.get('/api/admin/stats', (req, res) => {
-  const auth = req.query.key || req.headers['x-admin-key'];
+  const auth = req.query.key || 
+               req.headers['x-admin-key'] || 
+               (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
   if (auth !== ADMIN_PASSWORD) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
@@ -1422,8 +1430,49 @@ app.get('/api/admin/stats', (req, res) => {
   });
 });
 
+// Daily summary for monitoring/cron
+app.get('/api/admin/daily-summary', (req, res) => {
+  const auth = req.query.key || req.headers['x-admin-key'];
+  if (auth !== ADMIN_PASSWORD) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+  
+  // Today's metrics
+  const today = new Date().toISOString().split('T')[0];
+  const leadsToday = db.prepare("SELECT * FROM leads WHERE date(created_at) = date('now')").all();
+  const purchasesToday = db.prepare("SELECT * FROM purchase_log WHERE date(timestamp) = date('now')").all();
+  const revenueToday = purchasesToday.filter(p => p.status?.includes('Success') || p.status === 'Credits Added').reduce((sum, p) => sum + (p.amount || 0), 0);
+  const errorsToday = db.prepare("SELECT COUNT(*) as cnt FROM error_log WHERE date(timestamp) = date('now')").get().cnt;
+  
+  // Provider activity
+  const newProviders = db.prepare("SELECT * FROM providers WHERE date(created_at) = date('now')").all();
+  const lowBalanceProviders = db.prepare("SELECT company_name, email, credit_balance FROM providers WHERE credit_balance > 0 AND credit_balance <= 2 AND status = 'Active'").all();
+  
+  // Lead status breakdown
+  const leadsByStatus = db.prepare("SELECT status, COUNT(*) as count FROM leads WHERE date(created_at) = date('now') GROUP BY status").all();
+  
+  res.json({
+    date: today,
+    leads: {
+      total: leadsToday.length,
+      byStatus: Object.fromEntries(leadsByStatus.map(s => [s.status || 'New', s.count])),
+      zips: [...new Set(leadsToday.map(l => l.zip).filter(Boolean))]
+    },
+    revenue: {
+      total: revenueToday,
+      transactions: purchasesToday.length
+    },
+    providers: {
+      new: newProviders.map(p => ({ name: p.company_name, email: p.email })),
+      lowBalance: lowBalanceProviders
+    },
+    errors: errorsToday,
+    timestamp: new Date().toISOString()
+  });
+});
+
 // ============================================
-// HEALTH & STATIC
+// HEALTH & DEBUG
 // ============================================
 app.get('/api/health', (req, res) => {
   res.json({ 
@@ -1433,6 +1482,30 @@ app.get('/api/health', (req, res) => {
     email: useResend || !!emailTransporter,
     emailProvider: useResend ? 'resend' : (emailTransporter ? 'smtp' : 'none')
   });
+});
+
+// Debug endpoint to test webhook flow (admin only)
+app.post('/api/admin/test-webhook', async (req, res) => {
+  const auth = req.query.key || req.headers['x-admin-key'];
+  if (auth !== ADMIN_PASSWORD) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+  
+  const { amount, email, leadId } = req.body;
+  console.log('\n=== TEST WEBHOOK ===');
+  console.log('Amount:', amount, 'Email:', email, 'LeadId:', leadId);
+  
+  // Simulate what the webhook would detect
+  const creditPack = CREDIT_PACKS[amount];
+  const subscription = SUBSCRIPTIONS[amount];
+  const result = {
+    detected: creditPack ? 'credit_pack' : subscription ? 'subscription' : leadId ? 'single_lead' : 'unknown',
+    pack: creditPack || subscription || null,
+    wouldAutoCreateProvider: !getProviderByEmail(email || ''),
+    existingProvider: getProviderByEmail(email || '') ? true : false
+  };
+  
+  res.json({ test: true, ...result });
 });
 
 // Static files with caching
