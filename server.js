@@ -1277,7 +1277,7 @@ app.post('/api/provider/register', async (req, res) => {
 
 // Get provider by ID (for profile completion)
 app.get('/api/provider/:id', (req, res) => {
-  const provider = db.prepare('SELECT id, company_name, email, phone, street_address, city, state, business_zip, service_zips, credit_balance, verified, priority FROM providers WHERE id = ?').get(req.params.id);
+  const provider = db.prepare('SELECT id, company_name, email, phone, street_address, city, state, business_zip, service_zips, credit_balance, verified, priority, lat, lng FROM providers WHERE id = ?').get(req.params.id);
   
   if (!provider) {
     return res.status(404).json({ error: 'Provider not found' });
@@ -2640,7 +2640,7 @@ app.get('/api/providers/directory', (req, res) => {
   const total = db.prepare(`SELECT COUNT(*) as cnt FROM providers WHERE ${whereClause}`).get(...params).cnt;
   
   const providers = db.prepare(`
-    SELECT id, company_name, street_address, city, state, business_zip, verified, priority
+    SELECT id, company_name, street_address, city, state, business_zip, phone, website, verified, priority, lat, lng
     FROM providers 
     WHERE ${whereClause}
     ORDER BY priority DESC, verified DESC, company_name ASC
@@ -2657,8 +2657,12 @@ app.get('/api/providers/directory', (req, res) => {
       companyName: p.company_name,
       address: [p.street_address, p.city, p.state, p.business_zip].filter(Boolean).join(', ') || null,
       location: [p.city, p.state].filter(Boolean).join(', ') || null,
+      phone: p.phone,
+      website: p.website,
       verified: !!p.verified,
-      featured: p.priority > 0
+      featured: p.priority > 0,
+      lat: p.lat,
+      lng: p.lng
     }))
   });
 });
@@ -2854,6 +2858,36 @@ app.get('/api/admin/pricing', (req, res) => {
       example: "STRIPE_PRODUCT_MAP['price_xxx'] = { credits: 5, name: 'Starter Pack' }"
     }
   });
+});
+
+// Geocode providers without lat/lng (admin)
+app.post('/api/admin/geocode-providers', async (req, res) => {
+  const auth = req.query.key || req.headers['x-admin-key'];
+  if (auth !== ADMIN_PASSWORD) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+  
+  const providers = db.prepare(`
+    SELECT id, company_name, street_address, city, state, business_zip 
+    FROM providers 
+    WHERE (lat IS NULL OR lat = 0) AND street_address IS NOT NULL AND city IS NOT NULL
+  `).all();
+  
+  const results = [];
+  for (const p of providers) {
+    const fullAddress = `${p.street_address}, ${p.city}, ${p.state} ${p.business_zip || ''}`;
+    const coords = await geocodeAddress(fullAddress);
+    if (coords) {
+      db.prepare('UPDATE providers SET lat = ?, lng = ? WHERE id = ?').run(coords.lat, coords.lng, p.id);
+      results.push({ id: p.id, name: p.company_name, ...coords });
+      // Rate limit: 1 request per second (Nominatim policy)
+      await new Promise(r => setTimeout(r, 1000));
+    } else {
+      results.push({ id: p.id, name: p.company_name, error: 'Geocoding failed' });
+    }
+  }
+  
+  res.json({ geocoded: results.length, results });
 });
 
 // Error log viewer API (admin)
