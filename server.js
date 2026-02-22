@@ -215,7 +215,34 @@ function initDatabase() {
     // Column already exists, ignore
   }
   
+  // Migration: Add lat/lng for map display
+  try {
+    db.exec('ALTER TABLE providers ADD COLUMN lat REAL');
+    db.exec('ALTER TABLE providers ADD COLUMN lng REAL');
+    console.log('Migration: Added lat/lng columns to providers');
+  } catch (e) {
+    // Columns already exist, ignore
+  }
+  
   console.log('Database initialized:', DB_PATH);
+}
+
+// Helper: Geocode an address using Nominatim (free, no API key)
+async function geocodeAddress(address) {
+  try {
+    const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}&countrycodes=us&limit=1`;
+    const response = await fetch(url, {
+      headers: { 'User-Agent': 'DumpsterMap/1.0 (support@dumpstermap.io)' }
+    });
+    const data = await response.json();
+    if (data.length > 0) {
+      return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
+    }
+    return null;
+  } catch (e) {
+    console.error('Geocoding error:', e);
+    return null;
+  }
 }
 
 // Helper: Check if provider's premium status is still active
@@ -1428,6 +1455,7 @@ app.get('/admin', (req, res) => {
     <a href="#purchases">Purchases</a>
     <a href="/admin/outreach?key=${auth}">Outreach</a>
     <a href="/admin/logs?key=${auth}">System Logs</a>
+    <a href="/admin/funnel?key=${auth}">📊 Funnel</a>
   </div>
   
   <!-- Today's Activity -->
@@ -2257,6 +2285,141 @@ app.post('/admin/outreach/update/:id', (req, res) => {
   }
   
   res.redirect(`/admin/outreach?key=${req.query.key}`);
+});
+
+// Registration funnel page
+app.get('/admin/funnel', async (req, res) => {
+  if (req.query.key !== ADMIN_PASSWORD) return res.status(401).send('Unauthorized');
+  
+  // Fetch funnel data
+  let funnelData = { registrations: 0, purchases: 0, conversionRate: '0%', byPack: {}, dailyBreakdown: [] };
+  let webhookEvents = [];
+  
+  try {
+    const registrations = db.prepare(`
+      SELECT COUNT(*) as count FROM registration_events 
+      WHERE event_type = 'registration' AND timestamp > datetime('now', '-30 days')
+    `).get().count;
+    
+    const purchases = db.prepare(`
+      SELECT COUNT(*) as count FROM registration_events 
+      WHERE event_type = 'purchase' AND timestamp > datetime('now', '-30 days')
+    `).get().count;
+    
+    const byPack = db.prepare(`
+      SELECT selected_pack, COUNT(*) as count FROM registration_events 
+      WHERE event_type = 'registration' AND timestamp > datetime('now', '-30 days')
+      GROUP BY selected_pack
+    `).all();
+    
+    const dailyBreakdown = db.prepare(`
+      SELECT date(timestamp) as date, event_type, COUNT(*) as count 
+      FROM registration_events 
+      WHERE timestamp > datetime('now', '-14 days')
+      GROUP BY date(timestamp), event_type
+      ORDER BY date DESC
+    `).all();
+    
+    funnelData = {
+      registrations,
+      purchases,
+      conversionRate: registrations > 0 ? ((purchases / registrations) * 100).toFixed(1) + '%' : '0%',
+      byPack: Object.fromEntries(byPack.map(p => [p.selected_pack || 'unknown', p.count])),
+      dailyBreakdown
+    };
+  } catch (e) {
+    console.log('Funnel data unavailable:', e.message);
+  }
+  
+  try {
+    webhookEvents = db.prepare(`SELECT * FROM webhook_log ORDER BY id DESC LIMIT 20`).all();
+  } catch (e) {
+    console.log('Webhook log unavailable:', e.message);
+  }
+  
+  const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Registration Funnel - DumpsterMap Admin</title>
+  <style>
+    body { font-family: system-ui; padding: 20px; max-width: 1400px; margin: 0 auto; background: #f8fafc; }
+    .stats { display: flex; gap: 20px; margin-bottom: 30px; }
+    .stat { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); flex: 1; text-align: center; }
+    .stat-value { font-size: 32px; font-weight: bold; color: #1e40af; }
+    .stat-label { color: #64748b; font-size: 14px; }
+    table { border-collapse: collapse; width: 100%; font-size: 12px; background: white; margin-top: 20px; }
+    th, td { border: 1px solid #e2e8f0; padding: 8px; text-align: left; }
+    th { background: #f1f5f9; position: sticky; top: 0; }
+    .back { color: #2563eb; text-decoration: none; margin-bottom: 20px; display: inline-block; }
+    .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 20px; }
+    h2 { margin-top: 30px; color: #1e293b; }
+    .funnel-bar { background: #e0e7ff; height: 30px; border-radius: 4px; position: relative; margin: 10px 0; }
+    .funnel-fill { background: #4f46e5; height: 100%; border-radius: 4px; }
+    .funnel-label { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: white; font-weight: bold; font-size: 13px; }
+  </style>
+</head>
+<body>
+  <a href="/admin?key=${req.query.key}" class="back">← Back to Admin</a>
+  <h1>📊 Registration Funnel (Last 30 Days)</h1>
+  
+  <div class="stats">
+    <div class="stat">
+      <div class="stat-value">${funnelData.registrations}</div>
+      <div class="stat-label">Registrations</div>
+    </div>
+    <div class="stat">
+      <div class="stat-value">${funnelData.purchases}</div>
+      <div class="stat-label">Purchases</div>
+    </div>
+    <div class="stat">
+      <div class="stat-value" style="color: ${parseFloat(funnelData.conversionRate) > 20 ? '#16a34a' : '#f59e0b'}">${funnelData.conversionRate}</div>
+      <div class="stat-label">Conversion Rate</div>
+    </div>
+  </div>
+  
+  <div class="card">
+    <h3>Visual Funnel</h3>
+    <div class="funnel-bar" style="width: 100%">
+      <div class="funnel-fill" style="width: 100%"></div>
+      <span class="funnel-label">Registrations: ${funnelData.registrations}</span>
+    </div>
+    <div class="funnel-bar" style="width: ${Math.max(20, (funnelData.purchases / Math.max(1, funnelData.registrations)) * 100)}%">
+      <div class="funnel-fill" style="width: 100%; background: #16a34a;"></div>
+      <span class="funnel-label">Purchases: ${funnelData.purchases}</span>
+    </div>
+  </div>
+  
+  <div class="card">
+    <h3>Registrations by Pack Selected</h3>
+    <table>
+      <tr><th>Pack</th><th>Count</th><th>%</th></tr>
+      ${Object.entries(funnelData.byPack).map(([pack, count]) => `
+        <tr>
+          <td>${pack}</td>
+          <td>${count}</td>
+          <td>${funnelData.registrations > 0 ? ((count / funnelData.registrations) * 100).toFixed(1) : 0}%</td>
+        </tr>
+      `).join('') || '<tr><td colspan="3" style="color: #94a3b8;">No data yet</td></tr>'}
+    </table>
+  </div>
+  
+  <h2>🔌 Recent Webhook Events</h2>
+  <table>
+    <tr><th>Time</th><th>Event Type</th><th>Data</th><th>Result</th></tr>
+    ${webhookEvents.map(e => `
+      <tr>
+        <td>${e.processed_at || ''}</td>
+        <td>${e.event_type || ''}</td>
+        <td style="max-width: 300px; overflow: hidden; text-overflow: ellipsis; font-size: 11px;">${e.event_data || ''}</td>
+        <td style="max-width: 200px; overflow: hidden; font-size: 11px;">${e.result || ''}</td>
+      </tr>
+    `).join('') || '<tr><td colspan="4" style="color: #94a3b8;">No webhook events logged yet</td></tr>'}
+  </table>
+</body>
+</html>`;
+  
+  res.send(html);
 });
 
 // System logs page
