@@ -287,9 +287,23 @@ app.post('/api/lead', async (req, res) => {
     
     console.log('Lead saved:', leadId);
     
-    // Find matching providers
-    const providers = getProvidersByZip(data.zip);
-    console.log(`Found ${providers.length} providers for zip ${data.zip}`);
+    // Find target provider(s)
+    let providers = [];
+    
+    if (data.providerId) {
+      // Specific provider requested - send ONLY to them
+      const specificProvider = db.prepare('SELECT * FROM providers WHERE id = ? AND status = ?').get(data.providerId, 'Active');
+      if (specificProvider) {
+        providers = [specificProvider];
+        console.log(`Targeting specific provider: ${specificProvider.company_name} (ID: ${data.providerId})`);
+      } else {
+        console.log(`Provider ID ${data.providerId} not found or inactive`);
+      }
+    } else {
+      // No specific provider - find all providers serving this ZIP
+      providers = getProvidersByZip(data.zip);
+      console.log(`Found ${providers.length} providers for zip ${data.zip}`);
+    }
     
     for (const provider of providers) {
       if (provider.credit_balance > 0) {
