@@ -721,28 +721,30 @@ const CREDIT_PACKS = {
 };
 
 // Map Stripe product IDs to credit packs (more reliable than amount matching)
-// To find your Stripe IDs: Stripe Dashboard → Products → Click product → Copy price ID (starts with price_)
 // This is the MOST RELIABLE way to identify purchases (works even with coupons/discounts)
+//
+// HOW TO GET YOUR STRIPE PRICE IDs:
+// 1. Go to Stripe Dashboard → Products
+// 2. Click on a product → Look for "API ID" or "Price ID" (starts with price_)
+// 3. Add below: 'price_xxx': { credits: X, name: 'Pack Name' }
+//
+// Or use Stripe CLI: stripe products list --expand data.default_price
+//
 const STRIPE_PRODUCT_MAP = {
-  // =====================================================
-  // HOW TO ADD YOUR STRIPE PRODUCTS:
-  // 1. Go to Stripe Dashboard → Products
-  // 2. Click on a product → Find "API ID" (price_xxx)
-  // 3. Add it below in format: 'price_xxx': { credits: X, name: 'Pack Name' }
-  // =====================================================
-  
-  // Example format (replace with your actual Stripe price IDs):
-  // 'price_1ABC123xyz': { credits: 5, name: 'Starter Pack' },
-  // 'price_2DEF456xyz': { credits: 20, name: 'Pro Pack', perks: true },
-  // 'price_3GHI789xyz': { credits: 60, name: 'Premium Pack', perks: true },
-  // 'price_4JKL012xyz': { credits: 3, name: 'Featured Partner', perks: ['verified', 'priority'] },
-  
-  // Current DumpsterMap Stripe links (update with actual price IDs when available):
-  // Single lead: https://buy.stripe.com/cNidR9aQ76T46IF78j5Rm04 ($40)
-  // Starter Pack: https://buy.stripe.com/00w14n5vNa5g5EB2S35Rm00 ($200 → 5 credits)
-  // Pro Pack: https://buy.stripe.com/fZu6oH7DVgtE7MJdwH5Rm02 ($700 → 20 credits)
-  // Premium Pack: https://buy.stripe.com/bJefZh0btcdod73eAL5Rm03 ($1500 → 60 credits)
-  // Featured Partner: https://buy.stripe.com/28EdR9e2jelwgjfgIT5Rm01 ($99/mo subscription)
+  // DumpsterMap Products (add your actual price_xxx IDs here):
+  // 
+  // Stripe Payment Links:
+  // - Single Lead ($40):     https://buy.stripe.com/cNidR9aQ76T46IF78j5Rm04
+  // - Starter ($200, 5cr):   https://buy.stripe.com/00w14n5vNa5g5EB2S35Rm00
+  // - Pro ($700, 20cr):      https://buy.stripe.com/fZu6oH7DVgtE7MJdwH5Rm02
+  // - Premium ($1500, 60cr): https://buy.stripe.com/bJefZh0btcdod73eAL5Rm03
+  // - Featured ($99/mo):     https://buy.stripe.com/28EdR9e2jelwgjfgIT5Rm01
+  //
+  // Example mappings (uncomment & replace with your actual IDs):
+  // 'price_starter_xxx': { credits: 5, name: 'Starter Pack' },
+  // 'price_pro_xxx': { credits: 20, name: 'Pro Pack', perks: true },
+  // 'price_premium_xxx': { credits: 60, name: 'Premium Pack', perks: true },
+  // 'price_featured_xxx': { credits: 3, name: 'Featured Partner', perks: ['verified', 'priority'] },
 };
 
 // Webhook event log for debugging payment issues
@@ -3641,12 +3643,91 @@ app.post('/api/admin/bulk-add-credits', (req, res) => {
 // HEALTH & DEBUG
 // ============================================
 app.get('/api/health', (req, res) => {
+  // Check recent webhook activity (last 24h)
+  let webhookStatus = 'unknown';
+  let lastWebhook = null;
+  try {
+    const recent = db.prepare(`
+      SELECT COUNT(*) as cnt, MAX(processed_at) as last 
+      FROM webhook_log 
+      WHERE processed_at > datetime('now', '-24 hours')
+    `).get();
+    webhookStatus = recent.cnt > 0 ? 'active' : 'no_recent_events';
+    lastWebhook = recent.last;
+  } catch (e) {
+    webhookStatus = 'table_not_ready';
+  }
+
   res.json({ 
     status: 'ok', 
     timestamp: new Date().toISOString(),
     database: !!db,
     email: useResend || !!emailTransporter,
-    emailProvider: useResend ? 'resend' : (emailTransporter ? 'smtp' : 'none')
+    emailProvider: useResend ? 'resend' : (emailTransporter ? 'smtp' : 'none'),
+    webhook: {
+      status: webhookStatus,
+      signatureVerification: !!STRIPE_WEBHOOK_SECRET,
+      lastEvent: lastWebhook
+    }
+  });
+});
+
+// Stripe configuration status (admin only)
+app.get('/api/admin/stripe-status', (req, res) => {
+  const auth = req.query.key || req.headers['x-admin-key'];
+  if (auth !== ADMIN_PASSWORD) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+  
+  // Check webhook activity
+  let webhookStats = { total: 0, last24h: 0, lastEvent: null, successRate: '0%' };
+  try {
+    const total = db.prepare('SELECT COUNT(*) as cnt FROM webhook_log').get().cnt;
+    const recent = db.prepare(`
+      SELECT COUNT(*) as cnt FROM webhook_log 
+      WHERE processed_at > datetime('now', '-24 hours')
+    `).get().cnt;
+    const lastEvent = db.prepare('SELECT * FROM webhook_log ORDER BY id DESC LIMIT 1').get();
+    const successful = db.prepare(`
+      SELECT COUNT(*) as cnt FROM webhook_log 
+      WHERE result LIKE '%"processed":true%'
+    `).get().cnt;
+    
+    webhookStats = {
+      total,
+      last24h: recent,
+      lastEvent: lastEvent ? {
+        at: lastEvent.processed_at,
+        type: lastEvent.event_type,
+        success: lastEvent.result?.includes('"processed":true')
+      } : null,
+      successRate: total > 0 ? ((successful / total) * 100).toFixed(1) + '%' : 'N/A'
+    };
+  } catch (e) {
+    webhookStats.error = e.message;
+  }
+  
+  res.json({
+    config: {
+      webhookSecretSet: !!STRIPE_WEBHOOK_SECRET,
+      productMappingsCount: Object.keys(STRIPE_PRODUCT_MAP).length,
+      singleLeadPrice: SINGLE_LEAD_PRICE
+    },
+    creditPacks: CREDIT_PACKS,
+    subscriptions: SUBSCRIPTIONS,
+    productMappings: STRIPE_PRODUCT_MAP,
+    paymentLinks: {
+      single: SINGLE_LEAD_STRIPE_LINK,
+      starter: STRIPE_PACK_LINKS.starter,
+      pro: STRIPE_PACK_LINKS.pro,
+      premium: STRIPE_PACK_LINKS.premium,
+      featured: STRIPE_PACK_LINKS.featured
+    },
+    webhookStats,
+    tips: [
+      STRIPE_WEBHOOK_SECRET ? null : '⚠️ STRIPE_WEBHOOK_SECRET not set - webhooks will not verify signatures',
+      Object.keys(STRIPE_PRODUCT_MAP).length === 0 ? '💡 Add Stripe price IDs to STRIPE_PRODUCT_MAP for reliable product detection' : null,
+    ].filter(Boolean)
   });
 });
 
