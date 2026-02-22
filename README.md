@@ -317,6 +317,15 @@ curl "https://dumpstermap.fly.dev/api/admin/errors?key=YOUR_KEY"
 curl "https://dumpstermap.fly.dev/api/admin/zip-coverage?key=YOUR_KEY"
 ```
 
+### Daily Health Check Script
+```bash
+# Run manually or add to cron (9 AM daily)
+./scripts/daily-check.sh
+
+# Or via cron:
+0 9 * * * cd /path/to/dumpstermap && ./scripts/daily-check.sh >> /var/log/dumpstermap-check.log 2>&1
+```
+
 ### Testing
 ```bash
 # Test webhook detection logic (doesn't process)
