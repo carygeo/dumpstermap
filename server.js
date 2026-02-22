@@ -390,6 +390,7 @@ app.post('/api/lead', async (req, res) => {
         .run('Teaser Sent', allNotified, leadId);
     }
     
+    const isExclusive = providers.length === 1;
     await sendAdminNotification(`${isExclusive ? '🎯' : '📢'} ${leadType.toUpperCase()} lead: ${leadId}`,
       `${leadId} (${leadType})\n${name} | ${data.phone} | ${data.email}\n${data.zip} | ${data.size || 'TBD'}\nFull: ${sentCount} | Teasers: ${teaserCount} | Cost: ${creditCost}/provider`);
     
@@ -498,15 +499,34 @@ async function sendTeaserToProvider(provider, leadId, lead, options = {}) {
 // ============================================
 
 // Credit pack pricing (one-time purchases)
+// Keys are dollar amounts, but we also check Stripe product/price IDs
 const CREDIT_PACKS = {
   200: { credits: 5, name: 'Starter Pack' },
   700: { credits: 20, name: 'Pro Pack' },
   1500: { credits: 60, name: 'Premium Pack' }
 };
 
+// Map Stripe product IDs to credit packs (more reliable than amount matching)
+// Add your Stripe product/price IDs here as you create them in Stripe
+const STRIPE_PRODUCT_MAP = {
+  // Format: 'price_xxx' or 'prod_xxx' => { credits: X, name: 'Y' }
+  // Example: 'price_1234567890': { credits: 5, name: 'Starter Pack' }
+};
+
 // Flexible amount matching (handles minor Stripe fee variations)
-function matchCreditPack(amount) {
-  // Exact match first
+function matchCreditPack(amount, session = null) {
+  // First, check Stripe product/price IDs if available (most reliable)
+  if (session) {
+    const lineItems = session.line_items?.data || [];
+    for (const item of lineItems) {
+      const priceId = item.price?.id;
+      const productId = item.price?.product;
+      if (priceId && STRIPE_PRODUCT_MAP[priceId]) return STRIPE_PRODUCT_MAP[priceId];
+      if (productId && STRIPE_PRODUCT_MAP[productId]) return STRIPE_PRODUCT_MAP[productId];
+    }
+  }
+  
+  // Exact amount match
   if (CREDIT_PACKS[amount]) return CREDIT_PACKS[amount];
   if (SUBSCRIPTIONS[amount]) return { ...SUBSCRIPTIONS[amount], isSubscription: true };
   
@@ -643,8 +663,8 @@ app.post('/api/stripe-webhook', async (req, res) => {
       return res.json({ received: true, error: 'Not paid' });
     }
     
-    // Check if this is a credit pack purchase (by amount) - with tolerance
-    const matchedPack = matchCreditPack(amount);
+    // Check if this is a credit pack purchase (by product ID or amount)
+    const matchedPack = matchCreditPack(amount, session);
     
     if (matchedPack) {
       const pack = matchedPack;
@@ -1913,6 +1933,26 @@ app.get('/api/admin/daily-summary', (req, res) => {
     },
     errors: errorsToday,
     timestamp: new Date().toISOString()
+  });
+});
+
+// Credit pack pricing config (admin view)
+app.get('/api/admin/pricing', (req, res) => {
+  const auth = req.query.key || req.headers['x-admin-key'];
+  if (auth !== ADMIN_PASSWORD) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+  
+  res.json({
+    creditPacks: CREDIT_PACKS,
+    subscriptions: SUBSCRIPTIONS,
+    stripeProductMap: STRIPE_PRODUCT_MAP,
+    singleLeadPrice: SINGLE_LEAD_PRICE,
+    leadPricing: LEAD_PRICING,
+    instructions: {
+      addProductMapping: 'To map a Stripe product/price ID to a credit pack, add it to STRIPE_PRODUCT_MAP in server.js',
+      example: "STRIPE_PRODUCT_MAP['price_xxx'] = { credits: 5, name: 'Starter Pack' }"
+    }
   });
 });
 
