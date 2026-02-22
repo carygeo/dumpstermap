@@ -1229,23 +1229,50 @@ app.get('/admin', (req, res) => {
   
   <h2 id="providers">Providers (${providers.length})</h2>
   <table>
-    <tr><th>ID</th><th>Company</th><th>Email</th><th>Phone</th><th>Zips</th><th>Credits</th><th>Leads</th><th>Status</th><th>Last Purchase</th><th>Actions</th></tr>
+    <tr><th>ID</th><th>Company</th><th>Email</th><th>Phone</th><th>Address</th><th>Zips</th><th>Credits</th><th>Leads</th><th>Premium Status</th><th>Last Purchase</th><th>Actions</th></tr>
     ${providers.map(p => {
       const verifiedBadge = p.verified ? '<span title="Verified" style="color:#16a34a">✓</span> ' : '';
       const priorityBadge = p.priority > 0 ? `<span title="Priority: ${p.priority}" style="color:#f59e0b">⭐</span>` : '';
       const lastPurchase = p.last_purchase_at ? p.last_purchase_at.split('T')[0] : '<em style="color:#94a3b8">never</em>';
       const zipCount = p.service_zips ? p.service_zips.split(',').filter(z => z.trim()).length : 0;
       const zipDisplay = zipCount > 0 ? `<span title="${p.service_zips}">${zipCount} zips</span>` : '<em style="color:#dc2626">none!</em>';
+      const addressDisplay = p.address ? `<span title="${p.address}">${p.address.substring(0, 20)}${p.address.length > 20 ? '...' : ''}</span>` : '<em style="color:#94a3b8">-</em>';
+      
+      // Premium status display
+      let premiumStatus = '';
+      if (p.premium_expires_at) {
+        const expiresDate = new Date(p.premium_expires_at);
+        const now = new Date();
+        const daysLeft = Math.ceil((expiresDate - now) / (1000 * 60 * 60 * 24));
+        if (daysLeft > 0) {
+          premiumStatus = `<div style="font-size:11px;">
+            ${p.verified ? '<span style="color:#16a34a">✓ Verified</span><br>' : ''}
+            ${p.priority > 0 ? '<span style="color:#f59e0b">⭐ Priority: ' + p.priority + '</span><br>' : ''}
+            <span style="color:#6366f1">⏱ ${daysLeft}d left</span>
+          </div>`;
+        } else {
+          premiumStatus = '<em style="color:#94a3b8;font-size:11px;">Expired</em>';
+        }
+      } else if (p.verified || p.priority > 0) {
+        premiumStatus = `<div style="font-size:11px;">
+          ${p.verified ? '<span style="color:#16a34a">✓ Verified</span><br>' : ''}
+          ${p.priority > 0 ? '<span style="color:#f59e0b">⭐ Priority: ' + p.priority + '</span>' : ''}
+        </div>`;
+      } else {
+        premiumStatus = '<em style="color:#94a3b8;font-size:11px;">-</em>';
+      }
+      
       return `
         <tr>
           <td>${p.id}</td>
           <td>${verifiedBadge}${priorityBadge}${p.company_name}</td>
           <td>${p.email}</td>
           <td>${p.phone || ''}</td>
+          <td>${addressDisplay}</td>
           <td>${zipDisplay}</td>
           <td><span class="credit-badge">${p.credit_balance}</span></td>
           <td>${p.total_leads}</td>
-          <td>${p.status}</td>
+          <td>${premiumStatus}</td>
           <td>${lastPurchase}</td>
           <td>
             <a href="/admin/edit-provider/${p.id}?key=${auth}" class="btn btn-sm">Edit</a>
