@@ -16,6 +16,11 @@
 
 ## Architecture
 
+![System Flow Diagram](docs/system-flow-diagram.jpg)
+
+<details>
+<summary>ASCII Diagram (text version)</summary>
+
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
 │                        DumpsterMap.io                               │
@@ -51,6 +56,7 @@
 │                                                                     │
 └─────────────────────────────────────────────────────────────────────┘
 ```
+</details>
 
 ## Lead Flow
 
