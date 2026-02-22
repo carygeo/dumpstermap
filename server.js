@@ -2346,7 +2346,8 @@ app.get('/api/providers/by-zip/:zip', (req, res) => {
   }
   
   const providers = db.prepare(`
-    SELECT id, company_name, phone, website, verified, priority, city, state
+    SELECT id, company_name, phone, website, verified, priority, 
+           street_address, city, state, business_zip
     FROM providers WHERE status = 'Active'
   `).all();
   
@@ -2362,6 +2363,7 @@ app.get('/api/providers/by-zip/:zip', (req, res) => {
       companyName: p.company_name,
       phone: p.phone,
       website: p.website,
+      address: [p.street_address, p.city, p.state, p.business_zip].filter(Boolean).join(', ') || null,
       location: [p.city, p.state].filter(Boolean).join(', ') || null,
       verified: !!p.verified,
       featured: p.priority > 0
@@ -2398,7 +2400,7 @@ app.get('/api/providers/directory', (req, res) => {
   const total = db.prepare(`SELECT COUNT(*) as cnt FROM providers WHERE ${whereClause}`).get(...params).cnt;
   
   const providers = db.prepare(`
-    SELECT id, company_name, city, state, verified, priority
+    SELECT id, company_name, street_address, city, state, business_zip, verified, priority
     FROM providers 
     WHERE ${whereClause}
     ORDER BY priority DESC, verified DESC, company_name ASC
@@ -2413,6 +2415,7 @@ app.get('/api/providers/directory', (req, res) => {
     providers: providers.map(p => ({
       id: p.id,
       companyName: p.company_name,
+      address: [p.street_address, p.city, p.state, p.business_zip].filter(Boolean).join(', ') || null,
       location: [p.city, p.state].filter(Boolean).join(', ') || null,
       verified: !!p.verified,
       featured: p.priority > 0
