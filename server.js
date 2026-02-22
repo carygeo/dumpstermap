@@ -2155,6 +2155,9 @@ app.get('/admin/outreach', (req, res) => {
   // Stats
   const totalOutreach = db.prepare('SELECT COUNT(*) as cnt FROM outreach').get().cnt;
   const sentCount = db.prepare("SELECT COUNT(*) as cnt FROM outreach WHERE email_status = 'Sent'").get().cnt;
+  const failedCount = db.prepare("SELECT COUNT(*) as cnt FROM outreach WHERE email_status = 'Failed'").get().cnt;
+  const pendingCount = db.prepare("SELECT COUNT(*) as cnt FROM outreach WHERE email_status = 'Pending'").get().cnt;
+  const repliedCount = db.prepare("SELECT COUNT(*) as cnt FROM outreach WHERE replied_at IS NOT NULL").get().cnt;
   const convertedCount = db.prepare('SELECT COUNT(*) as cnt FROM outreach WHERE converted = 1').get().cnt;
   
   const html = `
@@ -2190,9 +2193,11 @@ app.get('/admin/outreach', (req, res) => {
   
   <div class="stats">
     <div class="stat"><div class="stat-value">${totalOutreach}</div><div class="stat-label">Total Contacts</div></div>
+    <div class="stat"><div class="stat-value">${pendingCount}</div><div class="stat-label">Pending</div></div>
     <div class="stat"><div class="stat-value">${sentCount}</div><div class="stat-label">Emails Sent</div></div>
-    <div class="stat"><div class="stat-value">${convertedCount}</div><div class="stat-label">Converted</div></div>
-    <div class="stat"><div class="stat-value">${totalOutreach > 0 ? ((convertedCount / totalOutreach) * 100).toFixed(1) : 0}%</div><div class="stat-label">Conversion Rate</div></div>
+    <div class="stat"><div class="stat-value" style="color: #dc2626;">${failedCount}</div><div class="stat-label">Failed/Bounced</div></div>
+    <div class="stat"><div class="stat-value" style="color: #9333ea;">${repliedCount}</div><div class="stat-label">Replied</div></div>
+    <div class="stat"><div class="stat-value" style="color: #16a34a;">${convertedCount}</div><div class="stat-label">Converted</div></div>
   </div>
   
   <div class="card">
