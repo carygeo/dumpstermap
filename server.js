@@ -166,7 +166,38 @@ function initDatabase() {
     // Column already exists, ignore
   }
   
+  // Migration: Add premium_expires_at for 30-day featured partner tracking
+  try {
+    db.exec('ALTER TABLE providers ADD COLUMN premium_expires_at TEXT');
+    console.log('Migration: Added premium_expires_at column to providers');
+  } catch (e) {
+    // Column already exists, ignore
+  }
+  
   console.log('Database initialized:', DB_PATH);
+}
+
+// Helper: Check if provider's premium status is still active
+function isPremiumActive(provider) {
+  if (!provider.premium_expires_at) return false;
+  return new Date(provider.premium_expires_at) > new Date();
+}
+
+// Helper: Expire premium status for providers past their 30-day window
+function expirePremiumStatus() {
+  const expired = db.prepare(`
+    SELECT id, company_name FROM providers 
+    WHERE premium_expires_at IS NOT NULL 
+    AND premium_expires_at < datetime('now')
+    AND (verified = 1 OR priority > 0)
+  `).all();
+  
+  for (const provider of expired) {
+    db.prepare('UPDATE providers SET verified = 0, priority = 0 WHERE id = ?').run(provider.id);
+    console.log(`Premium expired for ${provider.company_name} (ID: ${provider.id})`);
+  }
+  
+  return expired.length;
 }
 
 // ============================================
@@ -678,14 +709,24 @@ app.post('/api/stripe-webhook', async (req, res) => {
       // Add credits and update last purchase time
       db.prepare("UPDATE providers SET credit_balance = credit_balance + ?, last_purchase_at = datetime('now') WHERE id = ?").run(pack.credits, provider.id);
       
-      // Apply subscription perks if any
-      if (isSubscription && pack.perks) {
-        if (pack.perks.includes('verified')) {
-          db.prepare('UPDATE providers SET verified = 1 WHERE id = ?').run(provider.id);
-        }
-        if (pack.perks.includes('priority')) {
-          db.prepare('UPDATE providers SET priority = priority + 10 WHERE id = ?').run(provider.id);
-        }
+      // Apply perks for Premium/Featured Partner purchases (subscriptions or one-time)
+      // Premium ($1500) and Featured Partner ($99) get 30-day verified + priority
+      const hasPremiumPerks = pack.perks || pack.name === 'Premium Pack' || pack.credits >= 60;
+      
+      if (hasPremiumPerks) {
+        // Set 30-day expiration for premium features
+        const expiresAt = new Date();
+        expiresAt.setDate(expiresAt.getDate() + 30);
+        
+        db.prepare(`
+          UPDATE providers SET 
+            verified = 1, 
+            priority = CASE WHEN priority < 10 THEN 10 ELSE priority END,
+            premium_expires_at = ?
+          WHERE id = ?
+        `).run(expiresAt.toISOString(), provider.id);
+        
+        console.log(`Premium perks activated for ${provider.company_name} until ${expiresAt.toISOString()}`);
       }
       
       // Update purchase log
@@ -1956,6 +1997,42 @@ app.get('/api/admin/pricing', (req, res) => {
   });
 });
 
+// Admin endpoint: View and manage premium status
+app.get('/api/admin/premium-status', (req, res) => {
+  const auth = req.query.key || req.headers['x-admin-key'];
+  if (auth !== ADMIN_PASSWORD) return res.status(401).json({ error: 'Unauthorized' });
+  
+  const premiumProviders = db.prepare(`
+    SELECT id, company_name, email, verified, priority, premium_expires_at, credit_balance
+    FROM providers 
+    WHERE premium_expires_at IS NOT NULL OR verified = 1 OR priority > 0
+    ORDER BY premium_expires_at DESC
+  `).all();
+  
+  const now = new Date();
+  const providers = premiumProviders.map(p => ({
+    ...p,
+    isActive: p.premium_expires_at ? new Date(p.premium_expires_at) > now : false,
+    daysRemaining: p.premium_expires_at ? Math.ceil((new Date(p.premium_expires_at) - now) / (1000 * 60 * 60 * 24)) : null
+  }));
+  
+  res.json({
+    total: providers.length,
+    active: providers.filter(p => p.isActive).length,
+    expired: providers.filter(p => !p.isActive && p.premium_expires_at).length,
+    providers
+  });
+});
+
+// Admin endpoint: Manually expire premium status
+app.post('/api/admin/expire-premium', (req, res) => {
+  const auth = req.query.key || req.headers['x-admin-key'];
+  if (auth !== ADMIN_PASSWORD) return res.status(401).json({ error: 'Unauthorized' });
+  
+  const expiredCount = expirePremiumStatus();
+  res.json({ success: true, expiredCount });
+});
+
 // ============================================
 // HEALTH & DEBUG
 // ============================================
@@ -2157,6 +2234,20 @@ app.get('*', (req, res) => {
 // ============================================
 initDatabase();
 initEmail();
+
+// Check and expire premium status on startup
+const expiredCount = expirePremiumStatus();
+if (expiredCount > 0) {
+  console.log(`Expired premium status for ${expiredCount} providers`);
+}
+
+// Check premium expiration daily (every 24 hours)
+setInterval(() => {
+  const expired = expirePremiumStatus();
+  if (expired > 0) {
+    console.log(`[Daily check] Expired premium status for ${expired} providers`);
+  }
+}, 24 * 60 * 60 * 1000);
 
 app.listen(PORT, () => {
   console.log(`DumpsterMap running on port ${PORT}`);
