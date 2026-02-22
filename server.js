@@ -678,7 +678,7 @@ app.post('/api/stripe-webhook', async (req, res) => {
 </div>`;
 
     // Plain text version
-    const text = \`Here are the contact details for your lead:
+    const text = `Here are the contact details for your lead:
 
 ${lead.name}
 Phone: ${lead.phone}
@@ -692,9 +692,9 @@ Project: ${lead.project_type || 'General'}
 Call them soon - they're actively looking for service.
 
 — DumpsterMap
-dumpstermap.io\`;
+dumpstermap.io`;
     
-    const emailSent = await sendEmail(customerEmail, \`Lead details - ${lead.name} in ${lead.zip}\`, html, text);
+    const emailSent = await sendEmail(customerEmail, `Lead details - ${lead.name} in ${lead.zip}`, html, text);
     
     // Update lead
     db.prepare(`
