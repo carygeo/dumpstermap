@@ -3212,6 +3212,34 @@ app.post('/api/admin/upload-photo/:id', upload.single('photo'), (req, res) => {
   res.json({ status: 'ok', provider });
 });
 
+// Clear test data (admin)
+app.post('/api/admin/clear-test-data', (req, res) => {
+  const auth = req.query.key || req.headers['x-admin-key'];
+  if (auth !== ADMIN_PASSWORD) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+  
+  // Delete test leads
+  const leadsDeleted = db.prepare("DELETE FROM leads WHERE email LIKE '%test%' OR email LIKE '%example.com'").run().changes;
+  
+  // Delete test purchase logs (keep real ones)
+  const purchasesDeleted = db.prepare("DELETE FROM purchase_log WHERE buyer_email IN ('carygreenwood@gmail.com', 'ogpressvinyl@gmail.com')").run().changes;
+  
+  // Clear webhook logs older than 1 day
+  const webhooksDeleted = db.prepare("DELETE FROM webhook_log WHERE timestamp < datetime('now', '-1 day')").run().changes;
+  
+  console.log(`Cleared test data: ${leadsDeleted} leads, ${purchasesDeleted} purchases, ${webhooksDeleted} webhooks`);
+  
+  res.json({ 
+    status: 'ok', 
+    deleted: { 
+      leads: leadsDeleted, 
+      purchases: purchasesDeleted,
+      webhooks: webhooksDeleted
+    }
+  });
+});
+
 // Delete provider (admin)
 app.delete('/api/admin/provider/:id', (req, res) => {
   const auth = req.query.key || req.headers['x-admin-key'];
