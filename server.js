@@ -141,6 +141,22 @@ function initDatabase() {
     // Column already exists, ignore
   }
   
+  // Migration: Add stripe_customer_id for recurring billing
+  try {
+    db.exec('ALTER TABLE providers ADD COLUMN stripe_customer_id TEXT');
+    console.log('Migration: Added stripe_customer_id column to providers');
+  } catch (e) {
+    // Column already exists, ignore
+  }
+  
+  // Migration: Add providers_notified to leads for better tracking
+  try {
+    db.exec('ALTER TABLE leads ADD COLUMN providers_notified TEXT');
+    console.log('Migration: Added providers_notified column to leads');
+  } catch (e) {
+    // Column already exists, ignore
+  }
+  
   console.log('Database initialized:', DB_PATH);
 }
 
@@ -339,15 +355,21 @@ app.post('/api/lead', async (req, res) => {
       }
     }
     
-    // Update lead status
+    // Update lead status with full tracking
+    const fullProviders = providers.filter(p => p.credit_balance >= creditCost).map(p => p.company_name);
+    const teaserProviders = providers.filter(p => p.credit_balance < creditCost).map(p => p.company_name);
+    const allNotified = [...fullProviders.map(n => `${n} (full)`), ...teaserProviders.map(n => `${n} (teaser)`)].join(', ');
+    
     if (sentCount > 0) {
-      const providerNames = providers.filter(p => p.credit_balance >= creditCost).map(p => p.company_name).join(', ');
-      db.prepare('UPDATE leads SET status = ?, assigned_provider = ?, credits_charged = ? WHERE lead_id = ?')
-        .run('Sent', providerNames, creditCost * sentCount, leadId);
+      db.prepare('UPDATE leads SET status = ?, assigned_provider = ?, credits_charged = ?, providers_notified = ? WHERE lead_id = ?')
+        .run('Sent', fullProviders.join(', '), creditCost * sentCount, allNotified, leadId);
+    } else if (teaserCount > 0) {
+      db.prepare('UPDATE leads SET status = ?, providers_notified = ? WHERE lead_id = ?')
+        .run('Teaser Sent', allNotified, leadId);
     }
     
     await sendAdminNotification(`${isExclusive ? '🎯' : '📢'} ${leadType.toUpperCase()} lead: ${leadId}`,
-      `${leadId} (${leadType}${isAsap ? ' +ASAP' : ''})\n${name} | ${data.phone} | ${data.email}\n${data.zip} | ${data.size || 'TBD'}\nSent: ${sentCount} | Teasers: ${teaserCount} | Cost: ${creditCost}/provider`);
+      `${leadId} (${leadType}${isAsap ? ' +ASAP' : ''})\n${name} | ${data.phone} | ${data.email}\n${data.zip} | ${data.size || 'TBD'}\nFull: ${sentCount} | Teasers: ${teaserCount} | Cost: ${creditCost}/provider`);
     
     res.json({ status: 'ok', leadId, leadType, message: 'Lead submitted successfully' });
   } catch (error) {
@@ -632,11 +654,11 @@ app.post('/api/stripe-webhook', async (req, res) => {
       db.prepare("UPDATE providers SET credit_balance = credit_balance + ?, last_purchase_at = datetime('now') WHERE id = ?").run(pack.credits, provider.id);
       
       // Apply subscription perks if any
-      if (isSubscription && subscription.perks) {
-        if (subscription.perks.includes('verified')) {
+      if (isSubscription && pack.perks) {
+        if (pack.perks.includes('verified')) {
           db.prepare('UPDATE providers SET verified = 1 WHERE id = ?').run(provider.id);
         }
-        if (subscription.perks.includes('priority')) {
+        if (pack.perks.includes('priority')) {
           db.prepare('UPDATE providers SET priority = priority + 10 WHERE id = ?').run(provider.id);
         }
       }
@@ -945,8 +967,12 @@ app.get('/admin', (req, res) => {
   
   <h2 id="leads">Leads (${leads.length})</h2>
   <table>
-    <tr><th>ID</th><th>Date</th><th>Name</th><th>Phone</th><th>Email</th><th>Zip</th><th>Size</th><th>Status</th><th>Provider</th><th>Purchased By</th></tr>
-    ${leads.map(l => `
+    <tr><th>ID</th><th>Date</th><th>Name</th><th>Phone</th><th>Email</th><th>Zip</th><th>Size</th><th>Status</th><th>Notified</th><th>Purchased By</th><th>Actions</th></tr>
+    ${leads.map(l => {
+      const statusClass = l.status === 'Purchased' ? 'status-purchased' : l.status === 'Sent' ? 'status-sent' : 'status-new';
+      const notifiedCount = l.providers_notified ? l.providers_notified.split(',').length : 0;
+      const notifiedTitle = l.providers_notified || 'No providers notified';
+      return `
       <tr>
         <td>${l.lead_id}</td>
         <td>${l.created_at?.split('T')[0] || ''}</td>
@@ -955,11 +981,16 @@ app.get('/admin', (req, res) => {
         <td>${l.email || ''}</td>
         <td>${l.zip || ''}</td>
         <td>${l.size || ''}</td>
-        <td class="status-${(l.status||'').toLowerCase()}">${l.status || ''}</td>
-        <td>${l.assigned_provider || ''}</td>
+        <td class="${statusClass}">${l.status || 'New'}</td>
+        <td title="${notifiedTitle}">${notifiedCount > 0 ? notifiedCount + ' providers' : '<em style="color:#dc2626">none</em>'}</td>
         <td>${l.purchased_by || ''}</td>
-      </tr>
-    `).join('')}
+        <td>
+          <form action="/admin/resend-lead/${l.lead_id}?key=${auth}" method="POST" style="display:inline;">
+            <button class="btn btn-sm" title="Resend to matching providers">↻</button>
+          </form>
+        </td>
+      </tr>`;
+    }).join('')}
   </table>
   
   <h2 id="providers">Providers (${providers.length})</h2>
@@ -1172,6 +1203,45 @@ app.post('/admin/update-provider/:id', (req, res) => {
   `).run(company_name, email, phone, address, service_zips, parseInt(credit_balance) || 0, status, parseInt(priority) || 0, verified ? 1 : 0, notes, req.params.id);
   
   console.log(`Provider ${req.params.id} updated`);
+  res.redirect(`/admin?key=${req.query.key}`);
+});
+
+// Resend lead to matching providers
+app.post('/admin/resend-lead/:leadId', async (req, res) => {
+  if (req.query.key !== ADMIN_PASSWORD) return res.status(401).send('Unauthorized');
+  
+  const lead = db.prepare('SELECT * FROM leads WHERE lead_id = ?').get(req.params.leadId);
+  if (!lead) return res.status(404).send('Lead not found');
+  
+  // Find providers for this ZIP
+  const providers = getProvidersByZip(lead.zip);
+  let sentCount = 0, teaserCount = 0;
+  const notified = [];
+  
+  for (const provider of providers) {
+    const creditCost = 1;
+    if (provider.credit_balance >= creditCost) {
+      await sendFullLeadToProvider(provider, lead.lead_id, lead, { leadType: 'shared', creditCost });
+      db.prepare('UPDATE providers SET credit_balance = credit_balance - ?, total_leads = total_leads + 1 WHERE id = ?')
+        .run(creditCost, provider.id);
+      notified.push(`${provider.company_name} (full)`);
+      sentCount++;
+    } else {
+      await sendTeaserToProvider(provider, lead.lead_id, lead, { leadType: 'shared', creditCost });
+      notified.push(`${provider.company_name} (teaser)`);
+      teaserCount++;
+    }
+  }
+  
+  // Update tracking
+  const existingNotified = lead.providers_notified || '';
+  const newNotified = existingNotified ? `${existingNotified}; RESEND: ${notified.join(', ')}` : notified.join(', ');
+  db.prepare('UPDATE leads SET providers_notified = ? WHERE lead_id = ?').run(newNotified, lead.lead_id);
+  
+  console.log(`Resent lead ${lead.lead_id}: ${sentCount} full, ${teaserCount} teasers`);
+  await sendAdminNotification(`🔄 Lead resent: ${lead.lead_id}`, 
+    `Full: ${sentCount} | Teasers: ${teaserCount}\n${notified.join(', ')}`);
+  
   res.redirect(`/admin?key=${req.query.key}`);
 });
 
