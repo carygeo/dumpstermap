@@ -3774,16 +3774,27 @@ app.post('/api/admin/test-webhook', async (req, res) => {
     return res.status(401).json({ error: 'Unauthorized' });
   }
   
-  const { amount, email, leadId } = req.body;
+  const { amount, originalAmount, email, leadId, metadata, productName } = req.body;
   console.log('\n=== TEST WEBHOOK ===');
-  console.log('Amount:', amount, 'Email:', email, 'LeadId:', leadId);
+  console.log('Amount:', amount, 'Original:', originalAmount, 'Email:', email, 'LeadId:', leadId);
   
-  // Simulate what the webhook would detect
-  const creditPack = CREDIT_PACKS[amount];
-  const subscription = SUBSCRIPTIONS[amount];
+  // Build a mock session object to test full detection logic
+  const mockSession = {
+    amount_total: amount * 100,
+    amount_subtotal: (originalAmount || amount) * 100,
+    metadata: metadata || {},
+    line_items: productName ? {
+      data: [{ description: productName }]
+    } : undefined
+  };
+  
+  // Use the same matchCreditPack function as the real webhook
+  const matchedPack = matchCreditPack(amount, mockSession);
+  
   const result = {
-    detected: creditPack ? 'credit_pack' : subscription ? 'subscription' : leadId ? 'single_lead' : 'unknown',
-    pack: creditPack || subscription || null,
+    detected: matchedPack?.isSubscription ? 'subscription' : matchedPack ? 'credit_pack' : leadId ? 'single_lead' : 'unknown',
+    pack: matchedPack || null,
+    originalAmount: originalAmount || amount,
     wouldAutoCreateProvider: !getProviderByEmail(email || ''),
     existingProvider: getProviderByEmail(email || '') ? true : false
   };
