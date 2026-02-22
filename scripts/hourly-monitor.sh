@@ -94,13 +94,13 @@ echo ""
 echo ">>> 📤 Outreach Campaign"
 OUTREACH_HTML=$(curl -s "$BASE_URL/admin/outreach?key=$ADMIN_KEY" 2>/dev/null || echo "")
 if [ -n "$OUTREACH_HTML" ]; then
-    # Parse stats from HTML (macOS compatible)
-    OUTREACH_TOTAL=$(echo "$OUTREACH_HTML" | grep -A1 "Total Contacts" | grep -oE '[0-9]+' | head -1 || echo "?")
-    OUTREACH_PENDING=$(echo "$OUTREACH_HTML" | grep -A1 ">Pending<" | grep -oE '[0-9]+' | head -1 || echo "?")
-    OUTREACH_SENT=$(echo "$OUTREACH_HTML" | grep -A1 "Emails Sent" | grep -oE '[0-9]+' | head -1 || echo "?")
-    OUTREACH_FAILED=$(echo "$OUTREACH_HTML" | grep -A1 "Failed/Bounced" | grep -oE '[0-9]+' | head -1 || echo "0")
-    OUTREACH_REPLIED=$(echo "$OUTREACH_HTML" | grep -A1 ">Replied<" | grep -oE '[0-9]+' | head -1 || echo "0")
-    OUTREACH_CONVERTED=$(echo "$OUTREACH_HTML" | grep -A1 ">Converted<" | grep -oE '[0-9]+' | head -1 || echo "0")
+    # Parse stats from HTML - extract value before each label
+    OUTREACH_TOTAL=$(echo "$OUTREACH_HTML" | grep "Total Contacts" | grep -oE 'stat-value">[0-9]+' | grep -oE '[0-9]+' || echo "?")
+    OUTREACH_PENDING=$(echo "$OUTREACH_HTML" | grep ">Pending<" | grep -oE 'stat-value">[0-9]+' | grep -oE '[0-9]+' || echo "?")
+    OUTREACH_SENT=$(echo "$OUTREACH_HTML" | grep "Emails Sent" | grep -oE 'stat-value">[0-9]+' | grep -oE '[0-9]+' || echo "?")
+    OUTREACH_FAILED=$(echo "$OUTREACH_HTML" | grep "Failed/Bounced" | grep -oE '>[0-9]+<' | grep -oE '[0-9]+' || echo "0")
+    OUTREACH_REPLIED=$(echo "$OUTREACH_HTML" | grep ">Replied<" | grep -oE '>[0-9]+<' | grep -oE '[0-9]+' || echo "0")
+    OUTREACH_CONVERTED=$(echo "$OUTREACH_HTML" | grep ">Converted<" | grep -oE '>[0-9]+<' | grep -oE '[0-9]+' || echo "0")
     echo "   📋 Total: $OUTREACH_TOTAL | Pending: $OUTREACH_PENDING"
     echo "   ✉️  Sent: $OUTREACH_SENT | ❌ Failed: $OUTREACH_FAILED"
     echo "   💬 Replied: $OUTREACH_REPLIED | ✅ Converted: $OUTREACH_CONVERTED"
