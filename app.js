@@ -37,9 +37,9 @@ async function loadProviders() {
                 rating: p.featured ? 5.0 : (p.verified ? 4.8 : 4.5),
                 reviewCount: 0,
                 category: 'Dumpster rental service',
-                // Generate lat/lng from address for map (will need geocoding)
-                lat: null,
-                lng: null
+                // Use geocoded coordinates from API
+                lat: p.lat || null,
+                lng: p.lng || null
             }));
         }
         
