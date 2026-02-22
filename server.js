@@ -270,6 +270,14 @@ function logError(type, message, context = {}) {
 // ============================================
 // LEAD SUBMISSION ENDPOINT
 // ============================================
+// LEAD PRICING CONFIGURATION
+// ============================================
+const LEAD_PRICING = {
+  exclusive: 1.0,      // Full credit for exclusive leads (from provider page)
+  shared: 0.5,         // Half credit for shared leads (from comparison page)
+  asapBonus: 0.25      // Extra charge for ASAP/urgent leads
+};
+
 app.post('/api/lead', async (req, res) => {
   console.log('\n=== Lead Submission ===');
   
@@ -277,6 +285,15 @@ app.post('/api/lead', async (req, res) => {
     const data = req.body;
     const leadId = generateLeadId();
     const name = ((data.firstName || '') + ' ' + (data.lastName || '')).trim();
+    const isAsap = data.timeframe === 'asap' || data.timeline === 'asap';
+    
+    // Determine lead type: exclusive (specific provider) vs shared (all in ZIP)
+    const isExclusive = !!data.providerId;
+    const leadType = isExclusive ? 'exclusive' : 'shared';
+    
+    // Calculate credit cost per provider
+    let creditCost = isExclusive ? LEAD_PRICING.exclusive : LEAD_PRICING.shared;
+    if (isAsap) creditCost += LEAD_PRICING.asapBonus;
     
     // Save lead
     db.prepare(`
@@ -285,53 +302,75 @@ app.post('/api/lead', async (req, res) => {
     `).run(leadId, name, data.email, data.phone, data.zip, data.projectType, data.size, 
            data.timeframe || data.timeline, data.message, data.source || 'Website', data.providerName || '');
     
-    console.log('Lead saved:', leadId);
+    console.log(`Lead saved: ${leadId} (${leadType}, cost: ${creditCost} credits${isAsap ? ' +ASAP' : ''})`);
     
     // Find target provider(s)
     let providers = [];
     
     if (data.providerId) {
-      // Specific provider requested - send ONLY to them
+      // EXCLUSIVE: Specific provider requested - send ONLY to them
       const specificProvider = db.prepare('SELECT * FROM providers WHERE id = ? AND status = ?').get(data.providerId, 'Active');
       if (specificProvider) {
         providers = [specificProvider];
-        console.log(`Targeting specific provider: ${specificProvider.company_name} (ID: ${data.providerId})`);
+        console.log(`EXCLUSIVE lead to: ${specificProvider.company_name} (ID: ${data.providerId})`);
       } else {
         console.log(`Provider ID ${data.providerId} not found or inactive`);
       }
     } else {
-      // No specific provider - find all providers serving this ZIP
+      // SHARED: No specific provider - send to all providers serving this ZIP
       providers = getProvidersByZip(data.zip);
-      console.log(`Found ${providers.length} providers for zip ${data.zip}`);
+      console.log(`SHARED lead to ${providers.length} providers for zip ${data.zip}`);
     }
     
+    let sentCount = 0;
+    let teaserCount = 0;
+    
     for (const provider of providers) {
-      if (provider.credit_balance > 0) {
-        await sendFullLeadToProvider(provider, leadId, data);
-        db.prepare('UPDATE providers SET credit_balance = credit_balance - 1, total_leads = total_leads + 1 WHERE id = ?').run(provider.id);
-        db.prepare('UPDATE leads SET status = ?, assigned_provider = ?, credits_charged = 1 WHERE lead_id = ?').run('Sent', provider.company_name, leadId);
+      // Check if provider has enough credits
+      if (provider.credit_balance >= creditCost) {
+        await sendFullLeadToProvider(provider, leadId, data, { leadType, creditCost, isAsap });
+        db.prepare('UPDATE providers SET credit_balance = credit_balance - ?, total_leads = total_leads + 1 WHERE id = ?')
+          .run(creditCost, provider.id);
+        sentCount++;
       } else {
-        await sendTeaserToProvider(provider, leadId, data);
+        // Not enough credits - send teaser
+        await sendTeaserToProvider(provider, leadId, data, { leadType, creditCost });
+        teaserCount++;
       }
     }
     
-    await sendAdminNotification(`New lead: ${leadId} - ${data.zip}`,
-      `${leadId}\n${name} | ${data.phone} | ${data.email}\n${data.zip} | ${data.size || 'TBD'} | ${providers.length} providers matched`);
+    // Update lead status
+    if (sentCount > 0) {
+      const providerNames = providers.filter(p => p.credit_balance >= creditCost).map(p => p.company_name).join(', ');
+      db.prepare('UPDATE leads SET status = ?, assigned_provider = ?, credits_charged = ? WHERE lead_id = ?')
+        .run('Sent', providerNames, creditCost * sentCount, leadId);
+    }
     
-    res.json({ status: 'ok', leadId, message: 'Lead submitted successfully' });
+    await sendAdminNotification(`${isExclusive ? '🎯' : '📢'} ${leadType.toUpperCase()} lead: ${leadId}`,
+      `${leadId} (${leadType}${isAsap ? ' +ASAP' : ''})\n${name} | ${data.phone} | ${data.email}\n${data.zip} | ${data.size || 'TBD'}\nSent: ${sentCount} | Teasers: ${teaserCount} | Cost: ${creditCost}/provider`);
+    
+    res.json({ status: 'ok', leadId, leadType, message: 'Lead submitted successfully' });
   } catch (error) {
     console.error('Lead error:', error);
     res.status(500).json({ status: 'error', message: error.message });
   }
 });
 
-async function sendFullLeadToProvider(provider, leadId, lead) {
+async function sendFullLeadToProvider(provider, leadId, lead, options = {}) {
+  const { leadType = 'exclusive', creditCost = 1, isAsap = false } = options;
   const timeframe = lead.timeframe === 'asap' ? 'ASAP' : lead.timeframe || 'soon';
-  const newBalance = (provider.credit_balance || 1) - 1;
+  const newBalance = Math.max(0, (provider.credit_balance || 0) - creditCost);
   const projectType = lead.projectType || lead.project_type || 'Not specified';
   const customerName = [lead.firstName, lead.lastName].filter(Boolean).join(' ') || 'Customer';
   
-  const lowBalanceWarning = newBalance <= 2 && newBalance >= 0 ? `
+  // Lead type badge
+  const leadTypeBadge = leadType === 'exclusive' 
+    ? '<span style="background: #10b981; color: white; padding: 2px 8px; border-radius: 4px; font-size: 12px;">🎯 EXCLUSIVE</span>'
+    : '<span style="background: #3b82f6; color: white; padding: 2px 8px; border-radius: 4px; font-size: 12px;">📢 SHARED</span>';
+  
+  const asapBadge = isAsap ? ' <span style="background: #ef4444; color: white; padding: 2px 8px; border-radius: 4px; font-size: 12px;">⚡ ASAP</span>' : '';
+  
+  const lowBalanceWarning = newBalance <= 2 ? `
   <div style="background: #fef3c7; border: 1px solid #fcd34d; padding: 12px; border-radius: 6px; margin: 20px 0;">
     ⚠️ <strong>Low balance:</strong> ${newBalance} credit${newBalance === 1 ? '' : 's'} remaining.
     <a href="https://dumpstermap.io/for-providers" style="color: #b45309; font-weight: bold;">Top up →</a>
@@ -340,6 +379,8 @@ async function sendFullLeadToProvider(provider, leadId, lead) {
   const html = `
 <div style="font-family: Arial, sans-serif; max-width: 600px; line-height: 1.6; color: #333;">
   <p>Hi ${provider.company_name},</p>
+  
+  <p>${leadTypeBadge}${asapBadge}</p>
   
   <p><strong>${customerName}</strong> in <strong>${lead.zip}</strong> just requested a quote — they need a dumpster <strong>${timeframe}</strong>.</p>
   
@@ -360,68 +401,65 @@ async function sendFullLeadToProvider(provider, leadId, lead) {
   <p>💡 <strong>Pro tip:</strong> Call within 5 minutes — first responder usually wins the job.</p>
   ${lowBalanceWarning}
   <p style="color: #666; font-size: 13px; margin-top: 24px; border-top: 1px solid #eee; padding-top: 16px;">
-    1 credit used • <strong>${newBalance} remaining</strong> • <a href="https://dumpstermap.io/balance" style="color: #2563eb;">Check balance</a>
+    ${creditCost} credit${creditCost !== 1 ? 's' : ''} used • <strong>${newBalance.toFixed(1)} remaining</strong> • <a href="https://dumpstermap.io/balance" style="color: #2563eb;">Check balance</a>
   </p>
 </div>`;
-  await sendEmail(provider.email, `🚛 New lead in ${lead.zip} - ${customerName}`, html);
+  await sendEmail(provider.email, `${leadType === 'exclusive' ? '🎯' : '📢'} ${leadType.toUpperCase()} lead in ${lead.zip} - ${customerName}`, html);
 }
 
-async function sendTeaserToProvider(provider, leadId, lead) {
+async function sendTeaserToProvider(provider, leadId, lead, options = {}) {
+  const { leadType = 'exclusive', creditCost = 1 } = options;
   const paymentLink = `${SINGLE_LEAD_STRIPE_LINK}?client_reference_id=${leadId}`;
   const timeframe = lead.timeframe === 'asap' ? 'ASAP' : lead.timeframe || 'soon';
-  const projectType = lead.project_type || 'General';
+  const projectType = lead.project_type || lead.projectType || 'General';
   const companyName = provider.company_name || 'there';
+  const isAsap = lead.timeframe === 'asap';
   
-  // Minimal HTML to avoid Gmail Promotions tab
+  // Lead type badge and pricing info
+  const leadTypeBadge = leadType === 'exclusive' 
+    ? '🎯 <strong>EXCLUSIVE LEAD</strong> - This customer chose YOU specifically'
+    : '📢 <strong>SHARED LEAD</strong> - This customer is comparing providers';
+  
+  const priceDisplay = creditCost === 1 ? '$40' : `$${Math.round(creditCost * 40)}`;
+  
   const html = `
 <div style="font-family: Arial, sans-serif; max-width: 600px; line-height: 1.6; color: #333;">
   <p>Hi ${companyName},</p>
   
-  <p>A customer in <strong>${lead.zip}</strong> just requested a dumpster quote on DumpsterMap. They need it <strong>${timeframe}</strong>.</p>
+  <p>${leadTypeBadge}</p>
   
-  <p style="margin: 16px 0; padding: 12px; background: #f9f9f9;">
-    Location: ${lead.zip}<br>
-    Size: ${lead.size ? lead.size + ' yard' : 'Not specified'}<br>
-    Timeline: ${timeframe}<br>
-    Project: ${projectType}
+  <p>Someone in your area just searched DumpsterMap looking for a dumpster rental. They filled out a quote request and are <strong>ready to book</strong>.</p>
+  
+  <div style="background: #f8f9fa; padding: 16px; border-left: 4px solid #f59e0b; margin: 20px 0;">
+    <strong>What we know about this lead:</strong><br>
+    • Location: <strong>${lead.zip}</strong><br>
+    • Size: ${lead.size ? lead.size + ' yard' : 'Not specified yet'}<br>
+    • Timeframe: <strong>${timeframe}</strong>${isAsap ? ' ⚡' : ''}<br>
+    • Project: ${projectType}
+  </div>
+  
+  <p><strong>Why DumpsterMap leads convert:</strong><br>
+  These are homeowners and contractors <em>actively searching</em> for dumpster service right now — not cold leads from a purchased list.</p>
+  
+  <p style="margin: 24px 0;">
+    <a href="${paymentLink}" style="background: #f59e0b; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">Unlock this lead for ${priceDisplay} →</a>
   </p>
   
-  <p>This is someone actively looking for service in your area right now.</p>
+  <p>You'll get their <strong>name, phone number, and email</strong> instantly so you can reach out while they're still shopping.</p>
   
-  <p><strong>Get their contact info:</strong> <a href="${paymentLink}">${paymentLink}</a></p>
+  <p style="font-size: 14px; color: #666; margin-top: 24px;">
+    <strong>Want a better rate?</strong> Lead packs start at $200 for 5 leads.<br>
+    <a href="https://dumpstermap.io/for-providers#pricing" style="color: #2563eb;">See all options →</a>
+  </p>
   
-  <p>You'll receive their name, phone, and email so you can reach out directly.</p>
+  <p>— The DumpsterMap Team</p>
   
-  <p>— DumpsterMap<br>
-  <a href="https://dumpstermap.io">dumpstermap.io</a></p>
-  
-  <p style="font-size: 13px; color: #666; margin-top: 20px;">
-    You're receiving this because you serve ${lead.zip}. We also offer lead packs if you want a better per-lead rate. Reply to this email with questions.
+  <p style="font-size: 13px; color: #888; margin-top: 20px; border-top: 1px solid #eee; padding-top: 16px;">
+    P.S. You're receiving this because your business serves ${lead.zip}. Reply to update your service area.
   </p>
 </div>`;
 
-  // Plain text version for better deliverability
-  const text = `Hi ${companyName},
-
-A customer in ${lead.zip} just requested a dumpster quote on DumpsterMap. They need it ${timeframe}.
-
-Location: ${lead.zip}
-Size: ${lead.size ? lead.size + ' yard' : 'Not specified'}
-Timeline: ${timeframe}
-Project: ${projectType}
-
-This is someone actively looking for service in your area right now.
-
-Get their contact info: ${paymentLink}
-
-You'll receive their name, phone, and email so you can reach out directly.
-
-— DumpsterMap
-dumpstermap.io
-
-You're receiving this because you serve ${lead.zip}. Reply with questions.`;
-
-  await sendEmail(provider.email, `New lead in ${lead.zip} - ${timeframe}`, html, text);
+  await sendEmail(provider.email, `🔔 ${leadType === 'exclusive' ? 'EXCLUSIVE' : 'SHARED'} lead in ${lead.zip} - ready to book`, html);
 }
 
 // ============================================
