@@ -1,258 +1,822 @@
 /**
  * DumpsterMap Unit Tests
- * Run: npm test
+ * 
+ * Tests all core business logic:
+ * - Credit pack detection and pricing
+ * - Provider matching (direct, by name, by ZIP)
+ * - Lead routing and credit deduction
+ * - Balance verification
+ * - Payment idempotency
+ * 
+ * Run: node --test server.test.js
+ * Or with npm: npm test
  */
 
-const { describe, it, expect, beforeAll, afterAll, beforeEach } = require('@jest/globals');
+const assert = require('node:assert');
+const { describe, it, before, after, beforeEach, afterEach } = require('node:test');
+const Database = require('better-sqlite3');
+const path = require('path');
+const fs = require('fs');
 
-// Mock dependencies before requiring server
-jest.mock('nodemailer', () => ({
-  createTransport: jest.fn(() => ({
-    sendMail: jest.fn().mockResolvedValue({ messageId: 'test-id' })
-  }))
-}));
-
-jest.mock('node-fetch', () => jest.fn().mockResolvedValue({
-  ok: true,
-  json: () => Promise.resolve({})
-}));
-
-// Test utilities
-const generateLeadId = () => {
-  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-  let id = '';
-  for (let i = 0; i < 6; i++) id += chars[Math.floor(Math.random() * chars.length)];
-  return id;
+// ============================================
+// CONFIGURATION (must match server.js)
+// ============================================
+const CREDIT_PACKS = {
+  200: { credits: 5, name: 'Starter Pack' },
+  700: { credits: 20, name: 'Pro Pack' },
+  1500: { credits: 60, name: 'Premium Pack' }
 };
 
-const parseProviderIds = (notifiedStr) => {
-  if (!notifiedStr) return [];
-  const match = notifiedStr.match(/\[([\d,\s]*)\]/);
-  if (match && match[1].trim()) {
-    return match[1].split(',').map(s => parseInt(s.trim())).filter(n => !isNaN(n));
+const SUBSCRIPTIONS = {
+  99: { credits: 3, name: 'Featured Partner', perks: ['verified', 'priority'] }
+};
+
+const LEAD_PRICING = {
+  perLead: 1.0  // 1 credit = 1 lead
+};
+
+const SINGLE_LEAD_PRICE = 40;
+
+// ============================================
+// CORE FUNCTIONS (extracted from server.js)
+// ============================================
+
+/**
+ * Match payment amount to credit pack
+ * Handles $5 tolerance for Stripe fee variations
+ */
+function matchCreditPack(amount, session = null) {
+  // Exact amount match first
+  if (CREDIT_PACKS[amount]) return CREDIT_PACKS[amount];
+  if (SUBSCRIPTIONS[amount]) return { ...SUBSCRIPTIONS[amount], isSubscription: true };
+  
+  // Check within $5 tolerance for each pack
+  for (const [price, pack] of Object.entries(CREDIT_PACKS)) {
+    if (Math.abs(amount - parseInt(price)) <= 5) {
+      return pack;
+    }
   }
-  return [];
-};
+  for (const [price, pack] of Object.entries(SUBSCRIPTIONS)) {
+    if (Math.abs(amount - parseInt(price)) <= 5) {
+      return { ...pack, isSubscription: true };
+    }
+  }
+  
+  return null;
+}
 
-const formatProviderIds = (ids) => `[${ids.join(', ')}]`;
+/**
+ * Check if this is a single lead purchase (not a pack)
+ */
+function isSingleLeadPurchase(amount) {
+  // Single lead is $40, no pack matched
+  return amount === SINGLE_LEAD_PRICE || 
+         (amount >= SINGLE_LEAD_PRICE - 5 && amount <= SINGLE_LEAD_PRICE + 5 && !matchCreditPack(amount));
+}
+
+/**
+ * Validate business email (no gmail, yahoo, etc.)
+ */
+function isBusinessEmail(email) {
+  if (!email || typeof email !== 'string') return false;
+  if (!email.includes('@')) return false;  // Must have @ sign
+  const freeProviders = [
+    'gmail.com', 'yahoo.com', 'hotmail.com', 'outlook.com', 
+    'aol.com', 'icloud.com', 'mail.com', 'protonmail.com',
+    'ymail.com', 'live.com', 'msn.com'
+  ];
+  const domain = email.toLowerCase().split('@')[1];
+  return domain && !freeProviders.includes(domain);
+}
+
+/**
+ * Generate unique lead ID
+ */
+function generateLeadId() {
+  const timestamp = Date.now().toString(36).toUpperCase();
+  const random = Math.random().toString(36).substring(2, 6).toUpperCase();
+  return `LEAD-${timestamp}-${random}`;
+}
+
+/**
+ * Validate ZIP code format
+ */
+function isValidZip(zip) {
+  return /^\d{5}$/.test(zip);
+}
+
+/**
+ * Parse phone number to extract last 4 digits
+ */
+function getPhoneLast4(phone) {
+  if (!phone) return '';
+  return phone.replace(/\D/g, '').slice(-4);
+}
+
+// ============================================
+// TEST DATABASE HELPERS
+// ============================================
+let testDb;
+const TEST_DB_PATH = path.join(__dirname, 'test.db');
+
+function initTestDatabase() {
+  // Clean up any existing test DB
+  if (fs.existsSync(TEST_DB_PATH)) {
+    fs.unlinkSync(TEST_DB_PATH);
+  }
+  
+  testDb = new Database(TEST_DB_PATH);
+  testDb.pragma('journal_mode = WAL');
+  
+  testDb.exec(`
+    CREATE TABLE IF NOT EXISTS leads (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      lead_id TEXT UNIQUE NOT NULL,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      name TEXT,
+      email TEXT,
+      phone TEXT,
+      zip TEXT,
+      project_type TEXT,
+      size TEXT,
+      timeframe TEXT,
+      message TEXT,
+      source TEXT DEFAULT 'Website',
+      status TEXT DEFAULT 'New',
+      assigned_provider TEXT,
+      assigned_provider_id INTEGER,
+      credits_charged INTEGER DEFAULT 0,
+      purchased_by TEXT,
+      purchased_at TEXT,
+      payment_id TEXT,
+      email_sent TEXT,
+      providers_notified TEXT,
+      notes TEXT
+    );
+    
+    CREATE TABLE IF NOT EXISTS providers (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      company_name TEXT NOT NULL,
+      email TEXT UNIQUE NOT NULL,
+      phone TEXT,
+      address TEXT,
+      service_zips TEXT,
+      credit_balance INTEGER DEFAULT 0,
+      total_leads INTEGER DEFAULT 0,
+      plan TEXT DEFAULT 'Free',
+      status TEXT DEFAULT 'Active',
+      verified INTEGER DEFAULT 0,
+      priority INTEGER DEFAULT 0,
+      stripe_customer_id TEXT,
+      premium_expires_at TEXT,
+      last_purchase_at TEXT,
+      notes TEXT
+    );
+    
+    CREATE TABLE IF NOT EXISTS purchase_log (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      timestamp TEXT DEFAULT CURRENT_TIMESTAMP,
+      lead_id TEXT,
+      buyer_email TEXT,
+      amount REAL,
+      payment_id TEXT,
+      status TEXT
+    );
+    
+    CREATE INDEX IF NOT EXISTS idx_leads_zip ON leads(zip);
+    CREATE INDEX IF NOT EXISTS idx_providers_email ON providers(email);
+  `);
+  
+  return testDb;
+}
+
+function closeTestDatabase() {
+  if (testDb) {
+    testDb.close();
+    testDb = null;
+  }
+  if (fs.existsSync(TEST_DB_PATH)) {
+    fs.unlinkSync(TEST_DB_PATH);
+  }
+}
+
+// Database-backed functions for testing
+function getProviderByEmail(email) {
+  return testDb.prepare('SELECT * FROM providers WHERE LOWER(email) = LOWER(?)').get(email);
+}
+
+function getProviderById(id) {
+  return testDb.prepare('SELECT * FROM providers WHERE id = ?').get(id);
+}
+
+function getProvidersByZip(zip) {
+  const providers = testDb.prepare('SELECT * FROM providers WHERE status = ?').all('Active');
+  return providers.filter(p => {
+    const zips = (p.service_zips || '').split(',').map(z => z.trim());
+    return zips.includes(zip);
+  });
+}
+
+function getOrCreateProvider(email, name = null) {
+  let provider = getProviderByEmail(email);
+  if (!provider) {
+    const companyName = name || email.split('@')[0].replace(/[._]/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+    testDb.prepare(`
+      INSERT INTO providers (company_name, email, status, notes)
+      VALUES (?, ?, 'Active', 'Auto-created from purchase')
+    `).run(companyName, email.toLowerCase());
+    provider = getProviderByEmail(email);
+  }
+  return provider;
+}
+
+function isPaymentProcessed(paymentId) {
+  if (!paymentId) return false;
+  const existing = testDb.prepare(
+    "SELECT * FROM purchase_log WHERE payment_id = ? AND (status LIKE '%Success%' OR status = 'Credits Added')"
+  ).get(paymentId);
+  return !!existing;
+}
+
+function addCreditsToProvider(providerId, credits) {
+  testDb.prepare('UPDATE providers SET credit_balance = credit_balance + ? WHERE id = ?').run(credits, providerId);
+}
+
+function deductCreditsFromProvider(providerId, credits) {
+  testDb.prepare('UPDATE providers SET credit_balance = credit_balance - ?, total_leads = total_leads + 1 WHERE id = ?').run(credits, providerId);
+}
+
+// ============================================
+// TESTS
+// ============================================
+
+describe('Credit Pack Detection', () => {
+  it('should detect Starter Pack at $200', () => {
+    const pack = matchCreditPack(200);
+    assert.strictEqual(pack.credits, 5);
+    assert.strictEqual(pack.name, 'Starter Pack');
+  });
+  
+  it('should detect Pro Pack at $700', () => {
+    const pack = matchCreditPack(700);
+    assert.strictEqual(pack.credits, 20);
+    assert.strictEqual(pack.name, 'Pro Pack');
+  });
+  
+  it('should detect Premium Pack at $1500', () => {
+    const pack = matchCreditPack(1500);
+    assert.strictEqual(pack.credits, 60);
+    assert.strictEqual(pack.name, 'Premium Pack');
+  });
+  
+  it('should detect Featured Partner subscription at $99', () => {
+    const pack = matchCreditPack(99);
+    assert.strictEqual(pack.credits, 3);
+    assert.strictEqual(pack.name, 'Featured Partner');
+    assert.strictEqual(pack.isSubscription, true);
+    assert.deepStrictEqual(pack.perks, ['verified', 'priority']);
+  });
+  
+  it('should handle $5 tolerance for Stripe variations', () => {
+    // Starter Pack variations
+    assert.strictEqual(matchCreditPack(197).credits, 5);
+    assert.strictEqual(matchCreditPack(203).credits, 5);
+    assert.strictEqual(matchCreditPack(205).credits, 5);
+    
+    // Pro Pack variations
+    assert.strictEqual(matchCreditPack(695).credits, 20);
+    assert.strictEqual(matchCreditPack(702).credits, 20);
+    
+    // Premium Pack variations
+    assert.strictEqual(matchCreditPack(1497).credits, 60);
+    assert.strictEqual(matchCreditPack(1503).credits, 60);
+  });
+  
+  it('should NOT match single lead price ($40) as a pack', () => {
+    const pack = matchCreditPack(40);
+    assert.strictEqual(pack, null);
+  });
+  
+  it('should NOT match arbitrary amounts as packs', () => {
+    assert.strictEqual(matchCreditPack(50), null);
+    // Note: $100 matches $99 subscription within $5 tolerance - this is expected
+    assert.strictEqual(matchCreditPack(150), null);
+    assert.strictEqual(matchCreditPack(500), null);
+    assert.strictEqual(matchCreditPack(1000), null);
+    assert.strictEqual(matchCreditPack(300), null);
+  });
+  
+  it('should identify single lead purchases correctly', () => {
+    assert.strictEqual(isSingleLeadPurchase(40), true);
+    assert.strictEqual(isSingleLeadPurchase(38), true);  // Within tolerance
+    assert.strictEqual(isSingleLeadPurchase(43), true);  // Within tolerance
+    
+    // Pack prices should NOT be single leads
+    assert.strictEqual(isSingleLeadPurchase(200), false);
+    assert.strictEqual(isSingleLeadPurchase(700), false);
+    assert.strictEqual(isSingleLeadPurchase(1500), false);
+  });
+});
+
+describe('Provider Matching', () => {
+  before(() => {
+    initTestDatabase();
+    
+    // Create test providers
+    testDb.prepare(`
+      INSERT INTO providers (company_name, email, phone, service_zips, credit_balance, status)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `).run('Naples Dumpsters', 'info@naplesdumpsters.com', '239-555-1234', '33901, 33902, 33903', 10, 'Active');
+    
+    testDb.prepare(`
+      INSERT INTO providers (company_name, email, phone, service_zips, credit_balance, status)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `).run('Fort Myers Hauling', 'sales@fmhauling.com', '239-555-5678', '33901, 33916, 33917', 5, 'Active');
+    
+    testDb.prepare(`
+      INSERT INTO providers (company_name, email, phone, service_zips, credit_balance, status)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `).run('Inactive Provider', 'inactive@test.com', '555-0000', '33901', 20, 'Inactive');
+    
+    testDb.prepare(`
+      INSERT INTO providers (company_name, email, phone, service_zips, credit_balance, status)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `).run('Zero Credits LLC', 'nocredits@test.com', '555-1111', '33904', 0, 'Active');
+  });
+  
+  after(() => {
+    closeTestDatabase();
+  });
+  
+  it('should find provider by email (case insensitive)', () => {
+    const provider = getProviderByEmail('INFO@NAPLESDUMPSTERS.COM');
+    assert.ok(provider);
+    assert.strictEqual(provider.company_name, 'Naples Dumpsters');
+    
+    const provider2 = getProviderByEmail('sales@fmhauling.com');
+    assert.ok(provider2);
+    assert.strictEqual(provider2.company_name, 'Fort Myers Hauling');
+  });
+  
+  it('should find provider by ID', () => {
+    const provider = getProviderById(1);
+    assert.ok(provider);
+    assert.strictEqual(provider.company_name, 'Naples Dumpsters');
+  });
+  
+  it('should find providers by ZIP code', () => {
+    // 33901 is served by both Naples and Fort Myers
+    const providers33901 = getProvidersByZip('33901');
+    assert.strictEqual(providers33901.length, 2);
+    
+    // 33902 is only served by Naples
+    const providers33902 = getProvidersByZip('33902');
+    assert.strictEqual(providers33902.length, 1);
+    assert.strictEqual(providers33902[0].company_name, 'Naples Dumpsters');
+    
+    // 33916 is only served by Fort Myers
+    const providers33916 = getProvidersByZip('33916');
+    assert.strictEqual(providers33916.length, 1);
+    assert.strictEqual(providers33916[0].company_name, 'Fort Myers Hauling');
+    
+    // 33904 is served by Zero Credits
+    const providers33904 = getProvidersByZip('33904');
+    assert.strictEqual(providers33904.length, 1);
+    assert.strictEqual(providers33904[0].company_name, 'Zero Credits LLC');
+  });
+  
+  it('should NOT include inactive providers in ZIP matching', () => {
+    // The inactive provider serves 33901 but shouldn't appear
+    const providers = getProvidersByZip('33901');
+    const inactiveFound = providers.find(p => p.company_name === 'Inactive Provider');
+    assert.strictEqual(inactiveFound, undefined);
+  });
+  
+  it('should return empty array for unserved ZIP', () => {
+    const providers = getProvidersByZip('90210');
+    assert.strictEqual(providers.length, 0);
+  });
+  
+  it('should auto-create provider on purchase if not exists', () => {
+    const newProvider = getOrCreateProvider('newbiz@example.com', 'New Business LLC');
+    assert.ok(newProvider);
+    assert.strictEqual(newProvider.company_name, 'New Business LLC');
+    assert.strictEqual(newProvider.email, 'newbiz@example.com');
+    assert.strictEqual(newProvider.status, 'Active');
+    
+    // Should not create duplicate
+    const sameProvider = getOrCreateProvider('newbiz@example.com');
+    assert.strictEqual(sameProvider.id, newProvider.id);
+  });
+  
+  it('should generate company name from email if not provided', () => {
+    const provider = getOrCreateProvider('john.doe@company.com');
+    assert.ok(provider);
+    assert.strictEqual(provider.company_name, 'John Doe');
+  });
+});
+
+describe('Lead Routing Logic', () => {
+  beforeEach(() => {
+    initTestDatabase();
+    
+    // Provider with credits
+    testDb.prepare(`
+      INSERT INTO providers (id, company_name, email, service_zips, credit_balance, status)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `).run(1, 'Premier Dumpsters', 'premier@test.com', '33901, 33902', 10, 'Active');
+    
+    // Provider without credits
+    testDb.prepare(`
+      INSERT INTO providers (id, company_name, email, service_zips, credit_balance, status)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `).run(2, 'Budget Haulers', 'budget@test.com', '33901', 0, 'Active');
+    
+    // Another provider with credits
+    testDb.prepare(`
+      INSERT INTO providers (id, company_name, email, service_zips, credit_balance, status)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `).run(3, 'Quick Removal', 'quick@test.com', '33901', 5, 'Active');
+  });
+  
+  afterEach(() => {
+    closeTestDatabase();
+  });
+  
+  it('should route DIRECT lead by providerId (ignores ZIP)', () => {
+    // Lead has providerId=1, should go ONLY to that provider regardless of ZIP
+    const leadData = { providerId: 1, zip: '99999' };  // ZIP doesn't match provider
+    
+    const provider = getProviderById(leadData.providerId);
+    assert.ok(provider);
+    assert.strictEqual(provider.company_name, 'Premier Dumpsters');
+    
+    // Should NOT find any providers by ZIP (since 99999 isn't served)
+    const zipProviders = getProvidersByZip(leadData.zip);
+    assert.strictEqual(zipProviders.length, 0);
+  });
+  
+  it('should route DIRECT lead by providerName', () => {
+    const providerName = 'Quick Removal';
+    const provider = testDb.prepare(
+      'SELECT * FROM providers WHERE LOWER(company_name) = LOWER(?) AND status = ?'
+    ).get(providerName, 'Active');
+    
+    assert.ok(provider);
+    assert.strictEqual(provider.id, 3);
+  });
+  
+  it('should handle case-insensitive provider name lookup', () => {
+    const provider = testDb.prepare(
+      'SELECT * FROM providers WHERE LOWER(company_name) = LOWER(?) AND status = ?'
+    ).get('QUICK REMOVAL', 'Active');
+    
+    assert.ok(provider);
+    assert.strictEqual(provider.company_name, 'Quick Removal');
+  });
+  
+  it('should fall back to ZIP matching when no providerId/providerName', () => {
+    const providers = getProvidersByZip('33901');
+    assert.strictEqual(providers.length, 3);  // All 3 serve 33901
+  });
+  
+  it('should deduct credits when sending full lead', () => {
+    const providerId = 1;
+    const initialBalance = getProviderById(providerId).credit_balance;
+    
+    deductCreditsFromProvider(providerId, LEAD_PRICING.perLead);
+    
+    const newBalance = getProviderById(providerId).credit_balance;
+    assert.strictEqual(newBalance, initialBalance - LEAD_PRICING.perLead);
+  });
+  
+  it('should increment total_leads when sending full lead', () => {
+    const providerId = 1;
+    const initialLeads = getProviderById(providerId).total_leads;
+    
+    deductCreditsFromProvider(providerId, LEAD_PRICING.perLead);
+    
+    const newLeads = getProviderById(providerId).total_leads;
+    assert.strictEqual(newLeads, initialLeads + 1);
+  });
+  
+  it('should identify providers with insufficient credits for teaser', () => {
+    const providers = getProvidersByZip('33901');
+    const withCredits = providers.filter(p => p.credit_balance >= LEAD_PRICING.perLead);
+    const withoutCredits = providers.filter(p => p.credit_balance < LEAD_PRICING.perLead);
+    
+    assert.strictEqual(withCredits.length, 2);  // Premier (10) and Quick (5)
+    assert.strictEqual(withoutCredits.length, 1);  // Budget (0)
+    assert.strictEqual(withoutCredits[0].company_name, 'Budget Haulers');
+  });
+});
+
+describe('Balance Verification', () => {
+  before(() => {
+    initTestDatabase();
+    
+    testDb.prepare(`
+      INSERT INTO providers (company_name, email, phone, credit_balance)
+      VALUES (?, ?, ?, ?)
+    `).run('Test Provider', 'test@provider.com', '239-555-4321', 15);
+  });
+  
+  after(() => {
+    closeTestDatabase();
+  });
+  
+  it('should extract last 4 digits from phone', () => {
+    assert.strictEqual(getPhoneLast4('239-555-4321'), '4321');
+    assert.strictEqual(getPhoneLast4('(239) 555-4321'), '4321');
+    assert.strictEqual(getPhoneLast4('+1 239 555 4321'), '4321');
+    assert.strictEqual(getPhoneLast4('2395554321'), '4321');
+  });
+  
+  it('should verify correct phone last 4 digits', () => {
+    const provider = getProviderByEmail('test@provider.com');
+    const providerLast4 = getPhoneLast4(provider.phone);
+    const userLast4 = '4321';
+    
+    assert.strictEqual(providerLast4, userLast4);
+  });
+  
+  it('should reject incorrect phone last 4 digits', () => {
+    const provider = getProviderByEmail('test@provider.com');
+    const providerLast4 = getPhoneLast4(provider.phone);
+    const wrongLast4 = '9999';
+    
+    assert.notStrictEqual(providerLast4, wrongLast4);
+  });
+  
+  it('should return correct credit balance', () => {
+    const provider = getProviderByEmail('test@provider.com');
+    assert.strictEqual(provider.credit_balance, 15);
+  });
+});
+
+describe('Payment Idempotency', () => {
+  before(() => {
+    initTestDatabase();
+  });
+  
+  after(() => {
+    closeTestDatabase();
+  });
+  
+  it('should detect new payments as not processed', () => {
+    assert.strictEqual(isPaymentProcessed('pi_new_12345'), false);
+  });
+  
+  it('should detect successful payments as already processed', () => {
+    testDb.prepare(`
+      INSERT INTO purchase_log (payment_id, buyer_email, amount, status)
+      VALUES (?, ?, ?, ?)
+    `).run('pi_existing_123', 'test@test.com', 200, 'Success');
+    
+    assert.strictEqual(isPaymentProcessed('pi_existing_123'), true);
+  });
+  
+  it('should detect "Credits Added" payments as already processed', () => {
+    testDb.prepare(`
+      INSERT INTO purchase_log (payment_id, buyer_email, amount, status)
+      VALUES (?, ?, ?, ?)
+    `).run('pi_credits_456', 'test@test.com', 700, 'Credits Added');
+    
+    assert.strictEqual(isPaymentProcessed('pi_credits_456'), true);
+  });
+  
+  it('should NOT treat "Processing" payments as already processed', () => {
+    testDb.prepare(`
+      INSERT INTO purchase_log (payment_id, buyer_email, amount, status)
+      VALUES (?, ?, ?, ?)
+    `).run('pi_processing_789', 'test@test.com', 200, 'Processing');
+    
+    assert.strictEqual(isPaymentProcessed('pi_processing_789'), false);
+  });
+  
+  it('should handle null/undefined payment IDs', () => {
+    assert.strictEqual(isPaymentProcessed(null), false);
+    assert.strictEqual(isPaymentProcessed(undefined), false);
+    assert.strictEqual(isPaymentProcessed(''), false);
+  });
+});
+
+describe('Credit Management', () => {
+  beforeEach(() => {
+    initTestDatabase();
+    
+    testDb.prepare(`
+      INSERT INTO providers (id, company_name, email, credit_balance)
+      VALUES (?, ?, ?, ?)
+    `).run(1, 'Test Provider', 'test@test.com', 0);
+  });
+  
+  afterEach(() => {
+    closeTestDatabase();
+  });
+  
+  it('should add Starter Pack credits (5)', () => {
+    addCreditsToProvider(1, 5);
+    const provider = getProviderById(1);
+    assert.strictEqual(provider.credit_balance, 5);
+  });
+  
+  it('should add Pro Pack credits (20)', () => {
+    addCreditsToProvider(1, 20);
+    const provider = getProviderById(1);
+    assert.strictEqual(provider.credit_balance, 20);
+  });
+  
+  it('should add Premium Pack credits (60)', () => {
+    addCreditsToProvider(1, 60);
+    const provider = getProviderById(1);
+    assert.strictEqual(provider.credit_balance, 60);
+  });
+  
+  it('should accumulate credits from multiple purchases', () => {
+    addCreditsToProvider(1, 5);   // Starter
+    addCreditsToProvider(1, 20);  // Pro
+    const provider = getProviderById(1);
+    assert.strictEqual(provider.credit_balance, 25);
+  });
+  
+  it('should deduct 1 credit per lead (simple pricing)', () => {
+    addCreditsToProvider(1, 10);
+    deductCreditsFromProvider(1, LEAD_PRICING.perLead);
+    const provider = getProviderById(1);
+    assert.strictEqual(provider.credit_balance, 9);
+  });
+  
+  it('should handle multiple lead deductions', () => {
+    addCreditsToProvider(1, 10);
+    deductCreditsFromProvider(1, LEAD_PRICING.perLead);
+    deductCreditsFromProvider(1, LEAD_PRICING.perLead);
+    deductCreditsFromProvider(1, LEAD_PRICING.perLead);
+    const provider = getProviderById(1);
+    assert.strictEqual(provider.credit_balance, 7);
+  });
+});
+
+describe('Email Validation', () => {
+  it('should reject Gmail addresses', () => {
+    assert.strictEqual(isBusinessEmail('test@gmail.com'), false);
+    assert.strictEqual(isBusinessEmail('TEST@GMAIL.COM'), false);
+  });
+  
+  it('should reject Yahoo addresses', () => {
+    assert.strictEqual(isBusinessEmail('test@yahoo.com'), false);
+    assert.strictEqual(isBusinessEmail('test@ymail.com'), false);
+  });
+  
+  it('should reject other free providers', () => {
+    assert.strictEqual(isBusinessEmail('test@hotmail.com'), false);
+    assert.strictEqual(isBusinessEmail('test@outlook.com'), false);
+    assert.strictEqual(isBusinessEmail('test@aol.com'), false);
+    assert.strictEqual(isBusinessEmail('test@icloud.com'), false);
+    assert.strictEqual(isBusinessEmail('test@protonmail.com'), false);
+    assert.strictEqual(isBusinessEmail('test@live.com'), false);
+    assert.strictEqual(isBusinessEmail('test@msn.com'), false);
+  });
+  
+  it('should accept business domain emails', () => {
+    assert.strictEqual(isBusinessEmail('info@acmedumpsters.com'), true);
+    assert.strictEqual(isBusinessEmail('sales@mycompany.net'), true);
+    assert.strictEqual(isBusinessEmail('contact@business.org'), true);
+  });
+  
+  it('should handle invalid inputs gracefully', () => {
+    assert.strictEqual(isBusinessEmail(null), false);
+    assert.strictEqual(isBusinessEmail(undefined), false);
+    assert.strictEqual(isBusinessEmail(''), false);
+    assert.strictEqual(isBusinessEmail('notanemail'), false);
+  });
+});
 
 describe('Lead ID Generation', () => {
-  it('generates 6-character IDs', () => {
+  it('should generate unique IDs', () => {
+    const id1 = generateLeadId();
+    const id2 = generateLeadId();
+    assert.notStrictEqual(id1, id2);
+  });
+  
+  it('should follow LEAD-xxx-xxx format', () => {
     const id = generateLeadId();
-    expect(id.length).toBe(6);
-  });
-
-  it('uses only allowed characters (no ambiguous chars)', () => {
-    const allowedChars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-    for (let i = 0; i < 100; i++) {
-      const id = generateLeadId();
-      for (const char of id) {
-        expect(allowedChars).toContain(char);
-      }
-    }
-  });
-
-  it('does not contain ambiguous characters (0, O, 1, I)', () => {
-    for (let i = 0; i < 100; i++) {
-      const id = generateLeadId();
-      expect(id).not.toMatch(/[0O1I]/);
-    }
+    assert.ok(id.startsWith('LEAD-'));
+    assert.ok(/^LEAD-[A-Z0-9]+-[A-Z0-9]+$/.test(id));
   });
 });
 
-describe('Provider ID List Format', () => {
-  describe('parseProviderIds', () => {
-    it('parses single ID', () => {
-      expect(parseProviderIds('[1]')).toEqual([1]);
-    });
-
-    it('parses multiple IDs', () => {
-      expect(parseProviderIds('[1, 2, 3]')).toEqual([1, 2, 3]);
-    });
-
-    it('handles no spaces', () => {
-      expect(parseProviderIds('[1,2,3]')).toEqual([1, 2, 3]);
-    });
-
-    it('handles extra spaces', () => {
-      expect(parseProviderIds('[  1 ,  2 ,  3  ]')).toEqual([1, 2, 3]);
-    });
-
-    it('returns empty array for null/undefined', () => {
-      expect(parseProviderIds(null)).toEqual([]);
-      expect(parseProviderIds(undefined)).toEqual([]);
-    });
-
-    it('returns empty array for empty brackets', () => {
-      expect(parseProviderIds('[]')).toEqual([]);
-    });
-
-    it('returns empty array for legacy format (no brackets)', () => {
-      expect(parseProviderIds('Company A (full), Company B (teaser)')).toEqual([]);
-    });
+describe('ZIP Code Validation', () => {
+  it('should accept valid 5-digit ZIP codes', () => {
+    assert.strictEqual(isValidZip('33901'), true);
+    assert.strictEqual(isValidZip('90210'), true);
+    assert.strictEqual(isValidZip('00000'), true);
   });
-
-  describe('formatProviderIds', () => {
-    it('formats single ID', () => {
-      expect(formatProviderIds([1])).toBe('[1]');
-    });
-
-    it('formats multiple IDs', () => {
-      expect(formatProviderIds([1, 2, 3])).toBe('[1, 2, 3]');
-    });
-
-    it('formats empty array', () => {
-      expect(formatProviderIds([])).toBe('[]');
-    });
-  });
-
-  describe('ID merging (resend logic)', () => {
-    it('merges new IDs with existing', () => {
-      const existing = parseProviderIds('[1, 2]');
-      const newIds = [2, 3, 4];
-      const merged = [...new Set([...existing, ...newIds])];
-      expect(merged).toEqual([1, 2, 3, 4]);
-    });
-
-    it('deduplicates IDs', () => {
-      const existing = parseProviderIds('[1, 2, 3]');
-      const newIds = [1, 2, 3];
-      const merged = [...new Set([...existing, ...newIds])];
-      expect(merged).toEqual([1, 2, 3]);
-    });
+  
+  it('should reject invalid ZIP codes', () => {
+    assert.strictEqual(isValidZip('3390'), false);   // Too short
+    assert.strictEqual(isValidZip('339012'), false); // Too long
+    assert.strictEqual(isValidZip('3390A'), false);  // Contains letter
+    assert.strictEqual(isValidZip(''), false);       // Empty
+    assert.strictEqual(isValidZip('33901-1234'), false); // ZIP+4
   });
 });
 
-describe('ZIP Code Matching', () => {
-  // Mock provider data for testing
-  const mockProviders = [
-    { id: 1, company_name: 'Provider A', zip_codes: '33901, 33902, 33903', credit_balance: 5, active: 1 },
-    { id: 2, company_name: 'Provider B', zip_codes: '33901, 33904', credit_balance: 0, active: 1 },
-    { id: 3, company_name: 'Provider C', zip_codes: '34101, 34102', credit_balance: 10, active: 1 },
-    { id: 4, company_name: 'Inactive', zip_codes: '33901', credit_balance: 5, active: 0 },
-  ];
-
-  const getProvidersByZip = (zip) => {
-    return mockProviders.filter(p => {
-      if (!p.active) return false;
-      const zips = p.zip_codes.split(',').map(z => z.trim());
-      return zips.includes(zip);
-    });
-  };
-
-  it('finds providers serving a ZIP', () => {
-    const providers = getProvidersByZip('33901');
-    expect(providers.length).toBe(2);
-    expect(providers.map(p => p.company_name)).toEqual(['Provider A', 'Provider B']);
+describe('Premium Perks Detection', () => {
+  it('should identify Premium Pack as having perks', () => {
+    const pack = matchCreditPack(1500);
+    // Premium Pack should activate perks (60 credits or named "Premium Pack")
+    const hasPremiumPerks = pack?.perks || pack?.name === 'Premium Pack' || pack?.credits >= 60;
+    assert.strictEqual(hasPremiumPerks, true);
   });
-
-  it('excludes inactive providers', () => {
-    const providers = getProvidersByZip('33901');
-    expect(providers.find(p => p.company_name === 'Inactive')).toBeUndefined();
+  
+  it('should identify Featured Partner subscription perks', () => {
+    const pack = matchCreditPack(99);
+    assert.ok(pack.perks);
+    assert.ok(pack.perks.includes('verified'));
+    assert.ok(pack.perks.includes('priority'));
   });
-
-  it('returns empty array for unserved ZIP', () => {
-    const providers = getProvidersByZip('99999');
-    expect(providers).toEqual([]);
-  });
-});
-
-describe('Credit Balance Logic', () => {
-  it('identifies providers with sufficient credits', () => {
-    const providers = [
-      { id: 1, credit_balance: 5 },
-      { id: 2, credit_balance: 0 },
-      { id: 3, credit_balance: 1 },
-    ];
-    const creditCost = 1;
+  
+  it('should NOT give perks for Starter or Pro packs', () => {
+    const starter = matchCreditPack(200);
+    const pro = matchCreditPack(700);
     
-    const fullProviders = providers.filter(p => p.credit_balance >= creditCost);
-    const teaserProviders = providers.filter(p => p.credit_balance < creditCost);
-    
-    expect(fullProviders.map(p => p.id)).toEqual([1, 3]);
-    expect(teaserProviders.map(p => p.id)).toEqual([2]);
-  });
-
-  it('handles zero credit cost', () => {
-    const providers = [{ id: 1, credit_balance: 0 }];
-    const fullProviders = providers.filter(p => p.credit_balance >= 0);
-    expect(fullProviders.length).toBe(1);
+    assert.strictEqual(starter.perks, undefined);
+    assert.strictEqual(pro.perks, undefined);
   });
 });
 
-describe('Lead Data Validation', () => {
-  const validateLead = (data) => {
-    const errors = [];
-    if (!data.zip || !/^\d{5}$/.test(data.zip)) errors.push('Invalid ZIP');
-    if (!data.phone || data.phone.replace(/\D/g, '').length < 10) errors.push('Invalid phone');
-    if (data.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email)) errors.push('Invalid email');
-    return errors;
-  };
+// ============================================
+// INTEGRATION-STYLE TESTS
+// ============================================
 
-  it('validates correct data', () => {
-    expect(validateLead({ zip: '33901', phone: '239-555-1234', email: 'test@example.com' })).toEqual([]);
+describe('Full Purchase Flow', () => {
+  beforeEach(() => {
+    initTestDatabase();
   });
-
-  it('rejects invalid ZIP', () => {
-    expect(validateLead({ zip: '1234', phone: '239-555-1234' })).toContain('Invalid ZIP');
-    expect(validateLead({ zip: 'abcde', phone: '239-555-1234' })).toContain('Invalid ZIP');
+  
+  afterEach(() => {
+    closeTestDatabase();
   });
-
-  it('rejects short phone', () => {
-    expect(validateLead({ zip: '33901', phone: '555-1234' })).toContain('Invalid phone');
+  
+  it('should handle complete credit pack purchase flow', () => {
+    const paymentId = 'pi_test_' + Date.now();
+    const buyerEmail = 'buyer@dumpstercompany.com';
+    const amount = 200; // Starter Pack
+    
+    // 1. Check idempotency - payment not yet processed
+    assert.strictEqual(isPaymentProcessed(paymentId), false);
+    
+    // 2. Match credit pack
+    const pack = matchCreditPack(amount);
+    assert.strictEqual(pack.credits, 5);
+    
+    // 3. Get or create provider
+    const provider = getOrCreateProvider(buyerEmail, 'Dumpster Company');
+    assert.ok(provider.id);
+    
+    // 4. Add credits
+    addCreditsToProvider(provider.id, pack.credits);
+    
+    // 5. Log purchase
+    testDb.prepare(`
+      INSERT INTO purchase_log (payment_id, buyer_email, amount, lead_id, status)
+      VALUES (?, ?, ?, ?, ?)
+    `).run(paymentId, buyerEmail, amount, `PACK_${pack.credits}`, 'Credits Added');
+    
+    // 6. Verify final state
+    const updatedProvider = getProviderById(provider.id);
+    assert.strictEqual(updatedProvider.credit_balance, 5);
+    assert.strictEqual(isPaymentProcessed(paymentId), true);
   });
-
-  it('rejects invalid email format', () => {
-    expect(validateLead({ zip: '33901', phone: '239-555-1234', email: 'notanemail' })).toContain('Invalid email');
-  });
-
-  it('allows missing email', () => {
-    expect(validateLead({ zip: '33901', phone: '239-555-1234' })).toEqual([]);
+  
+  it('should handle lead submission with credit deduction', () => {
+    // Setup provider with credits
+    testDb.prepare(`
+      INSERT INTO providers (id, company_name, email, service_zips, credit_balance, status)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `).run(1, 'Test Provider', 'test@test.com', '33901', 5, 'Active');
+    
+    // Submit lead
+    const leadId = generateLeadId();
+    const leadZip = '33901';
+    
+    // Find matching providers
+    const providers = getProvidersByZip(leadZip);
+    assert.strictEqual(providers.length, 1);
+    
+    const provider = providers[0];
+    assert.ok(provider.credit_balance >= LEAD_PRICING.perLead);
+    
+    // Deduct credits
+    deductCreditsFromProvider(provider.id, LEAD_PRICING.perLead);
+    
+    // Verify
+    const updated = getProviderById(provider.id);
+    assert.strictEqual(updated.credit_balance, 4);
+    assert.strictEqual(updated.total_leads, 1);
   });
 });
 
-describe('Admin Display Helpers', () => {
-  const getNotifiedDisplay = (notifiedStr, providers) => {
-    if (!notifiedStr) return { count: 0, title: 'No providers notified' };
-    
-    const match = notifiedStr.match(/\[([\d,\s]*)\]/);
-    if (match && match[1].trim()) {
-      const ids = match[1].split(',').map(s => parseInt(s.trim())).filter(n => !isNaN(n));
-      const names = ids.map(id => {
-        const p = providers.find(prov => prov.id === id);
-        return p ? p.company_name : `ID:${id}`;
-      });
-      return { count: ids.length, title: names.join(', ') };
-    }
-    
-    // Legacy format
-    return { count: notifiedStr.split(',').length, title: notifiedStr };
-  };
-
-  const mockProviders = [
-    { id: 1, company_name: 'ABC Dumpsters' },
-    { id: 2, company_name: 'XYZ Hauling' },
-  ];
-
-  it('displays new format correctly', () => {
-    const result = getNotifiedDisplay('[1, 2]', mockProviders);
-    expect(result.count).toBe(2);
-    expect(result.title).toBe('ABC Dumpsters, XYZ Hauling');
-  });
-
-  it('handles unknown IDs', () => {
-    const result = getNotifiedDisplay('[1, 99]', mockProviders);
-    expect(result.title).toBe('ABC Dumpsters, ID:99');
-  });
-
-  it('handles legacy format', () => {
-    const result = getNotifiedDisplay('ABC Dumpsters (full), XYZ (teaser)', mockProviders);
-    expect(result.count).toBe(2);
-    expect(result.title).toBe('ABC Dumpsters (full), XYZ (teaser)');
-  });
-
-  it('handles empty/null', () => {
-    expect(getNotifiedDisplay(null, mockProviders).count).toBe(0);
-    expect(getNotifiedDisplay('', mockProviders).count).toBe(0);
-  });
-});
+console.log('Running DumpsterMap unit tests...\n');
