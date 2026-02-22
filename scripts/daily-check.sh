@@ -43,4 +43,15 @@ else
 fi
 echo ""
 
+# Stripe webhook status
+echo ">>> Stripe Webhook Status"
+STRIPE=$(curl -s "$BASE_URL/api/admin/stripe-status?key=$ADMIN_KEY")
+echo "$STRIPE" | jq -r '"Webhook secret: \(if .config.webhookSecretSet then "✓ configured" else "✗ NOT SET" end)"'
+echo "$STRIPE" | jq -r '"Product mappings: \(.config.productMappingsCount) (detection relies on amount if 0)"'
+echo "$STRIPE" | jq -r '"Webhook events (24h): \(.webhookStats.last24h)"'
+if [ "$(echo "$STRIPE" | jq -r '.tips | length')" != "0" ]; then
+    echo "$STRIPE" | jq -r '.tips | .[] | "💡 \(.)"'
+fi
+echo ""
+
 echo "=== Check Complete ==="
