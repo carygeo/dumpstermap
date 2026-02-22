@@ -358,42 +358,56 @@ async function sendTeaserToProvider(provider, leadId, lead) {
   const projectType = lead.project_type || 'General';
   const companyName = provider.company_name || 'there';
   
+  // Minimal HTML to avoid Gmail Promotions tab
   const html = `
 <div style="font-family: Arial, sans-serif; max-width: 600px; line-height: 1.6; color: #333;">
   <p>Hi ${companyName},</p>
   
-  <p>Someone in your area just searched DumpsterMap looking for a dumpster rental. They filled out a quote request and are <strong>ready to book</strong>.</p>
+  <p>A customer in <strong>${lead.zip}</strong> just requested a dumpster quote on DumpsterMap. They need it <strong>${timeframe}</strong>.</p>
   
-  <div style="background: #f8f9fa; padding: 16px; border-left: 4px solid #f59e0b; margin: 20px 0;">
-    <strong>What we know about this lead:</strong><br>
-    • Location: <strong>${lead.zip}</strong><br>
-    • Size: ${lead.size ? lead.size + ' yard' : 'Not specified yet'}<br>
-    • Timeframe: <strong>${timeframe}</strong><br>
-    • Project: ${projectType}
-  </div>
-  
-  <p><strong>Why DumpsterMap leads convert:</strong><br>
-  These are homeowners and contractors <em>actively searching</em> for dumpster service right now — not cold leads from a purchased list. They came to our site, compared options, and submitted their info because they're ready to rent.</p>
-  
-  <p style="margin: 24px 0;">
-    <a href="${paymentLink}" style="background: #f59e0b; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">Unlock this lead for $40 →</a>
+  <p style="margin: 16px 0; padding: 12px; background: #f9f9f9;">
+    Location: ${lead.zip}<br>
+    Size: ${lead.size ? lead.size + ' yard' : 'Not specified'}<br>
+    Timeline: ${timeframe}<br>
+    Project: ${projectType}
   </p>
   
-  <p>You'll get their <strong>name, phone number, and email</strong> instantly so you can reach out while they're still shopping.</p>
+  <p>This is someone actively looking for service in your area right now.</p>
   
-  <p style="font-size: 14px; color: #666; margin-top: 24px;">
-    <strong>Want a better rate?</strong> Lead packs start at $200 for 5 leads ($40/each), or go Pro at $35/lead with a verified badge on your listing.<br>
-    <a href="https://dumpstermap.io/for-providers#pricing" style="color: #2563eb;">See all options →</a>
-  </p>
+  <p><strong>Get their contact info:</strong> <a href="${paymentLink}">${paymentLink}</a></p>
   
-  <p>— The DumpsterMap Team<br>
-  <a href="https://dumpstermap.io" style="color: #2563eb;">dumpstermap.io</a></p>
+  <p>You'll receive their name, phone, and email so you can reach out directly.</p>
   
-  <p style="font-size: 13px; color: #888; margin-top: 20px; border-top: 1px solid #eee; padding-top: 16px;">
-    P.S. You're receiving this because your business serves ${lead.zip}. Reply to update your service area.
+  <p>— DumpsterMap<br>
+  <a href="https://dumpstermap.io">dumpstermap.io</a></p>
+  
+  <p style="font-size: 13px; color: #666; margin-top: 20px;">
+    You're receiving this because you serve ${lead.zip}. We also offer lead packs if you want a better per-lead rate. Reply to this email with questions.
   </p>
 </div>`;
-  await sendEmail(provider.email, `🚛 New lead in ${lead.zip} - ready to book`, html);
+
+  // Plain text version for better deliverability
+  const text = `Hi ${companyName},
+
+A customer in ${lead.zip} just requested a dumpster quote on DumpsterMap. They need it ${timeframe}.
+
+Location: ${lead.zip}
+Size: ${lead.size ? lead.size + ' yard' : 'Not specified'}
+Timeline: ${timeframe}
+Project: ${projectType}
+
+This is someone actively looking for service in your area right now.
+
+Get their contact info: ${paymentLink}
+
+You'll receive their name, phone, and email so you can reach out directly.
+
+— DumpsterMap
+dumpstermap.io
+
+You're receiving this because you serve ${lead.zip}. Reply with questions.`;
+
+  await sendEmail(provider.email, `New lead in ${lead.zip} - ${timeframe}`, html, text);
 }
 
 // ============================================
