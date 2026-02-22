@@ -282,6 +282,54 @@ dumpstermap/
 - **System Logs** - Purchase history and error logs
 - **CSV Export** - Export all data types
 
+## Operations & Maintenance
+
+### Daily Maintenance (automatic)
+The server runs automatic maintenance every 24 hours:
+- Expires premium status for providers past 30-day window
+- Sends reminder emails 7 and 3 days before premium expiration
+
+### Manual Maintenance
+```bash
+# Run all maintenance tasks
+curl -X POST "https://dumpstermap.fly.dev/api/admin/maintenance?key=YOUR_KEY"
+
+# Tasks included:
+# - Premium expiration check
+# - Error log cleanup (>7 days)
+# - Webhook log cleanup (>7 days)
+# - Premium reminder emails
+# - Provider ZIP audit (credits but no service areas)
+```
+
+### Monitoring Endpoints
+```bash
+# Health check
+curl https://dumpstermap.fly.dev/api/health
+
+# Daily summary (leads, revenue, errors)
+curl "https://dumpstermap.fly.dev/api/admin/daily-summary?key=YOUR_KEY"
+
+# Error log (last 24h)
+curl "https://dumpstermap.fly.dev/api/admin/errors?key=YOUR_KEY"
+
+# ZIP coverage analysis
+curl "https://dumpstermap.fly.dev/api/admin/zip-coverage?key=YOUR_KEY"
+```
+
+### Testing
+```bash
+# Test webhook detection logic (doesn't process)
+curl -X POST "https://dumpstermap.fly.dev/api/admin/test-webhook?key=YOUR_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"amount": 200, "email": "test@example.com"}'
+
+# Send test lead to provider
+curl -X POST "https://dumpstermap.fly.dev/api/admin/send-test-lead?key=YOUR_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"provider_id": 1, "zip": "34102"}'
+```
+
 ## License
 
 MIT
