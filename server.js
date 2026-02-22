@@ -58,6 +58,7 @@ function initDatabase() {
       source TEXT DEFAULT 'Website',
       status TEXT DEFAULT 'New',
       assigned_provider TEXT,
+      assigned_provider_id INTEGER,
       credits_charged INTEGER DEFAULT 0,
       purchased_by TEXT,
       purchased_at TEXT,
@@ -153,6 +154,14 @@ function initDatabase() {
   try {
     db.exec('ALTER TABLE leads ADD COLUMN providers_notified TEXT');
     console.log('Migration: Added providers_notified column to leads');
+  } catch (e) {
+    // Column already exists, ignore
+  }
+  
+  // Migration: Add assigned_provider_id to leads for provider tracking
+  try {
+    db.exec('ALTER TABLE leads ADD COLUMN assigned_provider_id INTEGER');
+    console.log('Migration: Added assigned_provider_id column to leads');
   } catch (e) {
     // Column already exists, ignore
   }
@@ -356,13 +365,18 @@ app.post('/api/lead', async (req, res) => {
     }
     
     // Update lead status with full tracking
-    const fullProviders = providers.filter(p => p.credit_balance >= creditCost).map(p => p.company_name);
-    const teaserProviders = providers.filter(p => p.credit_balance < creditCost).map(p => p.company_name);
+    const fullProvidersList = providers.filter(p => p.credit_balance >= creditCost);
+    const teaserProvidersList = providers.filter(p => p.credit_balance < creditCost);
+    const fullProviders = fullProvidersList.map(p => p.company_name);
+    const fullProviderIds = fullProvidersList.map(p => p.id);
+    const teaserProviders = teaserProvidersList.map(p => p.company_name);
     const allNotified = [...fullProviders.map(n => `${n} (full)`), ...teaserProviders.map(n => `${n} (teaser)`)].join(', ');
     
     if (sentCount > 0) {
-      db.prepare('UPDATE leads SET status = ?, assigned_provider = ?, credits_charged = ?, providers_notified = ? WHERE lead_id = ?')
-        .run('Sent', fullProviders.join(', '), creditCost * sentCount, allNotified, leadId);
+      // Store first provider ID for exclusive leads, or comma-separated for shared
+      const assignedProviderId = fullProviderIds.length === 1 ? fullProviderIds[0] : null;
+      db.prepare('UPDATE leads SET status = ?, assigned_provider = ?, assigned_provider_id = ?, credits_charged = ?, providers_notified = ? WHERE lead_id = ?')
+        .run('Sent', fullProviders.join(', '), assignedProviderId, creditCost * sentCount, allNotified, leadId);
     } else if (teaserCount > 0) {
       db.prepare('UPDATE leads SET status = ?, providers_notified = ? WHERE lead_id = ?')
         .run('Teaser Sent', allNotified, leadId);
@@ -774,11 +788,16 @@ dumpstermap.io`;
     
     const emailSent = await sendEmail(customerEmail, `Lead details - ${lead.name} in ${lead.zip}`, html, text);
     
-    // Update lead
+    // Look up provider by email for tracking
+    const purchasingProvider = getProviderByEmail(customerEmail);
+    
+    // Update lead with purchase info and provider tracking
     db.prepare(`
-      UPDATE leads SET status = 'Purchased', purchased_by = ?, purchased_at = datetime('now'), payment_id = ?, email_sent = ?
+      UPDATE leads SET status = 'Purchased', purchased_by = ?, purchased_at = datetime('now'), payment_id = ?, email_sent = ?,
+      assigned_provider = COALESCE(assigned_provider, ?), assigned_provider_id = COALESCE(assigned_provider_id, ?)
       WHERE lead_id = ?
-    `).run(customerEmail, paymentId, emailSent ? 'Yes' : 'Failed', leadId);
+    `).run(customerEmail, paymentId, emailSent ? 'Yes' : 'Failed', 
+           purchasingProvider?.company_name || null, purchasingProvider?.id || null, leadId);
     
     db.prepare('UPDATE purchase_log SET status = ? WHERE payment_id = ?').run(emailSent ? 'Success' : 'Email Failed', paymentId);
     
