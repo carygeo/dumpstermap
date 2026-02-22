@@ -421,6 +421,27 @@ const CREDIT_PACKS = {
   1500: { credits: 60, name: 'Premium Pack' }
 };
 
+// Flexible amount matching (handles minor Stripe fee variations)
+function matchCreditPack(amount) {
+  // Exact match first
+  if (CREDIT_PACKS[amount]) return CREDIT_PACKS[amount];
+  if (SUBSCRIPTIONS[amount]) return { ...SUBSCRIPTIONS[amount], isSubscription: true };
+  
+  // Check within $5 tolerance for each pack (Stripe sometimes has small variations)
+  for (const [price, pack] of Object.entries(CREDIT_PACKS)) {
+    if (Math.abs(amount - parseInt(price)) <= 5) {
+      return pack;
+    }
+  }
+  for (const [price, pack] of Object.entries(SUBSCRIPTIONS)) {
+    if (Math.abs(amount - parseInt(price)) <= 5) {
+      return { ...pack, isSubscription: true };
+    }
+  }
+  
+  return null;
+}
+
 // Check if payment was already processed (idempotency)
 function isPaymentProcessed(paymentId) {
   if (!paymentId) return false;
@@ -539,13 +560,12 @@ app.post('/api/stripe-webhook', async (req, res) => {
       return res.json({ received: true, error: 'Not paid' });
     }
     
-    // Check if this is a credit pack purchase (by amount)
-    const creditPack = CREDIT_PACKS[amount];
-    const subscription = SUBSCRIPTIONS[amount];
+    // Check if this is a credit pack purchase (by amount) - with tolerance
+    const matchedPack = matchCreditPack(amount);
     
-    if (creditPack || subscription) {
-      const pack = creditPack || subscription;
-      const isSubscription = !!subscription;
+    if (matchedPack) {
+      const pack = matchedPack;
+      const isSubscription = !!matchedPack.isSubscription;
       // === CREDIT PACK OR SUBSCRIPTION PURCHASE ===
       console.log(`${isSubscription ? 'Subscription' : 'Credit pack'} purchase: ${pack.name} (${pack.credits} credits) for $${amount}`);
       
@@ -1737,6 +1757,99 @@ app.post('/api/admin/test-webhook', async (req, res) => {
   };
   
   res.json({ test: true, ...result });
+});
+
+// Test email templates (admin only)
+app.post('/api/admin/test-emails', async (req, res) => {
+  const auth = req.query.key || req.headers['x-admin-key'];
+  if (auth !== ADMIN_PASSWORD) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+  
+  const testEmail = req.body.email || 'admin@dumpstermap.io';
+  const results = { sent: [], failed: [] };
+  
+  // Test data
+  const testProvider = {
+    id: 999,
+    company_name: 'Naples Premium Dumpsters',
+    email: testEmail,
+    credit_balance: 3
+  };
+  
+  const testLead = {
+    lead_id: 'LEAD-TEST-001',
+    name: 'Test Customer',
+    firstName: 'Test',
+    lastName: 'Customer',
+    phone: '239-555-9999',
+    email: 'testcustomer@example.com',
+    zip: '34102',
+    size: '20',
+    timeframe: 'asap',
+    project_type: 'Home Renovation',
+    projectType: 'Home Renovation'
+  };
+  
+  try {
+    // 1. Teaser email (no credits)
+    await sendTeaserToProvider(testProvider, 'LEAD-TEST-001', testLead);
+    results.sent.push('teaser');
+  } catch (e) {
+    results.failed.push({ type: 'teaser', error: e.message });
+  }
+  
+  try {
+    // 2. Full lead email (with credits)
+    await sendFullLeadToProvider(testProvider, 'LEAD-TEST-001', testLead);
+    results.sent.push('full_lead');
+  } catch (e) {
+    results.failed.push({ type: 'full_lead', error: e.message });
+  }
+  
+  try {
+    // 3. Single lead purchase confirmation
+    const timeframe = 'ASAP';
+    const html = `
+<div style="font-family: Arial, sans-serif; max-width: 600px; line-height: 1.6; color: #333;">
+  <p>Thanks for your purchase! Here's your lead:</p>
+  
+  <div style="background: #f0fdf4; border-left: 4px solid #22c55e; padding: 16px; margin: 20px 0;">
+    <strong style="font-size: 16px;">📞 Contact</strong><br><br>
+    <strong>Name:</strong> ${testLead.name}<br>
+    <strong>Phone:</strong> ${testLead.phone}<br>
+    <strong>Email:</strong> ${testLead.email}
+  </div>
+  
+  <div style="background: #f8f9fa; padding: 16px; border-radius: 6px; margin: 16px 0;">
+    <strong>Project Details:</strong><br>
+    • Location: <strong>${testLead.zip}</strong><br>
+    • Size: ${testLead.size} yard<br>
+    • Timeline: <strong>${timeframe}</strong><br>
+    • Project: ${testLead.project_type}
+  </div>
+  
+  <p>💡 <strong>Tip:</strong> Call within 5 minutes — first responder usually wins the job!</p>
+  
+  <div style="background: #eff6ff; border: 1px solid #bfdbfe; padding: 16px; border-radius: 6px; margin: 20px 0;">
+    <strong>Want to pre-purchase future leads?</strong><br>
+    Skip the per-lead checkout and get better rates with credit packs.<br>
+    <a href="https://dumpstermap.io/for-providers#pricing" style="color: #2563eb; font-weight: bold;">Add credits to your account →</a>
+  </div>
+  
+  <p>— The DumpsterMap Team</p>
+</div>`;
+    await sendEmail(testEmail, 'Your lead details - LEAD-TEST-001', html);
+    results.sent.push('purchase_confirmation');
+  } catch (e) {
+    results.failed.push({ type: 'purchase_confirmation', error: e.message });
+  }
+  
+  res.json({ 
+    success: results.failed.length === 0,
+    sentTo: testEmail,
+    results 
+  });
 });
 
 // Static files with caching
