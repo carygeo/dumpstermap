@@ -498,9 +498,11 @@
                             <small style="color: var(--text-light);">Enter all ZIP codes where you offer dumpster rental service</small>
                         </div>
                         
-                        <h3 style="margin-top: 1.5rem; padding-bottom: 0.5rem; border-bottom: 2px solid var(--border);">Choose Your Lead Pack</h3>
+                        <h3 style="margin-top: 1.5rem; padding-bottom: 0.5rem; border-bottom: 2px solid var(--border);">Choose Your Plan</h3>
                         
-                        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.75rem; margin: 1rem 0;">
+                        <!-- One-time Credit Packs -->
+                        <p style="font-size: 0.875rem; color: var(--text-light); margin: 0.75rem 0 0.5rem;">💰 <strong>One-Time Credit Packs</strong> — Pay once, use anytime</p>
+                        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.75rem; margin-bottom: 1rem;">
                             <label class="pack-option" style="display: block; padding: 1rem; border: 2px solid var(--border); border-radius: 8px; cursor: pointer; text-align: center; transition: all 0.2s;">
                                 <input type="radio" name="selectedPack" value="starter" style="display: none;">
                                 <div style="font-weight: 700; font-size: 1.25rem;">$200</div>
@@ -522,6 +524,22 @@
                                 <div style="font-size: 0.75rem; color: var(--secondary);">$25/lead</div>
                             </label>
                         </div>
+                        
+                        <!-- Monthly Subscription Option -->
+                        <p style="font-size: 0.875rem; color: var(--text-light); margin: 0.75rem 0 0.5rem;">🏆 <strong>Monthly Subscription</strong> — Flexible, cancel anytime</p>
+                        <label class="pack-option" style="display: block; padding: 1rem; border: 2px solid var(--border); border-radius: 8px; cursor: pointer; transition: all 0.2s; background: linear-gradient(135deg, #fef3c7 0%, #fefce8 100%);">
+                            <input type="radio" name="selectedPack" value="featured" style="display: none;">
+                            <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem;">
+                                <div>
+                                    <div style="font-weight: 700; font-size: 1.1rem;">🏆 Featured Partner</div>
+                                    <div style="font-size: 0.8rem; color: var(--text-light);">✅ Verified Badge • 🔝 Priority Placement • 3 leads/month</div>
+                                </div>
+                                <div style="text-align: right;">
+                                    <div style="font-weight: 800; font-size: 1.5rem; color: var(--primary);">$99<span style="font-size: 0.875rem; font-weight: 400;">/mo</span></div>
+                                    <div style="font-size: 0.7rem; color: var(--text-light);">Cancel anytime</div>
+                                </div>
+                            </div>
+                        </label>
                         
                         <button class="btn btn-primary" style="width: 100%; padding: 1rem; font-size: 1.1rem;" onclick="submitRegistration()">
                             Continue to Checkout →

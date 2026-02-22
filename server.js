@@ -1036,7 +1036,8 @@ dumpstermap.io`;
 const STRIPE_PACK_LINKS = {
   starter: 'https://buy.stripe.com/00w14n5vNa5g5EB2S35Rm00',   // $200 - 5 credits
   pro: 'https://buy.stripe.com/fZu6oH7DVgtE7MJdwH5Rm02',       // $700 - 20 credits  
-  premium: 'https://buy.stripe.com/bJefZh0btcdod73eAL5Rm03'    // $1500 - 60 credits
+  premium: 'https://buy.stripe.com/bJefZh0btcdod73eAL5Rm03',   // $1500 - 60 credits
+  featured: 'https://buy.stripe.com/28EdR9e2jelwgjfgIT5Rm01'   // $99/mo - Featured Partner subscription
 };
 
 // Register new provider (before purchase)
