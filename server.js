@@ -375,6 +375,7 @@ function generatePremiumReminderEmail(provider, daysLeft) {
 // EMAIL SETUP (Resend primary, SMTP fallback)
 // ============================================
 let emailTransporter = null;
+let gmailTransporter = null;  // Dedicated Gmail for outreach
 let useResend = false;
 
 function initEmail() {
@@ -382,21 +383,51 @@ function initEmail() {
   if (RESEND_API_KEY) {
     useResend = true;
     console.log('Email: Using Resend API');
-    return true;
   }
   
-  // Fallback to SMTP
+  // Always set up Gmail for outreach if credentials available
   if (SMTP_PASS) {
-    emailTransporter = nodemailer.createTransport({
+    gmailTransporter = nodemailer.createTransport({
       service: 'gmail',
       auth: { user: SMTP_USER, pass: SMTP_PASS }
     });
-    console.log('Email: Using SMTP/Gmail');
-    return emailTransporter;
+    console.log('Email: Gmail/SMTP configured for outreach');
+    
+    // Use as fallback if no Resend
+    if (!useResend) {
+      emailTransporter = gmailTransporter;
+      console.log('Email: Using Gmail as primary');
+    }
+    return true;
   }
   
-  console.log('Email: DISABLED (no RESEND_API_KEY or SMTP_PASS)');
-  return null;
+  if (!useResend) {
+    console.log('Email: DISABLED (no RESEND_API_KEY or SMTP_PASS)');
+  }
+  return useResend;
+}
+
+// Send email via Gmail SMTP (for outreach - no rate limits)
+async function sendEmailViaGmail(to, subject, html, text, fromAddress = 'DumpsterMap <admin@dumpstermap.io>') {
+  if (!gmailTransporter) {
+    console.error('Gmail not configured - SMTP_PASS not set');
+    return false;
+  }
+  
+  try {
+    await gmailTransporter.sendMail({
+      from: fromAddress,
+      to,
+      subject,
+      html,
+      text
+    });
+    console.log('Email sent via Gmail to:', to);
+    return true;
+  } catch (error) {
+    console.error('Gmail error:', error.message);
+    return false;
+  }
 }
 
 // ============================================
@@ -2274,12 +2305,13 @@ app.post('/admin/outreach/bulk-send', async (req, res) => {
   
   for (const contact of contacts) {
     const html = generateOutreachEmail(contact);
-    const success = await sendEmail(
+    // Use Gmail directly for outreach (no rate limits)
+    const success = await sendEmailViaGmail(
       contact.provider_email,
       `Partner with DumpsterMap - Get Quality Dumpster Leads in ${contact.zip || 'Your Area'}`,
       html,
       null,
-      OUTREACH_FROM
+      'DumpsterMap Partners <admin@dumpstermap.io>'
     );
     
     if (success) {
@@ -2290,11 +2322,11 @@ app.post('/admin/outreach/bulk-send', async (req, res) => {
       failed++;
     }
     
-    // Small delay between emails to avoid rate limits
-    await new Promise(r => setTimeout(r, 500));
+    // Small delay between emails
+    await new Promise(r => setTimeout(r, 300));
   }
   
-  console.log(`Bulk outreach: ${sent} sent, ${failed} failed`);
+  console.log(`Bulk outreach (Gmail): ${sent} sent, ${failed} failed`);
   res.redirect(`/admin/outreach?key=${req.query.key}&sent=${sent}&failed=${failed}`);
 });
 
@@ -2324,12 +2356,13 @@ app.post('/api/outreach/send-batch', async (req, res) => {
   
   for (const contact of contacts) {
     const html = generateOutreachEmail(contact);
-    const success = await sendEmail(
+    // Use Gmail directly for outreach (no Resend rate limits)
+    const success = await sendEmailViaGmail(
       contact.provider_email,
       `Partner with DumpsterMap - Get Quality Dumpster Leads in ${contact.zip || 'Your Area'}`,
       html,
       null,
-      OUTREACH_FROM
+      'DumpsterMap Partners <admin@dumpstermap.io>'
     );
     
     if (success) {
@@ -2342,11 +2375,11 @@ app.post('/api/outreach/send-batch', async (req, res) => {
       results.push({ id: contact.id, email: contact.provider_email, status: 'failed' });
     }
     
-    // Small delay between emails to avoid rate limits
-    await new Promise(r => setTimeout(r, 500));
+    // Small delay between emails
+    await new Promise(r => setTimeout(r, 300));
   }
   
-  console.log(`Outreach batch: ${sent} sent, ${failed} failed`);
+  console.log(`Outreach batch (Gmail): ${sent} sent, ${failed} failed`);
   res.json({ status: 'ok', sent, failed, results });
 });
 
