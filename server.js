@@ -849,8 +849,26 @@ app.post('/api/stripe-webhook', async (req, res) => {
       // === CREDIT PACK OR SUBSCRIPTION PURCHASE ===
       console.log(`${isSubscription ? 'Subscription' : 'Credit pack'} purchase: ${pack.name} (${pack.credits} credits) for $${amount}`);
       
-      // Get or create provider
-      const provider = getOrCreateProvider(customerEmail, customerName);
+      // Check if this is a pre-registered provider (PROVIDER-{id} reference)
+      let provider;
+      if (leadId && leadId.startsWith('PROVIDER-')) {
+        const providerId = parseInt(leadId.replace('PROVIDER-', ''), 10);
+        provider = db.prepare('SELECT * FROM providers WHERE id = ?').get(providerId);
+        if (provider) {
+          console.log(`Found pre-registered provider: ${provider.company_name} (ID: ${providerId})`);
+          // Update email if different (they may have used different email at checkout)
+          if (customerEmail && customerEmail.toLowerCase() !== provider.email.toLowerCase()) {
+            console.log(`Note: Checkout email (${customerEmail}) differs from registration (${provider.email})`);
+          }
+        } else {
+          console.log(`Provider ID ${providerId} not found, falling back to email lookup`);
+        }
+      }
+      
+      // Fallback: Get or create provider by email
+      if (!provider) {
+        provider = getOrCreateProvider(customerEmail, customerName);
+      }
       
       // Add credits and update last purchase time
       db.prepare("UPDATE providers SET credit_balance = credit_balance + ?, last_purchase_at = datetime('now') WHERE id = ?").run(pack.credits, provider.id);
@@ -1008,6 +1026,136 @@ dumpstermap.io`;
     await sendAdminNotification('❌ Webhook Error', error.toString());
     res.json({ received: true, error: error.message });
   }
+});
+
+// ============================================
+// PROVIDER REGISTRATION (Pre-purchase signup)
+// ============================================
+
+// Stripe payment links for credit packs
+const STRIPE_PACK_LINKS = {
+  starter: 'https://buy.stripe.com/00w14n5vNa5g5EB2S35Rm00',   // $200 - 5 credits
+  pro: 'https://buy.stripe.com/fZu6oH7DVgtE7MJdwH5Rm02',       // $700 - 20 credits  
+  premium: 'https://buy.stripe.com/bJefZh0btcdod73eAL5Rm03'    // $1500 - 60 credits
+};
+
+// Register new provider (before purchase)
+app.post('/api/provider/register', async (req, res) => {
+  console.log('\n=== Provider Registration ===');
+  
+  try {
+    const {
+      company_name,
+      street_address,
+      city,
+      state,
+      business_zip,
+      phone,
+      email,
+      website,
+      service_areas,
+      selected_pack
+    } = req.body;
+    
+    // Validation
+    if (!company_name || !email || !phone) {
+      return res.status(400).json({ 
+        error: 'Missing required fields',
+        required: ['company_name', 'email', 'phone']
+      });
+    }
+    
+    // Validate email format
+    const emailLower = email.toLowerCase().trim();
+    if (!emailLower.includes('@') || !emailLower.includes('.')) {
+      return res.status(400).json({ error: 'Invalid email format' });
+    }
+    
+    // Check if provider already exists
+    const existing = getProviderByEmail(emailLower);
+    if (existing) {
+      // Provider exists - return their ID for purchase
+      console.log(`Existing provider found: ${existing.id}`);
+      
+      // Update their info if provided
+      if (street_address || city || state || business_zip) {
+        db.prepare(`
+          UPDATE providers SET
+            street_address = COALESCE(?, street_address),
+            city = COALESCE(?, city),
+            state = COALESCE(?, state),
+            business_zip = COALESCE(?, business_zip),
+            website = COALESCE(?, website),
+            service_zips = COALESCE(NULLIF(?, ''), service_zips)
+          WHERE id = ?
+        `).run(street_address, city, state, business_zip, website, service_areas, existing.id);
+      }
+      
+      const packLink = STRIPE_PACK_LINKS[selected_pack] || STRIPE_PACK_LINKS.starter;
+      const redirectUrl = `${packLink}?client_reference_id=PROVIDER-${existing.id}&prefilled_email=${encodeURIComponent(emailLower)}`;
+      
+      return res.json({
+        status: 'ok',
+        message: 'Welcome back! Redirecting to checkout...',
+        provider_id: existing.id,
+        redirect_url: redirectUrl,
+        is_existing: true
+      });
+    }
+    
+    // Create new provider
+    const result = db.prepare(`
+      INSERT INTO providers (
+        company_name, email, phone, street_address, city, state, 
+        business_zip, website, service_zips, status, notes
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'Active', 'Registered via website')
+    `).run(
+      company_name.trim(),
+      emailLower,
+      phone.trim(),
+      street_address?.trim() || null,
+      city?.trim() || null,
+      state?.trim()?.toUpperCase() || null,
+      business_zip?.trim() || null,
+      website?.trim() || null,
+      service_areas?.trim() || null
+    );
+    
+    const providerId = result.lastInsertRowid;
+    console.log(`New provider created: ${providerId} - ${company_name}`);
+    
+    // Build redirect URL to Stripe with provider ID
+    const packLink = STRIPE_PACK_LINKS[selected_pack] || STRIPE_PACK_LINKS.starter;
+    const redirectUrl = `${packLink}?client_reference_id=PROVIDER-${providerId}&prefilled_email=${encodeURIComponent(emailLower)}`;
+    
+    // Notify admin
+    await sendAdminNotification('🆕 New Provider Registered', 
+      `${company_name}\n${emailLower}\n${phone}\n${city}, ${state} ${business_zip}\nService: ${service_areas || 'Not set'}\nPack: ${selected_pack || 'starter'}`);
+    
+    res.json({
+      status: 'ok',
+      message: 'Registration successful! Redirecting to checkout...',
+      provider_id: providerId,
+      redirect_url: redirectUrl,
+      is_existing: false
+    });
+    
+  } catch (error) {
+    console.error('Registration error:', error);
+    logError('registration', error.message, req.body);
+    res.status(500).json({ error: 'Registration failed', message: error.message });
+  }
+});
+
+// Get provider by ID (for profile completion)
+app.get('/api/provider/:id', (req, res) => {
+  const provider = db.prepare('SELECT id, company_name, email, phone, street_address, city, state, business_zip, service_zips, credit_balance, verified, priority FROM providers WHERE id = ?').get(req.params.id);
+  
+  if (!provider) {
+    return res.status(404).json({ error: 'Provider not found' });
+  }
+  
+  res.json({ status: 'ok', provider });
 });
 
 // ============================================

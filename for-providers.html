@@ -423,41 +423,121 @@
                 </div>
             </div>
 
-            <!-- Add New Business -->
-            <div class="card">
-                <h2>➕ Add Your Business</h2>
-                <p>Not listed yet? Sign up to get your dumpster rental business in front of customers actively searching in your service area.</p>
+            <!-- Register & Get Leads -->
+            <div class="card" id="registerSection">
+                <h2>🚀 Get Started - Register Your Business</h2>
+                <p>Fill out your business details below, then choose a lead pack. You'll only pay for qualified leads in your service area.</p>
                 
-                <div id="signupForm">
-                    <div class="form-group">
-                        <label for="newBusinessName">Business Name *</label>
-                        <input type="text" id="newBusinessName" placeholder="Your company name" required>
+                <div id="registerForm">
+                    <div style="display: grid; gap: 1rem;">
+                        <h3 style="margin-top: 1rem; padding-bottom: 0.5rem; border-bottom: 2px solid var(--border);">Business Information</h3>
+                        
+                        <div class="form-group">
+                            <label for="regCompanyName">Business Name *</label>
+                            <input type="text" id="regCompanyName" placeholder="Your company name" required>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="regStreetAddress">Street Address *</label>
+                            <input type="text" id="regStreetAddress" placeholder="123 Main Street">
+                        </div>
+                        
+                        <div style="display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 0.75rem;">
+                            <div class="form-group">
+                                <label for="regCity">City *</label>
+                                <input type="text" id="regCity" placeholder="Naples">
+                            </div>
+                            <div class="form-group">
+                                <label for="regState">State *</label>
+                                <select id="regState" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border); border-radius: 8px;">
+                                    <option value="">--</option>
+                                    <option value="AL">AL</option><option value="AK">AK</option><option value="AZ">AZ</option>
+                                    <option value="AR">AR</option><option value="CA">CA</option><option value="CO">CO</option>
+                                    <option value="CT">CT</option><option value="DE">DE</option><option value="FL">FL</option>
+                                    <option value="GA">GA</option><option value="HI">HI</option><option value="ID">ID</option>
+                                    <option value="IL">IL</option><option value="IN">IN</option><option value="IA">IA</option>
+                                    <option value="KS">KS</option><option value="KY">KY</option><option value="LA">LA</option>
+                                    <option value="ME">ME</option><option value="MD">MD</option><option value="MA">MA</option>
+                                    <option value="MI">MI</option><option value="MN">MN</option><option value="MS">MS</option>
+                                    <option value="MO">MO</option><option value="MT">MT</option><option value="NE">NE</option>
+                                    <option value="NV">NV</option><option value="NH">NH</option><option value="NJ">NJ</option>
+                                    <option value="NM">NM</option><option value="NY">NY</option><option value="NC">NC</option>
+                                    <option value="ND">ND</option><option value="OH">OH</option><option value="OK">OK</option>
+                                    <option value="OR">OR</option><option value="PA">PA</option><option value="RI">RI</option>
+                                    <option value="SC">SC</option><option value="SD">SD</option><option value="TN">TN</option>
+                                    <option value="TX">TX</option><option value="UT">UT</option><option value="VT">VT</option>
+                                    <option value="VA">VA</option><option value="WA">WA</option><option value="WV">WV</option>
+                                    <option value="WI">WI</option><option value="WY">WY</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="regZip">ZIP *</label>
+                                <input type="text" id="regZip" placeholder="33901" maxlength="5" pattern="[0-9]{5}">
+                            </div>
+                        </div>
+                        
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
+                            <div class="form-group">
+                                <label for="regPhone">Phone *</label>
+                                <input type="tel" id="regPhone" placeholder="(239) 555-1234">
+                            </div>
+                            <div class="form-group">
+                                <label for="regEmail">Business Email *</label>
+                                <input type="email" id="regEmail" placeholder="info@yourcompany.com">
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="regWebsite">Website (optional)</label>
+                            <input type="url" id="regWebsite" placeholder="https://yourcompany.com">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="regServiceZips">Service Area ZIP Codes *</label>
+                            <input type="text" id="regServiceZips" placeholder="33901, 33902, 33903 (comma-separated)">
+                            <small style="color: var(--text-light);">Enter all ZIP codes where you offer dumpster rental service</small>
+                        </div>
+                        
+                        <h3 style="margin-top: 1.5rem; padding-bottom: 0.5rem; border-bottom: 2px solid var(--border);">Choose Your Lead Pack</h3>
+                        
+                        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.75rem; margin: 1rem 0;">
+                            <label class="pack-option" style="display: block; padding: 1rem; border: 2px solid var(--border); border-radius: 8px; cursor: pointer; text-align: center; transition: all 0.2s;">
+                                <input type="radio" name="selectedPack" value="starter" style="display: none;">
+                                <div style="font-weight: 700; font-size: 1.25rem;">$200</div>
+                                <div style="font-size: 0.875rem; color: var(--text-light);">5 leads</div>
+                                <div style="font-size: 0.75rem; color: var(--secondary);">$40/lead</div>
+                            </label>
+                            <label class="pack-option" style="display: block; padding: 1rem; border: 2px solid var(--primary); border-radius: 8px; cursor: pointer; text-align: center; background: #eff6ff; transition: all 0.2s;">
+                                <input type="radio" name="selectedPack" value="pro" checked style="display: none;">
+                                <div style="font-size: 0.625rem; background: var(--primary); color: white; padding: 2px 6px; border-radius: 4px; margin-bottom: 4px; display: inline-block;">BEST VALUE</div>
+                                <div style="font-weight: 700; font-size: 1.25rem;">$700</div>
+                                <div style="font-size: 0.875rem; color: var(--text-light);">20 leads</div>
+                                <div style="font-size: 0.75rem; color: var(--secondary);">$35/lead</div>
+                            </label>
+                            <label class="pack-option" style="display: block; padding: 1rem; border: 2px solid var(--border); border-radius: 8px; cursor: pointer; text-align: center; transition: all 0.2s;">
+                                <input type="radio" name="selectedPack" value="premium" style="display: none;">
+                                <div style="font-size: 0.625rem; background: #f59e0b; color: white; padding: 2px 6px; border-radius: 4px; margin-bottom: 4px; display: inline-block;">⭐ VIP</div>
+                                <div style="font-weight: 700; font-size: 1.25rem;">$1,500</div>
+                                <div style="font-size: 0.875rem; color: var(--text-light);">60 leads</div>
+                                <div style="font-size: 0.75rem; color: var(--secondary);">$25/lead</div>
+                            </label>
+                        </div>
+                        
+                        <button class="btn btn-primary" style="width: 100%; padding: 1rem; font-size: 1.1rem;" onclick="submitRegistration()">
+                            Continue to Checkout →
+                        </button>
+                        
+                        <p style="text-align: center; font-size: 0.75rem; color: var(--text-light); margin-top: 0.5rem;">
+                            🔒 Secure checkout powered by Stripe. Your card is never stored on our servers.
+                        </p>
                     </div>
-                    <div class="form-group">
-                        <label for="newBusinessAddress">Address *</label>
-                        <input type="text" id="newBusinessAddress" placeholder="123 Main St, City, State ZIP">
-                    </div>
-                    <div class="form-group">
-                        <label for="newBusinessPhone">Phone *</label>
-                        <input type="tel" id="newBusinessPhone" placeholder="(555) 123-4567">
-                    </div>
-                    <div class="form-group">
-                        <label for="newBusinessEmail">Email *</label>
-                        <input type="email" id="newBusinessEmail" placeholder="you@company.com">
-                    </div>
-                    <div class="form-group">
-                        <label for="newBusinessWebsite">Website</label>
-                        <input type="url" id="newBusinessWebsite" placeholder="https://yourcompany.com">
-                    </div>
-                    <div class="form-group">
-                        <label for="serviceAreas">Service Areas</label>
-                        <textarea id="serviceAreas" placeholder="List cities/areas you serve..."></textarea>
-                    </div>
-                    <button class="btn btn-secondary" style="width: 100%;" onclick="submitSignup()">Submit Listing Request →</button>
                 </div>
-                <div id="signupSuccess" class="success-message">
-                    <h3>✓ Listing Request Received!</h3>
-                    <p>We'll review your submission and add your business within 3-5 business days.</p>
+                
+                <div id="registerError" style="display: none; background: #fef2f2; border: 1px solid #fecaca; color: #dc2626; padding: 1rem; border-radius: 8px; margin-top: 1rem;"></div>
+                
+                <div id="registerSuccess" class="success-message">
+                    <h3>✓ Registration Complete!</h3>
+                    <p>Redirecting you to secure checkout...</p>
                 </div>
             </div>
         </div>
@@ -659,30 +739,96 @@
             document.getElementById('claimSuccess').classList.add('active');
         }
         
-        function submitSignup() {
-            const businessName = document.getElementById('newBusinessName').value;
-            const address = document.getElementById('newBusinessAddress').value;
-            const phone = document.getElementById('newBusinessPhone').value;
-            const email = document.getElementById('newBusinessEmail').value;
+        // Pack selection styling
+        document.querySelectorAll('.pack-option input[type="radio"]').forEach(radio => {
+            radio.addEventListener('change', function() {
+                document.querySelectorAll('.pack-option').forEach(opt => {
+                    opt.style.borderColor = 'var(--border)';
+                    opt.style.background = 'white';
+                });
+                if (this.checked) {
+                    this.closest('.pack-option').style.borderColor = 'var(--primary)';
+                    this.closest('.pack-option').style.background = '#eff6ff';
+                }
+            });
+        });
+        
+        async function submitRegistration() {
+            const errorDiv = document.getElementById('registerError');
+            errorDiv.style.display = 'none';
             
-            if (!businessName || !address || !phone || !email) {
-                alert('Please fill in all required fields.');
+            // Gather form data
+            const data = {
+                company_name: document.getElementById('regCompanyName').value.trim(),
+                street_address: document.getElementById('regStreetAddress').value.trim(),
+                city: document.getElementById('regCity').value.trim(),
+                state: document.getElementById('regState').value,
+                business_zip: document.getElementById('regZip').value.trim(),
+                phone: document.getElementById('regPhone').value.trim(),
+                email: document.getElementById('regEmail').value.trim(),
+                website: document.getElementById('regWebsite').value.trim(),
+                service_areas: document.getElementById('regServiceZips').value.trim(),
+                selected_pack: document.querySelector('input[name="selectedPack"]:checked')?.value || 'starter'
+            };
+            
+            // Validation
+            const required = ['company_name', 'street_address', 'city', 'state', 'business_zip', 'phone', 'email', 'service_areas'];
+            const missing = required.filter(field => !data[field]);
+            
+            if (missing.length > 0) {
+                errorDiv.textContent = 'Please fill in all required fields: ' + missing.join(', ').replace(/_/g, ' ');
+                errorDiv.style.display = 'block';
                 return;
             }
             
-            // Log signup (in production, send to backend)
-            console.log('Signup submitted:', {
-                businessName,
-                address,
-                phone,
-                email,
-                website: document.getElementById('newBusinessWebsite').value,
-                serviceAreas: document.getElementById('serviceAreas').value
-            });
+            // Validate ZIP format
+            if (!/^\d{5}$/.test(data.business_zip)) {
+                errorDiv.textContent = 'Please enter a valid 5-digit ZIP code';
+                errorDiv.style.display = 'block';
+                return;
+            }
             
-            // Show success
-            document.getElementById('signupForm').style.display = 'none';
-            document.getElementById('signupSuccess').classList.add('active');
+            // Validate email
+            if (!data.email.includes('@') || !data.email.includes('.')) {
+                errorDiv.textContent = 'Please enter a valid email address';
+                errorDiv.style.display = 'block';
+                return;
+            }
+            
+            // Disable button and show loading
+            const btn = document.querySelector('#registerForm button');
+            const originalText = btn.textContent;
+            btn.textContent = 'Processing...';
+            btn.disabled = true;
+            
+            try {
+                const response = await fetch('/api/provider/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                
+                const result = await response.json();
+                
+                if (!response.ok || result.error) {
+                    throw new Error(result.error || result.message || 'Registration failed');
+                }
+                
+                // Success - show message and redirect
+                document.getElementById('registerForm').style.display = 'none';
+                document.getElementById('registerSuccess').classList.add('active');
+                
+                // Redirect to Stripe after short delay
+                setTimeout(() => {
+                    window.location.href = result.redirect_url;
+                }, 1000);
+                
+            } catch (error) {
+                errorDiv.textContent = error.message;
+                errorDiv.style.display = 'block';
+                btn.textContent = originalText;
+                btn.disabled = false;
+            }
         }
     </script>
 </body>
