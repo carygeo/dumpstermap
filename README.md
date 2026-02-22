@@ -132,6 +132,38 @@ fly ssh console -C "sqlite3 /data/dumpstermap.db '.tables'"
 4. Copy signing secret and set as `STRIPE_WEBHOOK_SECRET` env var
 5. Test with Stripe CLI: `stripe trigger checkout.session.completed`
 
+## Stripe Webhook Flow
+
+```
+1. WEBHOOK RECEIVED
+   ↓
+2. VERIFY SIGNATURE (using STRIPE_WEBHOOK_SECRET)
+   ↓ (reject if invalid)
+3. CHECK EVENT TYPE = 'checkout.session.completed'
+   ↓
+4. CHECK PAYMENT STATUS = 'paid'
+   ↓ (reject if not paid)
+5. IDEMPOTENCY CHECK (prevent duplicate processing)
+   ↓
+6. LOG TO purchase_log (status: 'Processing')
+   ↓
+7. DETERMINE PURCHASE TYPE:
+   ├─ $200 → 5 credits (Starter Pack)
+   ├─ $700 → 20 credits (Pro Pack)
+   ├─ $1500 → 60 credits (Premium Pack)
+   └─ $40 with leadId → Single lead purchase
+   ↓
+8. UPDATE PROVIDER:
+   - credit_balance += credits
+   - last_purchase_at = now()
+   ↓
+9. UPDATE purchase_log (status: 'Credits Added')
+   ↓
+10. SEND CONFIRMATION EMAIL
+   ↓
+11. NOTIFY ADMIN
+```
+
 ## API Endpoints
 
 | Endpoint | Method | Description |
