@@ -3642,6 +3642,9 @@ app.post('/api/admin/bulk-add-credits', (req, res) => {
 // ============================================
 // HEALTH & DEBUG
 // ============================================
+// Convenience redirect
+app.get('/health', (req, res) => res.redirect('/api/health'));
+
 app.get('/api/health', (req, res) => {
   // Check recent webhook activity (last 24h)
   let webhookStatus = 'unknown';
