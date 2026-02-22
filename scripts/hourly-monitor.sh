@@ -90,14 +90,30 @@ else
 fi
 echo ""
 
-# --- 5. Email Status ---
+# --- 5. Outreach Status ---
+echo ">>> 📤 Outreach Campaign"
+OUTREACH_HTML=$(curl -s "$BASE_URL/admin/outreach?key=$ADMIN_KEY" 2>/dev/null || echo "")
+if [ -n "$OUTREACH_HTML" ]; then
+    # Parse stats from HTML (macOS compatible)
+    OUTREACH_TOTAL=$(echo "$OUTREACH_HTML" | grep -A1 "Total Contacts" | grep -oE '[0-9]+' | head -1 || echo "?")
+    OUTREACH_SENT=$(echo "$OUTREACH_HTML" | grep -A1 "Emails Sent" | grep -oE '[0-9]+' | head -1 || echo "?")
+    OUTREACH_CONVERTED=$(echo "$OUTREACH_HTML" | grep -A1 "Converted</div>" | grep -oE '[0-9]+' | head -1 || echo "?")
+    echo "   📋 Total contacts: $OUTREACH_TOTAL"
+    echo "   ✉️  Emails sent: $OUTREACH_SENT"
+    echo "   ✅ Converted: $OUTREACH_CONVERTED"
+else
+    echo "   ⚠️ Could not fetch outreach data"
+fi
+echo ""
+
+# --- 6. Email Status ---
 echo ">>> 📧 Email System"
 echo "   Outbound: $EMAIL_PROVIDER"
 echo "   Admin inbox: admin@dumpstermap.io"
-echo "   (Check inbox manually or set up forwarding to Gmail)"
+echo "   (Set up forwarding to Gmail for monitoring)"
 echo ""
 
-# --- 6. Issues Requiring Attention ---
+# --- 7. Issues Requiring Attention ---
 echo ">>> ⚡ Issues"
 ISSUES=0
 
