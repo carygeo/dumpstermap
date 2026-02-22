@@ -133,6 +133,14 @@ function initDatabase() {
     // Column already exists, ignore
   }
   
+  // Migration: Add address column if it doesn't exist
+  try {
+    db.exec('ALTER TABLE providers ADD COLUMN address TEXT');
+    console.log('Migration: Added address column to providers');
+  } catch (e) {
+    // Column already exists, ignore
+  }
+  
   console.log('Database initialized:', DB_PATH);
 }
 
@@ -829,6 +837,7 @@ app.get('/admin', (req, res) => {
       <input name="company_name" placeholder="Company Name" required>
       <input name="email" placeholder="Email" required>
       <input name="phone" placeholder="Phone">
+      <input name="address" placeholder="Address" style="min-width: 200px;">
       <input name="service_zips" placeholder="Zips (comma-separated)">
       <input name="credit_balance" placeholder="Credits" type="number" value="0" style="width: 80px;">
       <button class="btn btn-green">Add Provider</button>
@@ -918,6 +927,9 @@ app.get('/admin/edit-provider/:id', (req, res) => {
       <label>Phone</label>
       <input name="phone" value="${provider.phone || ''}">
       
+      <label>Address</label>
+      <input name="address" value="${provider.address || ''}" placeholder="123 Main St, City, State ZIP">
+      
       <label>Service Zips (comma-separated)</label>
       <input name="service_zips" value="${provider.service_zips || ''}" placeholder="10001, 10002, 10003">
       
@@ -983,11 +995,11 @@ app.get('/admin/edit-provider/:id', (req, res) => {
 app.post('/admin/update-provider/:id', (req, res) => {
   if (req.query.key !== ADMIN_PASSWORD) return res.status(401).send('Unauthorized');
   
-  const { company_name, email, phone, service_zips, credit_balance, status, priority, verified, notes } = req.body;
+  const { company_name, email, phone, address, service_zips, credit_balance, status, priority, verified, notes } = req.body;
   db.prepare(`
-    UPDATE providers SET company_name = ?, email = ?, phone = ?, service_zips = ?, credit_balance = ?, status = ?, priority = ?, verified = ?, notes = ?
+    UPDATE providers SET company_name = ?, email = ?, phone = ?, address = ?, service_zips = ?, credit_balance = ?, status = ?, priority = ?, verified = ?, notes = ?
     WHERE id = ?
-  `).run(company_name, email, phone, service_zips, parseInt(credit_balance) || 0, status, parseInt(priority) || 0, verified ? 1 : 0, notes, req.params.id);
+  `).run(company_name, email, phone, address, service_zips, parseInt(credit_balance) || 0, status, parseInt(priority) || 0, verified ? 1 : 0, notes, req.params.id);
   
   console.log(`Provider ${req.params.id} updated`);
   res.redirect(`/admin?key=${req.query.key}`);
@@ -1442,11 +1454,11 @@ app.get('/admin/logs', (req, res) => {
 app.post('/admin/add-provider', (req, res) => {
   if (req.query.key !== ADMIN_PASSWORD) return res.status(401).send('Unauthorized');
   
-  const { company_name, email, phone, service_zips, credit_balance } = req.body;
+  const { company_name, email, phone, address, service_zips, credit_balance } = req.body;
   db.prepare(`
-    INSERT INTO providers (company_name, email, phone, service_zips, credit_balance)
-    VALUES (?, ?, ?, ?, ?)
-  `).run(company_name, email, phone, service_zips, parseInt(credit_balance) || 0);
+    INSERT INTO providers (company_name, email, phone, address, service_zips, credit_balance)
+    VALUES (?, ?, ?, ?, ?, ?)
+  `).run(company_name, email, phone, address, service_zips, parseInt(credit_balance) || 0);
   
   res.redirect(`/admin?key=${req.query.key}`);
 });
