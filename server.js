@@ -314,50 +314,85 @@ app.post('/api/lead', async (req, res) => {
 async function sendFullLeadToProvider(provider, leadId, lead) {
   const timeframe = lead.timeframe === 'asap' ? 'ASAP' : lead.timeframe || 'soon';
   const newBalance = (provider.credit_balance || 1) - 1;
+  const projectType = lead.projectType || lead.project_type || 'Not specified';
+  const customerName = [lead.firstName, lead.lastName].filter(Boolean).join(' ') || 'Customer';
+  
   const lowBalanceWarning = newBalance <= 2 && newBalance >= 0 ? `
-  <div style="background: #fef3c7; border: 1px solid #fcd34d; padding: 12px; border-radius: 6px; margin: 15px 0;">
-    ⚠️ <strong>Low Balance Alert:</strong> ${newBalance} credit${newBalance === 1 ? '' : 's'} remaining.
-    <a href="https://dumpstermap.io/for-providers" style="color: #b45309; font-weight: bold;">Buy more credits →</a>
+  <div style="background: #fef3c7; border: 1px solid #fcd34d; padding: 12px; border-radius: 6px; margin: 20px 0;">
+    ⚠️ <strong>Low balance:</strong> ${newBalance} credit${newBalance === 1 ? '' : 's'} remaining.
+    <a href="https://dumpstermap.io/for-providers" style="color: #b45309; font-weight: bold;">Top up →</a>
   </div>` : '';
+  
   const html = `
-<div style="font-family: Arial, sans-serif; max-width: 600px;">
+<div style="font-family: Arial, sans-serif; max-width: 600px; line-height: 1.6; color: #333;">
   <p>Hi ${provider.company_name},</p>
-  <p>New lead in <strong>${lead.zip}</strong> - needs it <strong>${timeframe}</strong>.</p>
-  <div style="background: #f0fdf4; border: 1px solid #86efac; padding: 20px; border-radius: 8px; margin: 20px 0;">
-    <strong>Contact:</strong><br>
-    Name: ${lead.firstName || ''} ${lead.lastName || ''}<br>
-    Phone: ${lead.phone || 'N/A'}<br>
-    Email: ${lead.email || 'N/A'}
+  
+  <p><strong>${customerName}</strong> in <strong>${lead.zip}</strong> just requested a quote — they need a dumpster <strong>${timeframe}</strong>.</p>
+  
+  <div style="background: #f0fdf4; border-left: 4px solid #22c55e; padding: 16px; margin: 20px 0;">
+    <strong style="font-size: 16px;">📞 Contact Info</strong><br><br>
+    <strong>Name:</strong> ${customerName}<br>
+    <strong>Phone:</strong> ${lead.phone || 'N/A'}<br>
+    <strong>Email:</strong> ${lead.email || 'N/A'}
   </div>
-  <div style="background: #f9f9f9; padding: 20px; border-radius: 8px;">
-    <strong>Project:</strong><br>
-    Size: ${lead.size ? lead.size + ' yard' : 'TBD'}<br>
-    Type: ${lead.projectType || 'Not specified'}
+  
+  <div style="background: #f8f9fa; padding: 16px; border-radius: 6px; margin: 16px 0;">
+    <strong>Project Details:</strong><br>
+    • Size: ${lead.size ? lead.size + ' yard' : 'To be discussed'}<br>
+    • Type: ${projectType}<br>
+    • Timeline: ${timeframe}
   </div>
-  <p><strong>Tip:</strong> Call within 5 minutes for best results!</p>${lowBalanceWarning}
-  <p style="color: #666; font-size: 12px;">1 credit used • ${newBalance} remaining • <a href="https://dumpstermap.io/balance">Check balance</a></p>
+  
+  <p>💡 <strong>Pro tip:</strong> Call within 5 minutes — first responder usually wins the job.</p>
+  ${lowBalanceWarning}
+  <p style="color: #666; font-size: 13px; margin-top: 24px; border-top: 1px solid #eee; padding-top: 16px;">
+    1 credit used • <strong>${newBalance} remaining</strong> • <a href="https://dumpstermap.io/balance" style="color: #2563eb;">Check balance</a>
+  </p>
 </div>`;
-  await sendEmail(provider.email, `New lead in ${lead.zip}`, html);
+  await sendEmail(provider.email, `🗑️ New lead in ${lead.zip} - ${customerName}`, html);
 }
 
 async function sendTeaserToProvider(provider, leadId, lead) {
   const paymentLink = `${SINGLE_LEAD_STRIPE_LINK}?client_reference_id=${leadId}`;
   const timeframe = lead.timeframe === 'asap' ? 'ASAP' : lead.timeframe || 'soon';
+  const projectType = lead.project_type || 'General';
+  const companyName = provider.company_name || 'there';
+  
   const html = `
-<div style="font-family: Arial, sans-serif; max-width: 600px;">
-  <p>Hi,</p>
-  <p>A customer in <strong>${lead.zip}</strong> needs a dumpster <strong>${timeframe}</strong>.</p>
-  <div style="background: #f9f9f9; padding: 16px; border-radius: 6px; margin: 16px 0;">
-    Location: ${lead.zip}<br>
-    Size: ${lead.size ? lead.size + ' yard' : 'Not sure yet'}<br>
-    Timeline: ${timeframe}
+<div style="font-family: Arial, sans-serif; max-width: 600px; line-height: 1.6; color: #333;">
+  <p>Hi ${companyName},</p>
+  
+  <p>Someone in your area just searched DumpsterMap looking for a dumpster rental. They filled out a quote request and are <strong>ready to book</strong>.</p>
+  
+  <div style="background: #f8f9fa; padding: 16px; border-left: 4px solid #f59e0b; margin: 20px 0;">
+    <strong>What we know about this lead:</strong><br>
+    • Location: <strong>${lead.zip}</strong><br>
+    • Size: ${lead.size ? lead.size + ' yard' : 'Not specified yet'}<br>
+    • Timeframe: <strong>${timeframe}</strong><br>
+    • Project: ${projectType}
   </div>
-  <p>Get their contact info: <a href="${paymentLink}">${paymentLink}</a></p>
-  <p><strong>How it works:</strong></p>
-  <ol><li>Pay $40</li><li>Get name, phone, email instantly</li><li>Call and close the deal</li></ol>
-  <p>— DumpsterMap</p>
+  
+  <p><strong>Why DumpsterMap leads convert:</strong><br>
+  These are homeowners and contractors <em>actively searching</em> for dumpster service right now — not cold leads from a purchased list. They came to our site, compared options, and submitted their info because they're ready to rent.</p>
+  
+  <p style="margin: 24px 0;">
+    <a href="${paymentLink}" style="background: #f59e0b; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">Unlock this lead for $40 →</a>
+  </p>
+  
+  <p>You'll get their <strong>name, phone number, and email</strong> instantly so you can reach out while they're still shopping.</p>
+  
+  <p style="font-size: 14px; color: #666; margin-top: 24px;">
+    <strong>Want a better rate?</strong> Lead packs start at $200 for 5 leads ($40/each), or go Pro at $35/lead with a verified badge on your listing.<br>
+    <a href="https://dumpstermap.io/for-providers#pricing" style="color: #2563eb;">See all options →</a>
+  </p>
+  
+  <p>— The DumpsterMap Team</p>
+  
+  <p style="font-size: 13px; color: #888; margin-top: 20px; border-top: 1px solid #eee; padding-top: 16px;">
+    P.S. You're receiving this because your business serves ${lead.zip}. Reply to update your service area.
+  </p>
 </div>`;
-  await sendEmail(provider.email, `Customer looking for dumpster in ${lead.zip}`, html);
+  await sendEmail(provider.email, `🔔 New lead in ${lead.zip} - ready to book`, html);
 }
 
 // ============================================
