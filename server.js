@@ -2326,7 +2326,7 @@ app.post('/api/outreach/import-from-json', async (req, res) => {
   }
   
   const limit = parseInt(req.body.limit) || 100;
-  const state = (req.body.state || '').toUpperCase();
+  const stateFilter = (req.body.state || '').toLowerCase();
   const campaign = req.body.campaign || 'json-import';
   
   try {
@@ -2335,9 +2335,12 @@ app.post('/api/outreach/import-from-json', async (req, res) => {
     const data = JSON.parse(fs.readFileSync(jsonPath, 'utf8'));
     let providers = data.providers || [];
     
-    // Filter by state if specified
-    if (state) {
-      providers = providers.filter(p => (p.state || '').toUpperCase() === state);
+    // Filter by state if specified (matches full name or abbreviation)
+    if (stateFilter) {
+      providers = providers.filter(p => {
+        const pState = (p.state || '').toLowerCase();
+        return pState === stateFilter || pState.startsWith(stateFilter);
+      });
     }
     
     // Only get providers with phone (we can look up email or skip)
