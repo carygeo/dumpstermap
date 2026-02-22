@@ -166,10 +166,24 @@ function initDatabase() {
       metadata TEXT
     );
     
+    CREATE TABLE IF NOT EXISTS credit_transactions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      timestamp TEXT DEFAULT CURRENT_TIMESTAMP,
+      provider_id INTEGER NOT NULL,
+      provider_email TEXT,
+      type TEXT NOT NULL,
+      amount INTEGER NOT NULL,
+      balance_after INTEGER,
+      reference TEXT,
+      notes TEXT,
+      FOREIGN KEY (provider_id) REFERENCES providers(id)
+    );
+    
     CREATE INDEX IF NOT EXISTS idx_leads_lead_id ON leads(lead_id);
     CREATE INDEX IF NOT EXISTS idx_outreach_email ON outreach(provider_email);
     CREATE INDEX IF NOT EXISTS idx_leads_zip ON leads(zip);
     CREATE INDEX IF NOT EXISTS idx_providers_email ON providers(email);
+    CREATE INDEX IF NOT EXISTS idx_credit_tx_provider ON credit_transactions(provider_id);
   `);
   
   // Migration: Add last_purchase_at column if it doesn't exist
@@ -537,6 +551,22 @@ function logError(type, message, context = {}, error = null) {
   if (error?.stack) console.error('Stack trace:', error.stack);
 }
 
+// Helper: Log credit transaction for audit trail
+function logCreditTransaction(providerId, type, amount, reference = null, notes = null) {
+  try {
+    const provider = db.prepare('SELECT email, credit_balance FROM providers WHERE id = ?').get(providerId);
+    if (!provider) return;
+    
+    db.prepare(`
+      INSERT INTO credit_transactions (provider_id, provider_email, type, amount, balance_after, reference, notes)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `).run(providerId, provider.email, type, amount, provider.credit_balance, reference, notes);
+  } catch (e) {
+    // Table might not exist in older deployments, that's ok
+    console.log('Credit transaction log skipped:', e.message);
+  }
+}
+
 // ============================================
 // LEAD SUBMISSION ENDPOINT
 // ============================================
@@ -609,6 +639,7 @@ app.post('/api/lead', async (req, res) => {
         await sendFullLeadToProvider(provider, leadId, data, { leadType, creditCost });
         db.prepare('UPDATE providers SET credit_balance = credit_balance - ?, total_leads = total_leads + 1 WHERE id = ?')
           .run(creditCost, provider.id);
+        logCreditTransaction(provider.id, 'lead_sent', -creditCost, leadId, `Lead in ${data.zip}`);
         sentCount++;
       } else {
         // Not enough credits - send teaser
@@ -1023,6 +1054,7 @@ app.post('/api/stripe-webhook', async (req, res) => {
           // Log the purchase
           db.prepare('INSERT INTO purchase_log (lead_id, buyer_email, amount, payment_id, status) VALUES (?, ?, ?, ?, ?)')
             .run('SUB_RENEWAL', customerEmail, amount, paymentId, 'Credits Added');
+          logCreditTransaction(provider.id, 'renewal', subPack.credits, paymentId, `Monthly subscription renewal - $${amount}`);
           
           // Send confirmation email
           const newBalance = provider.credit_balance + subPack.credits;
@@ -1136,6 +1168,7 @@ app.post('/api/stripe-webhook', async (req, res) => {
       
       // Add credits and update last purchase time
       db.prepare("UPDATE providers SET credit_balance = credit_balance + ?, last_purchase_at = datetime('now') WHERE id = ?").run(pack.credits, provider.id);
+      logCreditTransaction(provider.id, isSubscription ? 'subscription' : 'purchase', pack.credits, paymentId, `${pack.name} - $${amount}`);
       
       // Apply perks for Premium/Featured Partner purchases (subscriptions or one-time)
       // Premium ($1500) and Featured Partner ($99) get 30-day verified + priority
@@ -1642,6 +1675,7 @@ app.get('/admin', (req, res) => {
     <a href="/admin/outreach?key=${auth}">Outreach</a>
     <a href="/admin/logs?key=${auth}">System Logs</a>
     <a href="/admin/funnel?key=${auth}">📊 Funnel</a>
+    <a href="/api/admin/credit-history?key=${auth}" target="_blank">💳 Credit History</a>
     <a href="/api/admin/subscriptions?key=${auth}" target="_blank">🔄 Subscriptions</a>
     <a href="/api/admin/stats?key=${auth}" target="_blank">📈 API Stats</a>
   </div>
@@ -1887,6 +1921,14 @@ app.get('/admin/edit-provider/:id', (req, res) => {
     SELECT * FROM leads WHERE purchased_by = ? OR assigned_provider = ? ORDER BY id DESC LIMIT 10
   `).all(provider.email, provider.company_name);
   
+  // Get credit transaction history
+  let creditHistory = [];
+  try {
+    creditHistory = db.prepare(`
+      SELECT * FROM credit_transactions WHERE provider_id = ? ORDER BY id DESC LIMIT 20
+    `).all(provider.id);
+  } catch (e) { /* table may not exist */ }
+  
   const html = `
 <!DOCTYPE html>
 <html>
@@ -1978,6 +2020,17 @@ app.get('/admin/edit-provider/:id', (req, res) => {
       <tr><th>ID</th><th>Date</th><th>Zip</th><th>Status</th></tr>
       ${recentLeads.map(l => `<tr><td>${l.lead_id}</td><td>${l.created_at?.split('T')[0]||''}</td><td>${l.zip}</td><td>${l.status}</td></tr>`).join('')}
     </table>
+  </div>
+  
+  <div class="card">
+    <h3>💳 Credit History (${creditHistory.length})</h3>
+    ${creditHistory.length > 0 ? '<table><tr><th>Date</th><th>Type</th><th>Amount</th><th>Balance</th><th>Reference</th><th>Notes</th></tr>' + creditHistory.map(t => {
+        const typeLabels = { 'purchase': '📦 Purchase', 'subscription': '🔄 Subscription', 'lead_sent': '📤 Lead Sent', 'admin_add': '🔧 Admin Add', 'renewal': '🔄 Renewal' };
+        const typeLabel = typeLabels[t.type] || t.type;
+        const amountStyle = t.amount > 0 ? 'color: #16a34a; font-weight: bold;' : 'color: #dc2626;';
+        const amountDisplay = (t.amount > 0 ? '+' : '') + t.amount;
+        return '<tr><td>' + (t.timestamp?.split('T')[0] || '') + '</td><td>' + typeLabel + '</td><td style="' + amountStyle + '">' + amountDisplay + '</td><td>' + (t.balance_after || '') + '</td><td style="font-size: 11px;">' + (t.reference || '-') + '</td><td style="font-size: 11px; max-width: 150px; overflow: hidden; text-overflow: ellipsis;">' + (t.notes || '') + '</td></tr>';
+      }).join('') + '</table>' : '<p style="color: #94a3b8;">No credit transactions yet</p>'}
   </div>
   
   <div class="card">
@@ -2212,6 +2265,7 @@ app.post('/admin/add-credits', (req, res) => {
   db.prepare('INSERT INTO purchase_log (lead_id, buyer_email, amount, payment_id, status) VALUES (?, ?, ?, ?, ?)').run(
     'MANUAL', provider?.email || '', 0, 'admin-' + Date.now(), `Manual: +${creditAmount} credits. ${reason || ''}`
   );
+  logCreditTransaction(parseInt(provider_id), 'admin_add', creditAmount, 'admin', reason || 'Manual addition');
   
   console.log(`Added ${creditAmount} credits to provider ${provider_id}: ${reason || 'no reason'}`);
   res.redirect(`/admin?key=${req.query.key}`);
@@ -2241,6 +2295,7 @@ app.post('/admin/bulk-add-credits', (req, res) => {
       db.prepare('INSERT INTO purchase_log (lead_id, buyer_email, amount, payment_id, status) VALUES (?, ?, ?, ?, ?)').run(
         'BULK_ADD', provider?.email || '', 0, 'admin-bulk-' + Date.now(), `Bulk: +${creditAmount} credits. ${reason || ''}`
       );
+      logCreditTransaction(parseInt(id), 'admin_add', creditAmount, 'bulk', reason || 'Bulk addition');
       updated++;
     } catch (e) {
       console.log(`Failed to add credits to provider ${id}:`, e.message);
@@ -3559,6 +3614,63 @@ app.get('/api/admin/provider/:id', (req, res) => {
     recentLeads,
     purchases
   });
+});
+
+// Admin endpoint: View credit transaction history
+app.get('/api/admin/credit-history', (req, res) => {
+  const auth = req.query.key || req.headers['x-admin-key'];
+  if (auth !== ADMIN_PASSWORD) return res.status(401).json({ error: 'Unauthorized' });
+  
+  const providerId = req.query.provider_id ? parseInt(req.query.provider_id) : null;
+  const limit = Math.min(parseInt(req.query.limit) || 100, 500);
+  const type = req.query.type || null; // 'purchase', 'lead_sent', 'admin_add', 'subscription'
+  
+  let query = 'SELECT * FROM credit_transactions';
+  const params = [];
+  const conditions = [];
+  
+  if (providerId) {
+    conditions.push('provider_id = ?');
+    params.push(providerId);
+  }
+  if (type) {
+    conditions.push('type = ?');
+    params.push(type);
+  }
+  
+  if (conditions.length > 0) {
+    query += ' WHERE ' + conditions.join(' AND ');
+  }
+  query += ' ORDER BY id DESC LIMIT ?';
+  params.push(limit);
+  
+  try {
+    const transactions = db.prepare(query).all(...params);
+    
+    // Summary stats
+    const summary = {
+      totalCreditsAdded: transactions.filter(t => t.amount > 0).reduce((sum, t) => sum + t.amount, 0),
+      totalCreditsUsed: Math.abs(transactions.filter(t => t.amount < 0).reduce((sum, t) => sum + t.amount, 0)),
+      transactionCount: transactions.length
+    };
+    
+    res.json({
+      transactions: transactions.map(t => ({
+        id: t.id,
+        timestamp: t.timestamp,
+        providerId: t.provider_id,
+        providerEmail: t.provider_email,
+        type: t.type,
+        amount: t.amount,
+        balanceAfter: t.balance_after,
+        reference: t.reference,
+        notes: t.notes
+      })),
+      summary
+    });
+  } catch (e) {
+    res.json({ error: 'Table may not exist yet - run a credit operation first', message: e.message, transactions: [] });
+  }
 });
 
 // Admin endpoint: View and manage premium status

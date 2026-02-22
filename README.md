@@ -51,7 +51,8 @@
 │  - leads                        - Full lead (paid)                  │
 │  - providers                    - Teaser (unpaid)                   │
 │  - purchase_log                 - Credit confirmation               │
-│  - outreach                     - Admin notifications               │
+│  - credit_transactions          - Admin notifications               │
+│  - outreach                                                         │
 │  - error_log                                                        │
 │                                                                     │
 └─────────────────────────────────────────────────────────────────────┘
@@ -247,6 +248,7 @@ The webhook automatically handles `invoice.paid` events for recurring subscripti
 | `/api/admin/zip-coverage` | GET | ZIP coverage analysis (providers per zip, gaps) - requires key |
 | `/api/admin/send-test-lead` | POST | Send test lead to provider for verification - requires key |
 | `/api/admin/pricing` | GET | View credit pack pricing config and Stripe product mappings - requires key |
+| `/api/admin/credit-history` | GET | View credit transaction audit trail (?provider_id=X&type=X&limit=100) - requires key |
 | `/api/admin/errors` | GET | View recent errors (?hours=24&limit=50) - requires key |
 | `/api/admin/errors/cleanup` | POST | Delete errors older than 7 days - requires key |
 | `/api/admin/maintenance` | POST | Run all cleanup tasks (premium expiration, log cleanup, reminders) - requires key |
