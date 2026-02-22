@@ -309,9 +309,9 @@ app.post('/api/lead', async (req, res) => {
     const leadId = generateLeadId();
     const name = ((data.firstName || '') + ' ' + (data.lastName || '')).trim();
     
-    // Determine lead type: exclusive (specific provider) vs shared (all in ZIP)
-    const isExclusive = !!data.providerId;
-    const leadType = isExclusive ? 'exclusive' : 'shared';
+    // Determine lead type: direct (specific provider) vs zip-matched
+    const isDirect = !!(data.providerId || data.providerName);
+    const leadType = isDirect ? 'direct' : 'zip-matched';
     
     // Simple pricing: 1 credit per lead
     const creditCost = LEAD_PRICING.perLead;
@@ -328,19 +328,31 @@ app.post('/api/lead', async (req, res) => {
     // Find target provider(s)
     let providers = [];
     
-    if (data.providerId) {
-      // EXCLUSIVE: Specific provider requested - send ONLY to them
-      const specificProvider = db.prepare('SELECT * FROM providers WHERE id = ? AND status = ?').get(data.providerId, 'Active');
+    // Convert providerId to number if it's a string
+    const providerId = data.providerId ? parseInt(data.providerId, 10) : null;
+    
+    if (providerId) {
+      // DIRECT: Specific provider ID - send ONLY to them (ignore ZIP matching)
+      const specificProvider = db.prepare('SELECT * FROM providers WHERE id = ? AND status = ?').get(providerId, 'Active');
       if (specificProvider) {
         providers = [specificProvider];
-        console.log(`EXCLUSIVE lead to: ${specificProvider.company_name} (ID: ${data.providerId})`);
+        console.log(`DIRECT lead to: ${specificProvider.company_name} (ID: ${providerId})`);
       } else {
-        console.log(`Provider ID ${data.providerId} not found or inactive`);
+        console.log(`Provider ID ${providerId} not found or inactive`);
+      }
+    } else if (data.providerName) {
+      // DIRECT by name: Look up provider by company name
+      const specificProvider = db.prepare('SELECT * FROM providers WHERE LOWER(company_name) = LOWER(?) AND status = ?').get(data.providerName, 'Active');
+      if (specificProvider) {
+        providers = [specificProvider];
+        console.log(`DIRECT lead to: ${specificProvider.company_name} (by name)`);
+      } else {
+        console.log(`Provider "${data.providerName}" not found or inactive`);
       }
     } else {
-      // SHARED: No specific provider - send to all providers serving this ZIP
+      // No specific provider - find all providers serving this ZIP
       providers = getProvidersByZip(data.zip);
-      console.log(`SHARED lead to ${providers.length} providers for zip ${data.zip}`);
+      console.log(`ZIP-matched lead to ${providers.length} providers for zip ${data.zip}`);
     }
     
     let sentCount = 0;
