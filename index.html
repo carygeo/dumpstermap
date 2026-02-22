@@ -21,6 +21,91 @@
     <meta name="twitter:description" content="Compare dumpster rental prices from 8,000+ local providers. Get instant quotes.">
     <meta name="twitter:image" content="https://dumpstermap.io/og-image.png">
     
+    <!-- Canonical URL -->
+    <link rel="canonical" href="https://dumpstermap.io/">
+    
+    <!-- Schema.org Structured Data -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      "name": "DumpsterMap",
+      "url": "https://dumpstermap.io/",
+      "description": "Compare dumpster rental prices from local providers. Get instant quotes for roll-off dumpsters.",
+      "potentialAction": {
+        "@type": "SearchAction",
+        "target": "https://dumpstermap.io/results.html?zip={search_term_string}",
+        "query-input": "required name=search_term_string"
+      }
+    }
+    </script>
+    
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "Organization",
+      "name": "DumpsterMap",
+      "url": "https://dumpstermap.io/",
+      "logo": "https://dumpstermap.io/logo.png",
+      "description": "DumpsterMap connects customers with local dumpster rental providers across the United States.",
+      "contactPoint": {
+        "@type": "ContactPoint",
+        "email": "support@dumpstermap.io",
+        "contactType": "customer service"
+      },
+      "sameAs": []
+    }
+    </script>
+    
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "How much does it cost to rent a dumpster?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Dumpster rental prices typically range from $250-$600 depending on size, location, and rental duration. A 10-yard dumpster averages $250-$400, while a 30-yard container costs $400-$600. Prices vary by region and provider."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What size dumpster do I need?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "For small cleanouts or single-room renovations, a 10-yard dumpster works well. Medium projects like garage cleanouts need 15-20 yards. Large renovations or construction projects typically require 30-40 yard dumpsters. Use our size calculator for personalized recommendations."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "How long can I keep a rental dumpster?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Standard rental periods are 7-14 days, though many providers offer flexible terms. Extensions are usually available for an additional daily fee, typically $10-$25 per day depending on the dumpster size."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What can I put in a dumpster?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Most household items, construction debris, furniture, appliances (without refrigerants), and yard waste are accepted. Prohibited items typically include hazardous materials, tires, batteries, paint, and electronics. Check with your provider for specific restrictions."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "How does DumpsterMap work?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Enter your ZIP code to see local dumpster rental providers with ratings and pricing. Compare options, read reviews, and request quotes directly from providers. We help you find the best deal without the hassle of calling multiple companies."
+          }
+        }
+      ]
+    }
+    </script>
+    
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
         * {
@@ -1322,6 +1407,66 @@
                     <a href="dumpster-rental/wisconsin.html">Wisconsin</a>
                     <a href="dumpster-rental/wyoming.html">Wyoming</a>
                 </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- FAQ Section -->
+    <section class="faq-section" style="padding: 4rem 2rem; background: var(--bg-light);">
+        <div style="max-width: 800px; margin: 0 auto;">
+            <h2 style="text-align: center; font-size: 2rem; margin-bottom: 0.5rem;">Frequently Asked Questions</h2>
+            <p style="text-align: center; color: var(--text-light); margin-bottom: 2rem;">Everything you need to know about renting a dumpster</p>
+            
+            <div class="faq-list" style="display: flex; flex-direction: column; gap: 1rem;">
+                <details style="background: white; border-radius: 8px; padding: 1rem 1.5rem; border: 1px solid var(--border);">
+                    <summary style="font-weight: 600; cursor: pointer; list-style: none; display: flex; justify-content: space-between; align-items: center;">
+                        How much does it cost to rent a dumpster?
+                        <span style="color: var(--primary);">+</span>
+                    </summary>
+                    <p style="margin-top: 1rem; color: var(--text-light); line-height: 1.7;">
+                        Dumpster rental prices typically range from <strong>$250-$600</strong> depending on size, location, and rental duration. A 10-yard dumpster averages $250-$400, while a 30-yard container costs $400-$600. Prices vary by region and provider, which is why comparing quotes is essential.
+                    </p>
+                </details>
+                
+                <details style="background: white; border-radius: 8px; padding: 1rem 1.5rem; border: 1px solid var(--border);">
+                    <summary style="font-weight: 600; cursor: pointer; list-style: none; display: flex; justify-content: space-between; align-items: center;">
+                        What size dumpster do I need?
+                        <span style="color: var(--primary);">+</span>
+                    </summary>
+                    <p style="margin-top: 1rem; color: var(--text-light); line-height: 1.7;">
+                        For small cleanouts or single-room renovations, a <strong>10-yard dumpster</strong> works well. Medium projects like garage cleanouts need <strong>15-20 yards</strong>. Large renovations or construction projects typically require <strong>30-40 yard</strong> dumpsters. <a href="calculator.html" style="color: var(--primary);">Use our size calculator</a> for personalized recommendations.
+                    </p>
+                </details>
+                
+                <details style="background: white; border-radius: 8px; padding: 1rem 1.5rem; border: 1px solid var(--border);">
+                    <summary style="font-weight: 600; cursor: pointer; list-style: none; display: flex; justify-content: space-between; align-items: center;">
+                        How long can I keep a rental dumpster?
+                        <span style="color: var(--primary);">+</span>
+                    </summary>
+                    <p style="margin-top: 1rem; color: var(--text-light); line-height: 1.7;">
+                        Standard rental periods are <strong>7-14 days</strong>, though many providers offer flexible terms. Extensions are usually available for an additional daily fee, typically $10-$25 per day depending on the dumpster size.
+                    </p>
+                </details>
+                
+                <details style="background: white; border-radius: 8px; padding: 1rem 1.5rem; border: 1px solid var(--border);">
+                    <summary style="font-weight: 600; cursor: pointer; list-style: none; display: flex; justify-content: space-between; align-items: center;">
+                        What can I put in a dumpster?
+                        <span style="color: var(--primary);">+</span>
+                    </summary>
+                    <p style="margin-top: 1rem; color: var(--text-light); line-height: 1.7;">
+                        Most household items, construction debris, furniture, appliances (without refrigerants), and yard waste are accepted. <strong>Prohibited items</strong> typically include hazardous materials, tires, batteries, paint, and electronics. Always check with your provider for specific restrictions.
+                    </p>
+                </details>
+                
+                <details style="background: white; border-radius: 8px; padding: 1rem 1.5rem; border: 1px solid var(--border);">
+                    <summary style="font-weight: 600; cursor: pointer; list-style: none; display: flex; justify-content: space-between; align-items: center;">
+                        How does DumpsterMap work?
+                        <span style="color: var(--primary);">+</span>
+                    </summary>
+                    <p style="margin-top: 1rem; color: var(--text-light); line-height: 1.7;">
+                        Enter your ZIP code to see local dumpster rental providers with ratings and pricing. Compare options, read reviews, and request quotes directly from providers. We help you find the best deal without the hassle of calling multiple companies.
+                    </p>
+                </details>
             </div>
         </div>
     </section>
