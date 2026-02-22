@@ -85,6 +85,66 @@
 - **Maps:** Leaflet + MarkerCluster + CARTO Dark tiles
 - **Hosting:** Fly.io
 
+## Testing
+
+```bash
+# Run all tests
+npm test
+
+# Watch mode (re-run on changes)
+npm run test:watch
+
+# With coverage report
+npm run test:coverage
+```
+
+### Test Results
+
+```
+PASS ./server.test.js
+  Lead ID Generation
+    ✓ generates 6-character IDs
+    ✓ uses only allowed characters (no ambiguous chars)
+    ✓ does not contain ambiguous characters (0, O, 1, I)
+  Provider ID List Format
+    parseProviderIds
+      ✓ parses single ID
+      ✓ parses multiple IDs
+      ✓ handles no spaces
+      ✓ handles extra spaces
+      ✓ returns empty array for null/undefined
+      ✓ returns empty array for empty brackets
+      ✓ returns empty array for legacy format (no brackets)
+    formatProviderIds
+      ✓ formats single ID
+      ✓ formats multiple IDs
+      ✓ formats empty array
+    ID merging (resend logic)
+      ✓ merges new IDs with existing
+      ✓ deduplicates IDs
+  ZIP Code Matching
+    ✓ finds providers serving a ZIP
+    ✓ excludes inactive providers
+    ✓ returns empty array for unserved ZIP
+  Credit Balance Logic
+    ✓ identifies providers with sufficient credits
+    ✓ handles zero credit cost
+  Lead Data Validation
+    ✓ validates correct data
+    ✓ rejects invalid ZIP
+    ✓ rejects short phone
+    ✓ rejects invalid email format
+    ✓ allows missing email
+  Admin Display Helpers
+    ✓ displays new format correctly
+    ✓ handles unknown IDs
+    ✓ handles legacy format
+    ✓ handles empty/null
+
+Test Suites: 1 passed, 1 total
+Tests:       29 passed, 29 total
+```
+
 ## Local Development
 
 ```bash
