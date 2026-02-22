@@ -4,7 +4,10 @@
   "description": "DumpsterMap.io - Find local dumpster rental providers",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage"
   },
   "dependencies": {
     "better-sqlite3": "^12.6.2",
@@ -12,5 +15,8 @@
     "googleapis": "^171.4.0",
     "node-fetch": "^3.3.2",
     "nodemailer": "^8.0.1"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0"
   }
 }
