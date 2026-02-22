@@ -187,9 +187,18 @@ fly ssh console -C "sqlite3 /data/dumpstermap.db '.tables'"
 
 1. Create webhook endpoint in Stripe Dashboard → Developers → Webhooks
 2. URL: `https://dumpstermap.fly.dev/api/stripe-webhook`
-3. Events: `checkout.session.completed`
+3. Events: `checkout.session.completed`, `invoice.paid`
 4. Copy signing secret and set as `STRIPE_WEBHOOK_SECRET` env var
 5. Test with Stripe CLI: `stripe trigger checkout.session.completed`
+
+### Subscription Renewals
+
+The webhook automatically handles `invoice.paid` events for recurring subscriptions:
+- Detects renewal (not initial subscription)
+- Adds monthly credits (e.g., 3 for Featured Partner)
+- Extends premium status by 30 days
+- Sends confirmation email
+- Logs to purchase_log as `SUB_RENEWAL`
 
 ## Stripe Webhook Flow
 
@@ -248,6 +257,8 @@ fly ssh console -C "sqlite3 /data/dumpstermap.db '.tables'"
 | `/api/admin/registration-funnel` | GET | Registration-to-purchase funnel stats - requires key |
 | `/api/admin/bulk-add-credits` | POST | Add credits to multiple providers at once - requires key |
 | `/api/admin/batch-email` | POST | Send batch email to providers (dryRun supported) - requires key |
+| `/api/admin/subscriptions` | GET | View subscription stats (MRR, active, expiring) - requires key |
+| `/api/admin/health-check` | GET | Cron-friendly health check with alerts - requires key |
 | `/api/health` | GET | Health check |
 | `/admin` | GET | Admin dashboard |
 | `/admin/outreach` | GET | Provider outreach tracking |
@@ -304,11 +315,18 @@ curl -X POST "https://dumpstermap.fly.dev/api/admin/maintenance?key=YOUR_KEY"
 
 ### Monitoring Endpoints
 ```bash
-# Health check
+# Health check (public)
 curl https://dumpstermap.fly.dev/api/health
+
+# Health check with alerts (cron-friendly, requires auth)
+curl "https://dumpstermap.fly.dev/api/admin/health-check?key=YOUR_KEY"
+# Returns: { status: "healthy"|"warning"|"critical", alerts: [...], metrics: {...} }
 
 # Daily summary (leads, revenue, errors)
 curl "https://dumpstermap.fly.dev/api/admin/daily-summary?key=YOUR_KEY"
+
+# Subscription stats (MRR, expiring soon)
+curl "https://dumpstermap.fly.dev/api/admin/subscriptions?key=YOUR_KEY"
 
 # Error log (last 24h)
 curl "https://dumpstermap.fly.dev/api/admin/errors?key=YOUR_KEY"
