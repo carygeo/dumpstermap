@@ -349,7 +349,7 @@ async function sendFullLeadToProvider(provider, leadId, lead) {
     1 credit used • <strong>${newBalance} remaining</strong> • <a href="https://dumpstermap.io/balance" style="color: #2563eb;">Check balance</a>
   </p>
 </div>`;
-  await sendEmail(provider.email, `🗑️ New lead in ${lead.zip} - ${customerName}`, html);
+  await sendEmail(provider.email, `🚛 New lead in ${lead.zip} - ${customerName}`, html);
 }
 
 async function sendTeaserToProvider(provider, leadId, lead) {
@@ -386,13 +386,14 @@ async function sendTeaserToProvider(provider, leadId, lead) {
     <a href="https://dumpstermap.io/for-providers#pricing" style="color: #2563eb;">See all options →</a>
   </p>
   
-  <p>— The DumpsterMap Team</p>
+  <p>— The DumpsterMap Team<br>
+  <a href="https://dumpstermap.io" style="color: #2563eb;">dumpstermap.io</a></p>
   
   <p style="font-size: 13px; color: #888; margin-top: 20px; border-top: 1px solid #eee; padding-top: 16px;">
     P.S. You're receiving this because your business serves ${lead.zip}. Reply to update your service area.
   </p>
 </div>`;
-  await sendEmail(provider.email, `🔔 New lead in ${lead.zip} - ready to book`, html);
+  await sendEmail(provider.email, `🚛 New lead in ${lead.zip} - ready to book`, html);
 }
 
 // ============================================
@@ -487,7 +488,14 @@ app.post('/api/stripe-webhook', async (req, res) => {
       }
     } else {
       // Dev mode - no signature verification
-      event = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
+      // Handle Buffer (from express.raw), string, or object
+      if (Buffer.isBuffer(req.body)) {
+        event = JSON.parse(req.body.toString());
+      } else if (typeof req.body === 'string') {
+        event = JSON.parse(req.body);
+      } else {
+        event = req.body;
+      }
     }
     
     if (event.type !== 'checkout.session.completed') {
@@ -608,35 +616,27 @@ app.post('/api/stripe-webhook', async (req, res) => {
     }
     
     // Send full lead details
-    const timeframe = lead.timeframe === 'asap' ? 'ASAP' : lead.timeframe || 'TBD';
     const html = `
-<div style="font-family: Arial, sans-serif; max-width: 600px; line-height: 1.6; color: #333;">
+<div style="font-family: Arial, sans-serif; max-width: 600px;">
   <p>Thanks for your purchase! Here's your lead:</p>
-  
-  <div style="background: #f0fdf4; border-left: 4px solid #22c55e; padding: 16px; margin: 20px 0;">
-    <strong style="font-size: 16px;">📞 Contact</strong><br><br>
-    <strong>Name:</strong> ${lead.name}<br>
-    <strong>Phone:</strong> ${lead.phone}<br>
-    <strong>Email:</strong> ${lead.email}
+  <div style="background: #f0fdf4; border: 1px solid #86efac; padding: 20px; border-radius: 8px; margin: 20px 0;">
+    <strong>Contact:</strong><br>
+    Name: ${lead.name}<br>
+    Phone: ${lead.phone}<br>
+    Email: ${lead.email}
   </div>
-  
-  <div style="background: #f8f9fa; padding: 16px; border-radius: 6px; margin: 16px 0;">
-    <strong>Project Details:</strong><br>
-    • Location: <strong>${lead.zip}</strong><br>
-    • Size: ${lead.size ? lead.size + ' yard' : 'To be discussed'}<br>
-    • Timeline: <strong>${timeframe}</strong><br>
-    • Project: ${lead.project_type || 'Not specified'}
+  <div style="background: #f9f9f9; padding: 20px; border-radius: 8px;">
+    Location: ${lead.zip}<br>
+    Size: ${lead.size || 'TBD'}<br>
+    Timeline: ${lead.timeframe || 'TBD'}<br>
+    Project: ${lead.project_type || 'Not specified'}
   </div>
-  
-  <p>💡 <strong>Tip:</strong> Call within 5 minutes — first responder usually wins the job!</p>
-  
-  <div style="background: #eff6ff; border: 1px solid #bfdbfe; padding: 16px; border-radius: 6px; margin: 20px 0;">
-    <strong>Want to pre-purchase future leads?</strong><br>
-    Skip the per-lead checkout and get better rates with credit packs.<br>
-    <a href="https://dumpstermap.io/for-providers#pricing" style="color: #2563eb; font-weight: bold;">Add credits to your account →</a>
-  </div>
-  
-  <p>— The DumpsterMap Team</p>
+  <p><strong>Tip:</strong> Call within 5 minutes!</p>
+  <p style="margin-top: 20px;">
+    <a href="https://dumpstermap.io/for-providers" style="color: #2563eb;">Buy more credits</a> | 
+    <a href="https://dumpstermap.io" style="color: #2563eb;">Visit DumpsterMap.io</a>
+  </p>
+  <p style="color: #64748b; font-size: 12px; margin-top: 20px;">— DumpsterMap | <a href="https://dumpstermap.io" style="color: #64748b;">dumpstermap.io</a></p>
 </div>`;
     
     const emailSent = await sendEmail(customerEmail, `Your lead details - ${leadId}`, html);
