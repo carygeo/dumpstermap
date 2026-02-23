@@ -171,6 +171,34 @@ DATA_DIR=/data  # For Fly.io volume
 EMAIL_FROM="DumpsterMap <leads@dumpstermap.io>"
 ```
 
+## Admin CLI
+
+A convenience script for common admin operations:
+
+```bash
+cd scripts
+
+# Quick status check
+./admin-cli.sh status
+
+# Provider activity summary
+./admin-cli.sh providers
+
+# Add credits to a provider
+./admin-cli.sh add-credits 123 10 "Welcome bonus"
+
+# Search providers
+./admin-cli.sh search "naples"
+
+# Run maintenance tasks
+./admin-cli.sh maintenance
+
+# Use production server
+./admin-cli.sh --remote status
+```
+
+See `./admin-cli.sh help` for all commands.
+
 ## Deploy
 
 ```bash
