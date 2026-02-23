@@ -138,7 +138,7 @@ All tests covering lead flow, payments, credit management, provider matching, an
 ▶ Provider Activity Metrics (4 tests)
 ▶ API Provider Management (4 tests)
 
-Tests:       71 passed, 71 total
+Tests:       72 passed, 72 total
 Duration:    ~200ms
 ```
 
