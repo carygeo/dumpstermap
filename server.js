@@ -1628,6 +1628,10 @@ app.get('/admin', (req, res) => {
   // Provider states breakdown
   const providersByState = db.prepare("SELECT UPPER(state) as state, COUNT(*) as cnt FROM providers WHERE status = 'Active' AND state IS NOT NULL AND state != '' GROUP BY UPPER(state) ORDER BY cnt DESC LIMIT 5").all();
   
+  // Recent errors for dashboard
+  const recentErrorCount = db.prepare("SELECT COUNT(*) as cnt FROM error_log WHERE timestamp > datetime('now', '-24 hours')").get().cnt;
+  const recentErrors = db.prepare("SELECT * FROM error_log ORDER BY id DESC LIMIT 5").all();
+  
   const html = `
 <!DOCTYPE html>
 <html>
@@ -1720,6 +1724,23 @@ app.get('/admin', (req, res) => {
         </a>
       `).join('')}
     </div>
+  </div>
+  ` : ''}
+  
+  ${recentErrorCount > 0 ? `
+  <div class="card" style="background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%); border-left: 4px solid #f87171;">
+    <h3 style="margin: 0 0 10px 0; color: #dc2626;">⚠️ Recent Errors (${recentErrorCount} in last 24h)</h3>
+    <table style="font-size: 12px; margin: 0;">
+      <tr><th style="padding: 6px;">Time</th><th style="padding: 6px;">Type</th><th style="padding: 6px;">Message</th></tr>
+      ${recentErrors.slice(0, 5).map(e => `
+        <tr>
+          <td style="padding: 6px; white-space: nowrap;">${e.timestamp?.split('T')[1]?.slice(0, 8) || ''}</td>
+          <td style="padding: 6px; color: #dc2626;">${e.type || ''}</td>
+          <td style="padding: 6px; max-width: 400px; overflow: hidden; text-overflow: ellipsis;">${e.message || ''}</td>
+        </tr>
+      `).join('')}
+    </table>
+    <a href="/admin/logs?key=${auth}" style="font-size: 12px; color: #dc2626; text-decoration: underline;">View all logs →</a>
   </div>
   ` : ''}
   
@@ -2035,6 +2056,22 @@ app.get('/admin/edit-provider/:id', (req, res) => {
   </div>
   
   <div class="card">
+    <h3>💰 Add Credits</h3>
+    <p style="color: #64748b; font-size: 13px; margin-bottom: 12px;">Add credits with proper audit logging (tracked separately from balance edits above).</p>
+    <form action="/admin/add-credits/${provider.id}?key=${req.query.key}" method="POST" style="display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap;">
+      <div>
+        <label style="font-size: 12px;">Credits to Add</label>
+        <input name="credits" type="number" min="1" value="5" style="width: 80px;" required>
+      </div>
+      <div style="flex: 1; min-width: 200px;">
+        <label style="font-size: 12px;">Reason</label>
+        <input name="reason" placeholder="e.g., Goodwill credit, refund, promo" style="width: 100%;">
+      </div>
+      <button type="submit" class="btn" style="background: #16a34a;">+ Add Credits</button>
+    </form>
+  </div>
+  
+  <div class="card">
     <h3>📧 Provider Communication</h3>
     <div style="display: flex; gap: 10px; flex-wrap: wrap;">
       <form action="/admin/send-welcome/${provider.id}?key=${req.query.key}" method="POST" style="display: inline;">
@@ -2074,6 +2111,11 @@ app.post('/admin/update-provider/:id', (req, res) => {
   
   const { company_name, email, phone, street_address, city, state, business_zip, website, service_zips, credit_balance, status, priority, verified, notes } = req.body;
   
+  // Get current provider to check for credit changes
+  const currentProvider = db.prepare('SELECT credit_balance, email FROM providers WHERE id = ?').get(req.params.id);
+  const oldBalance = currentProvider?.credit_balance || 0;
+  const newBalance = parseInt(credit_balance) || 0;
+  
   // Build composite address for legacy compatibility
   const address = [street_address, city, state, business_zip].filter(Boolean).join(', ');
   
@@ -2087,13 +2129,56 @@ app.post('/admin/update-provider/:id', (req, res) => {
   `).run(
     company_name, email, phone, 
     street_address || null, city || null, (state || '').toUpperCase() || null, business_zip || null, website || null,
-    address || null, service_zips, parseInt(credit_balance) || 0, 
+    address || null, service_zips, newBalance, 
     status, parseInt(priority) || 0, verified ? 1 : 0, notes, 
     req.params.id
   );
   
+  // Log credit change if balance was manually adjusted
+  if (newBalance !== oldBalance) {
+    const diff = newBalance - oldBalance;
+    logCreditTransaction(
+      parseInt(req.params.id), 
+      diff > 0 ? 'admin_add' : 'admin_adjust', 
+      diff, 
+      null, 
+      `Manual balance edit: ${oldBalance} → ${newBalance}`
+    );
+    console.log(`Provider ${req.params.id} credit balance changed: ${oldBalance} → ${newBalance}`);
+  }
+  
   console.log(`Provider ${req.params.id} updated`);
   res.redirect(`/admin?key=${req.query.key}`);
+});
+
+// Add credits to provider (with proper audit logging)
+app.post('/admin/add-credits/:id', (req, res) => {
+  if (req.query.key !== ADMIN_PASSWORD) return res.status(401).send('Unauthorized');
+  
+  const providerId = parseInt(req.params.id);
+  const credits = parseInt(req.body.credits) || 0;
+  const reason = req.body.reason || 'Admin credit add';
+  
+  if (credits <= 0) {
+    return res.redirect(`/admin/edit-provider/${providerId}?key=${req.query.key}&msg=invalid_credits`);
+  }
+  
+  const provider = db.prepare('SELECT * FROM providers WHERE id = ?').get(providerId);
+  if (!provider) return res.status(404).send('Provider not found');
+  
+  // Add credits
+  db.prepare('UPDATE providers SET credit_balance = credit_balance + ? WHERE id = ?').run(credits, providerId);
+  
+  // Log transaction
+  logCreditTransaction(providerId, 'admin_add', credits, 'admin-' + Date.now(), reason);
+  
+  // Log to purchase log for visibility
+  db.prepare('INSERT INTO purchase_log (lead_id, buyer_email, amount, payment_id, status) VALUES (?, ?, ?, ?, ?)').run(
+    'MANUAL', provider.email, 0, 'admin-add-' + Date.now(), `Admin: +${credits} credits. ${reason}`
+  );
+  
+  console.log(`Added ${credits} credits to ${provider.company_name}: ${reason}`);
+  res.redirect(`/admin/edit-provider/${providerId}?key=${req.query.key}&msg=credits_added`);
 });
 
 // Resend lead to matching providers
