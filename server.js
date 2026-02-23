@@ -1685,6 +1685,7 @@ app.get('/admin', (req, res) => {
     <a href="/admin/outreach?key=${auth}">Outreach</a>
     <a href="/admin/logs?key=${auth}">System Logs</a>
     <a href="/admin/funnel?key=${auth}">📊 Funnel</a>
+    <a href="/admin/activity?key=${auth}">📈 Activity</a>
     <a href="/api/admin/credit-history?key=${auth}" target="_blank">💳 Credit History</a>
     <a href="/api/admin/subscriptions?key=${auth}" target="_blank">🔄 Subscriptions</a>
     <a href="/api/admin/stats?key=${auth}" target="_blank">📈 API Stats</a>
@@ -2976,6 +2977,221 @@ app.get('/admin/funnel', async (req, res) => {
       </tr>
     `).join('') || '<tr><td colspan="4" style="color: #94a3b8;">No webhook events logged yet</td></tr>'}
   </table>
+</body>
+</html>`;
+  
+  res.send(html);
+});
+
+// Provider Activity Dashboard (visual UI for the API)
+app.get('/admin/activity', async (req, res) => {
+  if (req.query.key !== ADMIN_PASSWORD) return res.status(401).send('Unauthorized');
+  
+  const days = parseInt(req.query.days) || 30;
+  
+  // Top providers by leads received
+  const topByLeads = db.prepare(`
+    SELECT 
+      p.id, p.company_name, p.email, p.credit_balance, p.total_leads,
+      COUNT(l.id) as recent_leads
+    FROM providers p
+    LEFT JOIN leads l ON (l.assigned_provider_id = p.id OR LOWER(l.assigned_provider) = LOWER(p.company_name))
+      AND l.created_at > datetime('now', '-' || ? || ' days')
+    WHERE p.status = 'Active'
+    GROUP BY p.id
+    ORDER BY recent_leads DESC
+    LIMIT 10
+  `).all(days);
+  
+  // Top purchasers (by total spend)
+  const topPurchasers = db.prepare(`
+    SELECT 
+      p.id, p.company_name, p.email, p.credit_balance,
+      COALESCE(SUM(pl.amount), 0) as total_spent,
+      COUNT(pl.id) as purchase_count
+    FROM providers p
+    LEFT JOIN purchase_log pl ON LOWER(pl.buyer_email) = LOWER(p.email)
+      AND pl.timestamp > datetime('now', '-' || ? || ' days')
+      AND (pl.status LIKE '%Success%' OR pl.status = 'Credits Added')
+    WHERE p.status = 'Active'
+    GROUP BY p.id
+    HAVING total_spent > 0
+    ORDER BY total_spent DESC
+    LIMIT 10
+  `).all(days);
+  
+  // High balance but inactive (churn risk)
+  const churnRisk = db.prepare(`
+    SELECT 
+      p.id, p.company_name, p.email, p.credit_balance, p.last_purchase_at,
+      (SELECT COUNT(*) FROM leads l WHERE l.assigned_provider_id = p.id AND l.created_at > datetime('now', '-30 days')) as leads_30d
+    FROM providers p
+    WHERE p.status = 'Active' 
+    AND p.credit_balance >= 5
+    AND (
+      SELECT COUNT(*) FROM leads l WHERE l.assigned_provider_id = p.id AND l.created_at > datetime('now', '-14 days')
+    ) = 0
+    ORDER BY p.credit_balance DESC
+    LIMIT 10
+  `).all();
+  
+  // New providers (last 7 days)
+  const newProviders = db.prepare(`
+    SELECT id, company_name, email, credit_balance, created_at, service_zips
+    FROM providers
+    WHERE created_at > datetime('now', '-7 days')
+    ORDER BY created_at DESC
+    LIMIT 10
+  `).all();
+  
+  // Summary stats
+  const stats = {
+    totalActive: db.prepare("SELECT COUNT(*) as cnt FROM providers WHERE status = 'Active'").get().cnt,
+    withCredits: db.prepare("SELECT COUNT(*) as cnt FROM providers WHERE status = 'Active' AND credit_balance > 0").get().cnt,
+    avgCredits: db.prepare("SELECT AVG(credit_balance) as avg FROM providers WHERE status = 'Active'").get().avg || 0,
+    totalCredits: db.prepare("SELECT SUM(credit_balance) as sum FROM providers WHERE status = 'Active'").get().sum || 0
+  };
+  
+  const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Provider Activity - DumpsterMap Admin</title>
+  <style>
+    body { font-family: system-ui; padding: 20px; max-width: 1400px; margin: 0 auto; background: #f8fafc; }
+    .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 30px; }
+    .stat { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); text-align: center; }
+    .stat-value { font-size: 28px; font-weight: bold; color: #1e40af; }
+    .stat-label { color: #64748b; font-size: 13px; }
+    .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 20px; }
+    .card h3 { margin-top: 0; color: #1e293b; }
+    table { border-collapse: collapse; width: 100%; font-size: 13px; }
+    th, td { border: 1px solid #e2e8f0; padding: 10px; text-align: left; }
+    th { background: #f1f5f9; font-weight: 600; }
+    tr:hover { background: #f8fafc; }
+    .back { color: #2563eb; text-decoration: none; margin-bottom: 20px; display: inline-block; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    .btn { padding: 6px 12px; background: #2563eb; color: white; border: none; border-radius: 4px; cursor: pointer; text-decoration: none; font-size: 12px; }
+    .credit-badge { background: #dcfce7; color: #16a34a; padding: 2px 8px; border-radius: 999px; font-weight: bold; font-size: 12px; }
+    .warning { background: #fef3c7; color: #b45309; padding: 2px 8px; border-radius: 999px; font-size: 11px; }
+    .period-select { margin-bottom: 20px; }
+    .period-select a { padding: 8px 16px; margin-right: 8px; border-radius: 4px; text-decoration: none; background: white; color: #64748b; }
+    .period-select a.active { background: #2563eb; color: white; }
+  </style>
+</head>
+<body>
+  <a href="/admin?key=${req.query.key}" class="back">← Back to Admin</a>
+  <h1>📈 Provider Activity Dashboard</h1>
+  
+  <div class="period-select">
+    <a href="?key=${req.query.key}&days=7" class="${days === 7 ? 'active' : ''}">7 Days</a>
+    <a href="?key=${req.query.key}&days=30" class="${days === 30 ? 'active' : ''}">30 Days</a>
+    <a href="?key=${req.query.key}&days=90" class="${days === 90 ? 'active' : ''}">90 Days</a>
+  </div>
+  
+  <div class="stats">
+    <div class="stat">
+      <div class="stat-value">${stats.totalActive}</div>
+      <div class="stat-label">Active Providers</div>
+    </div>
+    <div class="stat">
+      <div class="stat-value">${stats.withCredits}</div>
+      <div class="stat-label">With Credits</div>
+    </div>
+    <div class="stat">
+      <div class="stat-value">${stats.avgCredits.toFixed(1)}</div>
+      <div class="stat-label">Avg Credits</div>
+    </div>
+    <div class="stat">
+      <div class="stat-value">${stats.totalCredits}</div>
+      <div class="stat-label">Total Credits Outstanding</div>
+    </div>
+  </div>
+  
+  <div class="grid">
+    <div class="card">
+      <h3>🏆 Top Providers by Leads (${days}d)</h3>
+      ${topByLeads.filter(p => p.recent_leads > 0).length > 0 ? `
+      <table>
+        <tr><th>Provider</th><th>Recent Leads</th><th>Total</th><th>Credits</th><th></th></tr>
+        ${topByLeads.filter(p => p.recent_leads > 0).map(p => `
+          <tr>
+            <td><strong>${p.company_name}</strong><br><span style="font-size: 11px; color: #64748b;">${p.email}</span></td>
+            <td style="font-weight: bold; color: #16a34a;">${p.recent_leads}</td>
+            <td>${p.total_leads}</td>
+            <td><span class="credit-badge">${p.credit_balance}</span></td>
+            <td><a href="/admin/edit-provider/${p.id}?key=${req.query.key}" class="btn">View</a></td>
+          </tr>
+        `).join('')}
+      </table>` : '<p style="color: #94a3b8;">No leads sent in this period</p>'}
+    </div>
+    
+    <div class="card">
+      <h3>💰 Top Purchasers (${days}d)</h3>
+      ${topPurchasers.length > 0 ? `
+      <table>
+        <tr><th>Provider</th><th>Spent</th><th>Orders</th><th>Credits</th><th></th></tr>
+        ${topPurchasers.map(p => `
+          <tr>
+            <td><strong>${p.company_name}</strong><br><span style="font-size: 11px; color: #64748b;">${p.email}</span></td>
+            <td style="font-weight: bold; color: #16a34a;">$${p.total_spent}</td>
+            <td>${p.purchase_count}</td>
+            <td><span class="credit-badge">${p.credit_balance}</span></td>
+            <td><a href="/admin/edit-provider/${p.id}?key=${req.query.key}" class="btn">View</a></td>
+          </tr>
+        `).join('')}
+      </table>` : '<p style="color: #94a3b8;">No purchases in this period</p>'}
+    </div>
+  </div>
+  
+  <div class="grid">
+    <div class="card" style="border-left: 4px solid #f59e0b;">
+      <h3>⚠️ Churn Risk: High Balance, No Recent Leads</h3>
+      <p style="font-size: 13px; color: #64748b; margin-bottom: 15px;">Providers with 5+ credits who haven't received leads in 14 days. May need ZIP updates or outreach.</p>
+      ${churnRisk.length > 0 ? `
+      <table>
+        <tr><th>Provider</th><th>Credits</th><th>Leads (30d)</th><th>Last Purchase</th><th></th></tr>
+        ${churnRisk.map(p => `
+          <tr>
+            <td><strong>${p.company_name}</strong></td>
+            <td><span class="credit-badge">${p.credit_balance}</span></td>
+            <td>${p.leads_30d}</td>
+            <td style="font-size: 11px;">${p.last_purchase_at?.split('T')[0] || 'Never'}</td>
+            <td><a href="/admin/edit-provider/${p.id}?key=${req.query.key}" class="btn">View</a></td>
+          </tr>
+        `).join('')}
+      </table>` : '<p style="color: #16a34a;">✅ No churn risk providers</p>'}
+    </div>
+    
+    <div class="card" style="border-left: 4px solid #22c55e;">
+      <h3>🆕 New Providers (Last 7 Days)</h3>
+      ${newProviders.length > 0 ? `
+      <table>
+        <tr><th>Provider</th><th>Credits</th><th>ZIPs Set?</th><th>Joined</th><th></th></tr>
+        ${newProviders.map(p => {
+          const hasZips = p.service_zips && p.service_zips.trim().length > 0;
+          return `
+          <tr>
+            <td><strong>${p.company_name}</strong><br><span style="font-size: 11px; color: #64748b;">${p.email}</span></td>
+            <td><span class="credit-badge">${p.credit_balance}</span></td>
+            <td>${hasZips ? '✅' : '<span class="warning">⚠️ No ZIPs</span>'}</td>
+            <td style="font-size: 11px;">${p.created_at?.split('T')[0] || ''}</td>
+            <td><a href="/admin/edit-provider/${p.id}?key=${req.query.key}" class="btn">View</a></td>
+          </tr>`;
+        }).join('')}
+      </table>` : '<p style="color: #94a3b8;">No new providers this week</p>'}
+    </div>
+  </div>
+  
+  <div class="card" style="margin-top: 20px;">
+    <h3>🔗 Quick Links</h3>
+    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+      <a href="/api/admin/provider-activity?key=${req.query.key}&days=${days}" target="_blank" class="btn">📊 JSON API</a>
+      <a href="/api/admin/daily-summary?key=${req.query.key}" target="_blank" class="btn">📅 Daily Summary</a>
+      <a href="/api/admin/weekly-summary?key=${req.query.key}" target="_blank" class="btn">📈 Weekly Summary</a>
+      <a href="/admin/export/providers?key=${req.query.key}" class="btn">📥 Export Providers</a>
+    </div>
+  </div>
 </body>
 </html>`;
   
