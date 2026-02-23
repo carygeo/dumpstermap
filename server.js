@@ -1689,6 +1689,13 @@ app.get('/admin', (req, res) => {
     <a href="/api/admin/credit-history?key=${auth}" target="_blank">💳 Credit History</a>
     <a href="/api/admin/subscriptions?key=${auth}" target="_blank">🔄 Subscriptions</a>
     <a href="/api/admin/stats?key=${auth}" target="_blank">📈 API Stats</a>
+    <span style="margin-left: auto;">
+      <form action="/admin/search?key=${auth}" method="GET" style="display: inline-flex; gap: 5px;">
+        <input type="hidden" name="key" value="${auth}">
+        <input name="q" placeholder="🔍 Search providers..." style="padding: 6px 10px; border-radius: 4px; border: 1px solid #d1d5db; width: 180px;">
+        <button type="submit" class="btn btn-sm">Search</button>
+      </form>
+    </span>
   </div>
   
   <!-- Quick Actions -->
@@ -2846,6 +2853,110 @@ app.post('/admin/outreach/update/:id', (req, res) => {
   }
   
   res.redirect(`/admin/outreach?key=${req.query.key}`);
+});
+
+// Admin search results page
+app.get('/admin/search', (req, res) => {
+  if (req.query.key !== ADMIN_PASSWORD) return res.status(401).send('Unauthorized');
+  
+  const query = (req.query.q || '').trim().toLowerCase();
+  if (!query) return res.redirect(`/admin?key=${req.query.key}`);
+  
+  // Search providers
+  const providers = db.prepare(`
+    SELECT * FROM providers 
+    WHERE LOWER(company_name) LIKE ? 
+       OR LOWER(email) LIKE ? 
+       OR phone LIKE ?
+       OR service_zips LIKE ?
+       OR LOWER(city) LIKE ?
+       OR LOWER(state) LIKE ?
+    ORDER BY credit_balance DESC, id DESC
+    LIMIT 50
+  `).all(`%${query}%`, `%${query}%`, `%${query}%`, `%${query}%`, `%${query}%`, `%${query}%`);
+  
+  // Search leads
+  const leads = db.prepare(`
+    SELECT * FROM leads 
+    WHERE LOWER(name) LIKE ? 
+       OR LOWER(email) LIKE ? 
+       OR phone LIKE ?
+       OR zip LIKE ?
+       OR lead_id LIKE ?
+    ORDER BY id DESC
+    LIMIT 50
+  `).all(`%${query}%`, `%${query}%`, `%${query}%`, `%${query}%`, `%${query.toUpperCase()}%`);
+  
+  const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Search Results - DumpsterMap Admin</title>
+  <style>
+    body { font-family: system-ui; padding: 20px; max-width: 1200px; margin: 0 auto; background: #f8fafc; }
+    .back { color: #2563eb; text-decoration: none; margin-bottom: 20px; display: inline-block; }
+    .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 20px; }
+    table { border-collapse: collapse; width: 100%; font-size: 13px; }
+    th, td { border: 1px solid #e2e8f0; padding: 10px; text-align: left; }
+    th { background: #f1f5f9; }
+    .btn { padding: 6px 12px; background: #2563eb; color: white; border: none; border-radius: 4px; cursor: pointer; text-decoration: none; font-size: 12px; }
+    .btn:hover { background: #1d4ed8; }
+    .credit-badge { background: #dcfce7; color: #16a34a; padding: 2px 8px; border-radius: 999px; font-weight: bold; font-size: 12px; }
+    h2 { color: #1e293b; margin-top: 30px; }
+    .highlight { background: #fef9c3; padding: 1px 3px; }
+  </style>
+</head>
+<body>
+  <a href="/admin?key=${req.query.key}" class="back">← Back to Admin</a>
+  <h1>🔍 Search Results for "${query}"</h1>
+  
+  <div class="card">
+    <h2 style="margin-top: 0;">Providers (${providers.length})</h2>
+    ${providers.length > 0 ? `
+    <table>
+      <tr><th>ID</th><th>Company</th><th>Email</th><th>Phone</th><th>ZIPs</th><th>Credits</th><th>Status</th><th>Actions</th></tr>
+      ${providers.map(p => `
+        <tr>
+          <td>${p.id}</td>
+          <td><strong>${p.company_name || ''}</strong></td>
+          <td>${p.email}</td>
+          <td>${p.phone || ''}</td>
+          <td style="max-width: 150px; overflow: hidden; text-overflow: ellipsis;">${p.service_zips || '<em>None</em>'}</td>
+          <td><span class="credit-badge">${p.credit_balance || 0}</span></td>
+          <td>${p.status}</td>
+          <td><a href="/admin/edit-provider/${p.id}?key=${req.query.key}" class="btn">Edit</a></td>
+        </tr>
+      `).join('')}
+    </table>
+    ` : '<p style="color: #64748b;">No providers found</p>'}
+  </div>
+  
+  <div class="card">
+    <h2 style="margin-top: 0;">Leads (${leads.length})</h2>
+    ${leads.length > 0 ? `
+    <table>
+      <tr><th>ID</th><th>Date</th><th>Name</th><th>Phone</th><th>Email</th><th>ZIP</th><th>Status</th></tr>
+      ${leads.map(l => `
+        <tr>
+          <td>${l.lead_id}</td>
+          <td>${l.created_at?.split('T')[0] || ''}</td>
+          <td>${l.name || ''}</td>
+          <td>${l.phone || ''}</td>
+          <td>${l.email || ''}</td>
+          <td>${l.zip || ''}</td>
+          <td>${l.status}</td>
+        </tr>
+      `).join('')}
+    </table>
+    ` : '<p style="color: #64748b;">No leads found</p>'}
+  </div>
+  
+  <p style="color: #64748b; font-size: 13px;">
+    Search includes: company names, emails, phone numbers, ZIPs, lead IDs, cities, and states.
+  </p>
+</body>
+</html>`;
+  res.send(html);
 });
 
 // Registration funnel page
