@@ -118,25 +118,25 @@ npm run test:coverage
 
 ### Test Results
 
-All tests covering lead flow, payments, credit management, and provider matching:
+All tests covering lead flow, payments, credit management, provider matching, and subscriptions:
 
 ```
-▶ Lead ID Generation (2 tests)
-▶ Provider ID List Format (10 tests)
-▶ ZIP Code Matching (3 tests)
-▶ Credit Balance Logic (2 tests)
-▶ Lead Data Validation (5 tests)
-▶ Admin Display Helpers (4 tests)
-▶ Email Template Functions (3 tests)
-▶ Balance Verification (3 tests)
+▶ Credit Pack Detection (8 tests)
+▶ Provider Matching (7 tests)
+▶ Lead Routing Logic (7 tests)
+▶ Balance Verification (4 tests)
 ▶ Payment Idempotency (5 tests)
 ▶ Credit Management (6 tests)
 ▶ Email Validation (5 tests)
+▶ Lead ID Generation (2 tests)
+▶ ZIP Code Validation (2 tests)
 ▶ Premium Perks Detection (3 tests)
 ▶ Full Purchase Flow (2 tests)
+▶ Subscription Renewals (4 tests)
+▶ Premium Expiration (2 tests)
 
-Tests:       51 passed, 51 total
-Duration:    ~200ms
+Tests:       57 passed, 57 total
+Duration:    ~175ms
 ```
 
 ## Local Development
