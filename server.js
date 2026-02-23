@@ -5168,6 +5168,94 @@ app.post('/api/admin/maintenance', async (req, res) => {
   res.json(results);
 });
 
+// Outreach analytics endpoint
+app.get('/api/admin/outreach-stats', (req, res) => {
+  const auth = req.query.key || req.headers['x-admin-key'];
+  if (auth !== ADMIN_PASSWORD) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+  
+  try {
+    // Overall stats
+    const total = db.prepare('SELECT COUNT(*) as cnt FROM outreach').get().cnt;
+    const pending = db.prepare("SELECT COUNT(*) as cnt FROM outreach WHERE email_status = 'Pending'").get().cnt;
+    const sent = db.prepare("SELECT COUNT(*) as cnt FROM outreach WHERE email_status = 'Sent'").get().cnt;
+    const failed = db.prepare("SELECT COUNT(*) as cnt FROM outreach WHERE email_status = 'Failed'").get().cnt;
+    const converted = db.prepare("SELECT COUNT(*) as cnt FROM outreach WHERE converted = 1").get().cnt;
+    
+    // Conversion rate
+    const conversionRate = sent > 0 ? ((converted / sent) * 100).toFixed(2) : '0.00';
+    
+    // By campaign
+    const byCampaign = db.prepare(`
+      SELECT 
+        campaign,
+        COUNT(*) as total,
+        SUM(CASE WHEN email_status = 'Sent' THEN 1 ELSE 0 END) as sent,
+        SUM(CASE WHEN converted = 1 THEN 1 ELSE 0 END) as converted
+      FROM outreach
+      WHERE campaign IS NOT NULL AND campaign != ''
+      GROUP BY campaign
+      ORDER BY total DESC
+    `).all();
+    
+    // Recent activity (last 7 days)
+    const dailyActivity = db.prepare(`
+      SELECT 
+        date(email_sent_at) as date,
+        COUNT(*) as sent,
+        SUM(CASE WHEN converted = 1 THEN 1 ELSE 0 END) as converted
+      FROM outreach
+      WHERE email_sent_at > datetime('now', '-7 days')
+      GROUP BY date(email_sent_at)
+      ORDER BY date DESC
+    `).all();
+    
+    // Top performing sources
+    const bySource = db.prepare(`
+      SELECT 
+        source,
+        COUNT(*) as total,
+        SUM(CASE WHEN converted = 1 THEN 1 ELSE 0 END) as converted
+      FROM outreach
+      WHERE source IS NOT NULL AND source != ''
+      GROUP BY source
+      ORDER BY converted DESC
+      LIMIT 10
+    `).all();
+    
+    // Recent conversions
+    const recentConversions = db.prepare(`
+      SELECT company_name, provider_email, campaign, source, created_at
+      FROM outreach
+      WHERE converted = 1
+      ORDER BY id DESC
+      LIMIT 10
+    `).all();
+    
+    res.json({
+      summary: {
+        total,
+        pending,
+        sent,
+        failed,
+        converted,
+        conversionRate: conversionRate + '%'
+      },
+      byCampaign: byCampaign.map(c => ({
+        ...c,
+        conversionRate: c.sent > 0 ? ((c.converted / c.sent) * 100).toFixed(2) + '%' : 'N/A'
+      })),
+      dailyActivity,
+      bySource,
+      recentConversions,
+      timestamp: new Date().toISOString()
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // Serve uploaded photos
 app.use('/uploads', express.static(UPLOADS_DIR, { maxAge: '7d' }));
 
