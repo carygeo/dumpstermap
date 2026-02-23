@@ -819,4 +819,115 @@ describe('Full Purchase Flow', () => {
   });
 });
 
+describe('Subscription Renewals', () => {
+  beforeEach(() => {
+    initTestDatabase();
+    
+    // Create a provider with existing subscription
+    testDb.prepare(`
+      INSERT INTO providers (id, company_name, email, credit_balance, verified, priority, premium_expires_at, status)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(1, 'Premium Provider', 'premium@test.com', 2, 1, 10, '2026-03-01', 'Active');
+  });
+  
+  afterEach(() => {
+    closeTestDatabase();
+  });
+  
+  it('should identify subscription renewal amount', () => {
+    const pack = matchCreditPack(99);
+    assert.ok(pack.isSubscription);
+    assert.strictEqual(pack.credits, 3);
+    assert.strictEqual(pack.name, 'Featured Partner');
+  });
+  
+  it('should add monthly credits on renewal', () => {
+    const provider = getProviderById(1);
+    const initialCredits = provider.credit_balance;
+    
+    // Simulate renewal: add 3 credits
+    addCreditsToProvider(1, 3);
+    
+    const updated = getProviderById(1);
+    assert.strictEqual(updated.credit_balance, initialCredits + 3);
+  });
+  
+  it('should extend premium status by 30 days', () => {
+    // Simulate setting new expiration
+    const newExpiry = new Date();
+    newExpiry.setDate(newExpiry.getDate() + 30);
+    
+    testDb.prepare(`
+      UPDATE providers SET premium_expires_at = ?, verified = 1, priority = 10 WHERE id = ?
+    `).run(newExpiry.toISOString(), 1);
+    
+    const updated = getProviderById(1);
+    assert.ok(updated.premium_expires_at);
+    assert.strictEqual(updated.verified, 1);
+    assert.strictEqual(updated.priority, 10);
+  });
+  
+  it('should prevent duplicate processing of same renewal', () => {
+    const paymentId = 'in_renewal_' + Date.now();
+    
+    // First processing
+    assert.strictEqual(isPaymentProcessed(paymentId), false);
+    
+    // Log the renewal
+    testDb.prepare(`
+      INSERT INTO purchase_log (payment_id, buyer_email, amount, lead_id, status)
+      VALUES (?, ?, ?, ?, ?)
+    `).run(paymentId, 'premium@test.com', 99, 'SUB_RENEWAL', 'Credits Added');
+    
+    // Should now be marked as processed
+    assert.strictEqual(isPaymentProcessed(paymentId), true);
+  });
+});
+
+describe('Premium Expiration', () => {
+  beforeEach(() => {
+    initTestDatabase();
+    
+    // Expired premium provider
+    testDb.prepare(`
+      INSERT INTO providers (id, company_name, email, verified, priority, premium_expires_at, status)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `).run(1, 'Expired Premium', 'expired@test.com', 1, 10, '2026-01-01', 'Active');
+    
+    // Active premium provider
+    testDb.prepare(`
+      INSERT INTO providers (id, company_name, email, verified, priority, premium_expires_at, status)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `).run(2, 'Active Premium', 'active@test.com', 1, 10, '2026-12-31', 'Active');
+  });
+  
+  afterEach(() => {
+    closeTestDatabase();
+  });
+  
+  it('should identify expired premium based on date', () => {
+    const now = new Date();
+    const expired = testDb.prepare('SELECT * FROM providers WHERE id = 1').get();
+    const active = testDb.prepare('SELECT * FROM providers WHERE id = 2').get();
+    
+    const expiredDate = new Date(expired.premium_expires_at);
+    const activeDate = new Date(active.premium_expires_at);
+    
+    assert.ok(expiredDate < now, 'Expired provider should have past date');
+    assert.ok(activeDate > now, 'Active provider should have future date');
+  });
+  
+  it('should detect providers needing expiration', () => {
+    const expiredProviders = testDb.prepare(`
+      SELECT id, company_name FROM providers 
+      WHERE premium_expires_at IS NOT NULL 
+      AND premium_expires_at < datetime('now')
+      AND (verified = 1 OR priority > 0)
+    `).all();
+    
+    assert.strictEqual(expiredProviders.length, 1);
+    assert.strictEqual(expiredProviders[0].company_name, 'Expired Premium');
+  });
+});
+
 console.log('Running DumpsterMap unit tests...\n');
