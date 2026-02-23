@@ -23,8 +23,8 @@ const fs = require('fs');
 // ============================================
 const CREDIT_PACKS = {
   200: { credits: 5, name: 'Starter Pack' },
-  700: { credits: 20, name: 'Pro Pack' },
-  1500: { credits: 60, name: 'Premium Pack' }
+  700: { credits: 20, name: 'Pro Pack', perks: true },      // Includes verified badge
+  1500: { credits: 60, name: 'Premium Pack', perks: true }  // Includes verified + priority
 };
 
 const SUBSCRIPTIONS = {
@@ -738,12 +738,16 @@ describe('Premium Perks Detection', () => {
     assert.ok(pack.perks.includes('priority'));
   });
   
-  it('should NOT give perks for Starter or Pro packs', () => {
+  it('should NOT give perks for Starter pack', () => {
     const starter = matchCreditPack(200);
-    const pro = matchCreditPack(700);
     
     assert.strictEqual(starter.perks, undefined);
-    assert.strictEqual(pro.perks, undefined);
+  });
+  
+  it('should give perks for Pro pack', () => {
+    const pro = matchCreditPack(700);
+    
+    assert.strictEqual(pro.perks, true);
   });
 });
 

@@ -1137,6 +1137,9 @@ app.post('/api/stripe-webhook', async (req, res) => {
     // Check if this is a credit pack purchase (by product ID or amount)
     const matchedPack = matchCreditPack(amount, session);
     
+    // Log detection result for debugging
+    console.log('Pack detection result:', matchedPack ? `${matchedPack.name} (${matchedPack.credits} credits)` : 'none');
+    
     if (matchedPack) {
       const pack = matchedPack;
       const isSubscription = !!matchedPack.isSubscription;
@@ -1168,9 +1171,9 @@ app.post('/api/stripe-webhook', async (req, res) => {
       db.prepare("UPDATE providers SET credit_balance = credit_balance + ?, last_purchase_at = datetime('now') WHERE id = ?").run(pack.credits, provider.id);
       logCreditTransaction(provider.id, isSubscription ? 'subscription' : 'purchase', pack.credits, paymentId, `${pack.name} - $${amount}`);
       
-      // Apply perks for Premium/Featured Partner purchases (subscriptions or one-time)
-      // Premium ($1500) and Featured Partner ($99) get 30-day verified + priority
-      const hasPremiumPerks = pack.perks || pack.name === 'Premium Pack' || pack.credits >= 60;
+      // Apply perks for Pro/Premium/Featured Partner purchases
+      // Pro Pack ($700), Premium ($1500) and Featured Partner ($99) get 30-day verified + priority
+      const hasPremiumPerks = pack.perks || pack.name === 'Premium Pack' || pack.name === 'Pro Pack' || pack.credits >= 20;
       
       if (hasPremiumPerks) {
         // Set 30-day expiration for premium features
