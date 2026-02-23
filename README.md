@@ -261,6 +261,11 @@ The webhook automatically handles `invoice.paid` events for recurring subscripti
 | `/api/admin/batch-email` | POST | Send batch email to providers (dryRun supported) - requires key |
 | `/api/admin/subscriptions` | GET | View subscription stats (MRR, active, expiring) - requires key |
 | `/api/admin/health-check` | GET | Cron-friendly health check with alerts - requires key |
+| `/api/admin/send-zip-reminders` | POST | Send reminder emails to providers with credits but no ZIPs - requires key |
+| `/api/admin/search-providers` | GET | Quick provider search (?q=term) - requires key |
+| `/api/admin/provider/:id/leads` | GET | Get all leads for a specific provider - requires key |
+| `/api/admin/weekly-summary` | GET | Weekly stats with trends (?weeks=4) - requires key |
+| `/admin/export/credit-history` | GET | Export credit transaction history as CSV - requires key |
 | `/api/health` | GET | Health check |
 | `/admin` | GET | Admin dashboard |
 | `/admin/outreach` | GET | Provider outreach tracking |

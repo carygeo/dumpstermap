@@ -1693,6 +1693,8 @@ app.get('/admin', (req, res) => {
       <form action="/api/admin/expire-premium?key=${auth}" method="POST" style="display: inline;">
         <button class="btn btn-sm" style="background: #f59e0b;">⏱️ Expire Premium</button>
       </form>
+      <a href="/api/admin/weekly-summary?key=${auth}" class="btn btn-sm" target="_blank" title="Weekly trends and comparison">📈 Weekly Summary</a>
+      ${providersWithCreditsNoZips > 0 ? `<form action="/api/admin/send-zip-reminders?key=${auth}" method="POST" style="display: inline;" onsubmit="return confirm('Send ZIP setup reminders to ${providersWithCreditsNoZips} provider(s)?')"><button class="btn btn-sm btn-red" title="Email providers with credits but no ZIPs">📧 Send ZIP Reminders</button></form>` : ''}
     </div>
   </div>
   
@@ -1904,6 +1906,7 @@ app.get('/admin', (req, res) => {
   <a href="/admin/export/leads?key=${auth}" class="btn">Export Leads CSV</a>
   <a href="/admin/export/providers?key=${auth}" class="btn">Export Providers CSV</a>
   <a href="/admin/export/purchases?key=${auth}" class="btn">Export Purchases CSV</a>
+  <a href="/admin/export/credit-history?key=${auth}" class="btn">Export Credit History CSV</a>
 </body>
 </html>`;
   
@@ -3980,6 +3983,235 @@ app.post('/api/admin/bulk-add-credits', (req, res) => {
   
   console.log(`Bulk added ${creditAmount} credits to ${updated} providers`);
   res.json({ success: true, updated, credits: creditAmount, reason });
+});
+
+// ============================================
+// PROVIDER ZIP ALERTS & REMINDERS
+// ============================================
+
+// Send ZIP setup reminders to providers with credits but no ZIPs
+app.post('/api/admin/send-zip-reminders', async (req, res) => {
+  const auth = req.query.key || req.headers['x-admin-key'];
+  if (auth !== ADMIN_PASSWORD) return res.status(401).json({ error: 'Unauthorized' });
+  
+  const { dryRun } = req.body;
+  
+  // Find providers who have credits but no service ZIPs
+  const providers = db.prepare(`
+    SELECT id, company_name, email, credit_balance, created_at
+    FROM providers 
+    WHERE status = 'Active' 
+    AND credit_balance > 0 
+    AND (service_zips IS NULL OR service_zips = '')
+  `).all();
+  
+  if (dryRun) {
+    return res.json({
+      dryRun: true,
+      wouldSendTo: providers.length,
+      providers: providers.map(p => ({ id: p.id, name: p.company_name, credits: p.credit_balance }))
+    });
+  }
+  
+  let sent = 0, failed = 0;
+  
+  for (const provider of providers) {
+    const html = `
+<div style="font-family: Arial, sans-serif; max-width: 600px; line-height: 1.6; color: #333;">
+  <p>Hi ${provider.company_name},</p>
+  
+  <div style="background: #fef3c7; border-left: 4px solid #f59e0b; padding: 16px; margin: 20px 0;">
+    <strong>⚠️ Action Needed: Set Up Your Service Area</strong>
+  </div>
+  
+  <p>You have <strong>${provider.credit_balance} credit${provider.credit_balance === 1 ? '' : 's'}</strong> ready to use, but we don't know which zip codes you serve yet!</p>
+  
+  <p>Until you tell us your service area, you won't receive any leads.</p>
+  
+  <h3 style="color: #1e293b; margin-top: 24px;">How to Fix This (2 minutes)</h3>
+  <ol style="line-height: 2;">
+    <li><strong>Reply to this email</strong> with your service zip codes (e.g., "34102, 34103, 34104")</li>
+    <li>We'll set them up and confirm within 24 hours</li>
+    <li>Start receiving leads in your area!</li>
+  </ol>
+  
+  <p style="margin: 24px 0;">
+    <a href="mailto:admin@dumpstermap.io?subject=Service%20ZIPs%20for%20${encodeURIComponent(provider.company_name)}&body=My%20service%20zip%20codes%20are:%20" style="background: #f59e0b; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">Set My Service ZIPs →</a>
+  </p>
+  
+  <p style="font-size: 14px; color: #64748b; margin-top: 30px;">
+    Questions? Just reply to this email.<br>
+    — The DumpsterMap Team
+  </p>
+</div>`;
+    
+    const success = await sendEmail(provider.email, '⚠️ Action needed: Set your service zip codes', html);
+    if (success) {
+      sent++;
+      console.log(`ZIP reminder sent to ${provider.email}`);
+    } else {
+      failed++;
+    }
+    
+    // Rate limit
+    await new Promise(r => setTimeout(r, 300));
+  }
+  
+  await sendAdminNotification('📧 ZIP Reminders Sent', 
+    `Sent: ${sent}\nFailed: ${failed}\nTotal providers needing ZIPs: ${providers.length}`);
+  
+  res.json({ success: true, sent, failed, total: providers.length });
+});
+
+// Export credit transactions as CSV
+app.get('/admin/export/credit-history', (req, res) => {
+  if (req.query.key !== ADMIN_PASSWORD) return res.status(401).send('Unauthorized');
+  
+  try {
+    const transactions = db.prepare(`
+      SELECT 
+        ct.id,
+        ct.timestamp,
+        ct.provider_id,
+        ct.provider_email,
+        p.company_name,
+        ct.type,
+        ct.amount,
+        ct.balance_after,
+        ct.reference,
+        ct.notes
+      FROM credit_transactions ct
+      LEFT JOIN providers p ON ct.provider_id = p.id
+      ORDER BY ct.id DESC
+    `).all();
+    
+    if (transactions.length === 0) return res.send('No transactions');
+    
+    const headers = ['id', 'timestamp', 'provider_id', 'provider_email', 'company_name', 'type', 'amount', 'balance_after', 'reference', 'notes'];
+    const csv = [
+      headers.join(','),
+      ...transactions.map(row => 
+        headers.map(h => `"${(row[h] || '').toString().replace(/"/g, '""')}"`).join(',')
+      )
+    ].join('\n');
+    
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', 'attachment; filename=credit-history.csv');
+    res.send(csv);
+  } catch (e) {
+    res.status(500).send('Error: ' + e.message);
+  }
+});
+
+// Quick provider search (for admin autocomplete/lookup)
+app.get('/api/admin/search-providers', (req, res) => {
+  const auth = req.query.key || req.headers['x-admin-key'];
+  if (auth !== ADMIN_PASSWORD) return res.status(401).json({ error: 'Unauthorized' });
+  
+  const q = (req.query.q || '').toLowerCase().trim();
+  if (!q || q.length < 2) {
+    return res.status(400).json({ error: 'Query must be at least 2 characters' });
+  }
+  
+  const providers = db.prepare(`
+    SELECT id, company_name, email, phone, credit_balance, status, verified
+    FROM providers 
+    WHERE LOWER(company_name) LIKE ? OR LOWER(email) LIKE ? OR phone LIKE ?
+    ORDER BY credit_balance DESC
+    LIMIT 20
+  `).all(`%${q}%`, `%${q}%`, `%${q}%`);
+  
+  res.json({ count: providers.length, providers });
+});
+
+// Get provider leads (for admin deep-dive)
+app.get('/api/admin/provider/:id/leads', (req, res) => {
+  const auth = req.query.key || req.headers['x-admin-key'];
+  if (auth !== ADMIN_PASSWORD) return res.status(401).json({ error: 'Unauthorized' });
+  
+  const providerId = parseInt(req.params.id);
+  const provider = db.prepare('SELECT * FROM providers WHERE id = ?').get(providerId);
+  if (!provider) return res.status(404).json({ error: 'Provider not found' });
+  
+  const leads = db.prepare(`
+    SELECT * FROM leads 
+    WHERE assigned_provider_id = ? 
+    OR LOWER(assigned_provider) = LOWER(?)
+    OR providers_notified LIKE ?
+    ORDER BY id DESC
+    LIMIT 100
+  `).all(providerId, provider.company_name, `%${provider.company_name}%`);
+  
+  // Categorize leads
+  const fullLeads = leads.filter(l => l.status === 'Sent' || l.status === 'Purchased');
+  const teaserLeads = leads.filter(l => l.status === 'Teaser Sent');
+  
+  res.json({
+    provider: { id: provider.id, name: provider.company_name, credits: provider.credit_balance },
+    leadCount: leads.length,
+    fullLeadCount: fullLeads.length,
+    teaserCount: teaserLeads.length,
+    leads: leads.map(l => ({
+      id: l.lead_id,
+      date: l.created_at?.split('T')[0],
+      name: l.name,
+      zip: l.zip,
+      status: l.status,
+      notified: l.providers_notified
+    }))
+  });
+});
+
+// Weekly stats summary (for reports)
+app.get('/api/admin/weekly-summary', (req, res) => {
+  const auth = req.query.key || req.headers['x-admin-key'];
+  if (auth !== ADMIN_PASSWORD) return res.status(401).json({ error: 'Unauthorized' });
+  
+  const weeks = parseInt(req.query.weeks) || 4;
+  const summaries = [];
+  
+  for (let i = 0; i < weeks; i++) {
+    const weekStart = `-${i * 7 + 7} days`;
+    const weekEnd = `-${i * 7} days`;
+    
+    const leads = db.prepare(`
+      SELECT COUNT(*) as cnt FROM leads 
+      WHERE created_at BETWEEN datetime('now', ?) AND datetime('now', ?)
+    `).get(weekStart, weekEnd).cnt;
+    
+    const revenue = db.prepare(`
+      SELECT COALESCE(SUM(amount), 0) as total FROM purchase_log 
+      WHERE timestamp BETWEEN datetime('now', ?) AND datetime('now', ?)
+      AND (status LIKE '%Success%' OR status = 'Credits Added')
+    `).get(weekStart, weekEnd).total;
+    
+    const newProviders = db.prepare(`
+      SELECT COUNT(*) as cnt FROM providers 
+      WHERE created_at BETWEEN datetime('now', ?) AND datetime('now', ?)
+    `).get(weekStart, weekEnd).cnt;
+    
+    summaries.push({
+      weekNumber: i + 1,
+      weeksAgo: i,
+      leads,
+      revenue,
+      newProviders
+    });
+  }
+  
+  // Calculate trends
+  const thisWeek = summaries[0];
+  const lastWeek = summaries[1] || { leads: 0, revenue: 0 };
+  
+  res.json({
+    currentWeek: thisWeek,
+    previousWeek: lastWeek,
+    trends: {
+      leads: lastWeek.leads > 0 ? ((thisWeek.leads - lastWeek.leads) / lastWeek.leads * 100).toFixed(1) + '%' : 'N/A',
+      revenue: lastWeek.revenue > 0 ? ((thisWeek.revenue - lastWeek.revenue) / lastWeek.revenue * 100).toFixed(1) + '%' : 'N/A'
+    },
+    weeklyData: summaries
+  });
 });
 
 // ============================================
