@@ -4570,6 +4570,113 @@ app.post('/api/admin/test-emails', async (req, res) => {
   });
 });
 
+// Provider activity / performance metrics (admin)
+app.get('/api/admin/provider-activity', (req, res) => {
+  const auth = req.query.key || req.headers['x-admin-key'];
+  if (auth !== ADMIN_PASSWORD) return res.status(401).json({ error: 'Unauthorized' });
+  
+  const days = parseInt(req.query.days) || 30;
+  
+  // Top providers by leads received
+  const topByLeads = db.prepare(`
+    SELECT 
+      p.id, p.company_name, p.email, p.credit_balance, p.total_leads,
+      COUNT(l.id) as recent_leads
+    FROM providers p
+    LEFT JOIN leads l ON (l.assigned_provider_id = p.id OR LOWER(l.assigned_provider) = LOWER(p.company_name))
+      AND l.created_at > datetime('now', '-' || ? || ' days')
+    WHERE p.status = 'Active'
+    GROUP BY p.id
+    ORDER BY recent_leads DESC
+    LIMIT 10
+  `).all(days);
+  
+  // Top purchasers (by total spend)
+  const topPurchasers = db.prepare(`
+    SELECT 
+      p.id, p.company_name, p.email, p.credit_balance,
+      COALESCE(SUM(pl.amount), 0) as total_spent,
+      COUNT(pl.id) as purchase_count
+    FROM providers p
+    LEFT JOIN purchase_log pl ON LOWER(pl.buyer_email) = LOWER(p.email)
+      AND pl.timestamp > datetime('now', '-' || ? || ' days')
+      AND (pl.status LIKE '%Success%' OR pl.status = 'Credits Added')
+    WHERE p.status = 'Active'
+    GROUP BY p.id
+    HAVING total_spent > 0
+    ORDER BY total_spent DESC
+    LIMIT 10
+  `).all(days);
+  
+  // Providers with high credit balances (potential churn risk if not using)
+  const highBalanceInactive = db.prepare(`
+    SELECT 
+      p.id, p.company_name, p.email, p.credit_balance, p.last_purchase_at,
+      (SELECT COUNT(*) FROM leads l WHERE l.assigned_provider_id = p.id AND l.created_at > datetime('now', '-30 days')) as leads_30d
+    FROM providers p
+    WHERE p.status = 'Active' 
+    AND p.credit_balance >= 5
+    AND (
+      SELECT COUNT(*) FROM leads l WHERE l.assigned_provider_id = p.id AND l.created_at > datetime('now', '-14 days')
+    ) = 0
+    ORDER BY p.credit_balance DESC
+    LIMIT 10
+  `).all();
+  
+  // New providers (last 7 days)
+  const newProviders = db.prepare(`
+    SELECT id, company_name, email, credit_balance, created_at
+    FROM providers
+    WHERE created_at > datetime('now', '-7 days')
+    ORDER BY created_at DESC
+    LIMIT 10
+  `).all();
+  
+  // Summary stats
+  const totalActive = db.prepare("SELECT COUNT(*) as cnt FROM providers WHERE status = 'Active'").get().cnt;
+  const totalWithCredits = db.prepare("SELECT COUNT(*) as cnt FROM providers WHERE status = 'Active' AND credit_balance > 0").get().cnt;
+  const avgCredits = db.prepare("SELECT AVG(credit_balance) as avg FROM providers WHERE status = 'Active'").get().avg || 0;
+  
+  res.json({
+    timeRange: `Last ${days} days`,
+    summary: {
+      activeProviders: totalActive,
+      providersWithCredits: totalWithCredits,
+      averageCredits: parseFloat(avgCredits.toFixed(1))
+    },
+    topByLeads: topByLeads.map(p => ({
+      id: p.id,
+      name: p.company_name,
+      email: p.email,
+      credits: p.credit_balance,
+      totalLeads: p.total_leads,
+      recentLeads: p.recent_leads
+    })),
+    topPurchasers: topPurchasers.map(p => ({
+      id: p.id,
+      name: p.company_name,
+      email: p.email,
+      credits: p.credit_balance,
+      totalSpent: p.total_spent,
+      purchaseCount: p.purchase_count
+    })),
+    highBalanceInactive: highBalanceInactive.map(p => ({
+      id: p.id,
+      name: p.company_name,
+      credits: p.credit_balance,
+      leads30d: p.leads_30d,
+      lastPurchase: p.last_purchase_at
+    })),
+    newProviders: newProviders.map(p => ({
+      id: p.id,
+      name: p.company_name,
+      credits: p.credit_balance,
+      createdAt: p.created_at
+    })),
+    timestamp: new Date().toISOString()
+  });
+});
+
 // Daily health check endpoint (cron-friendly, returns alerts)
 app.get('/api/admin/health-check', (req, res) => {
   const auth = req.query.key || req.headers['x-admin-key'];

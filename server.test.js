@@ -161,6 +161,8 @@ function initTestDatabase() {
       email TEXT UNIQUE NOT NULL,
       phone TEXT,
       address TEXT,
+      city TEXT,
+      state TEXT,
       service_zips TEXT,
       credit_balance INTEGER DEFAULT 0,
       total_leads INTEGER DEFAULT 0,
@@ -182,6 +184,17 @@ function initTestDatabase() {
       amount REAL,
       payment_id TEXT,
       status TEXT
+    );
+    
+    CREATE TABLE IF NOT EXISTS registration_events (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      timestamp TEXT DEFAULT CURRENT_TIMESTAMP,
+      event_type TEXT NOT NULL,
+      provider_id INTEGER,
+      email TEXT,
+      selected_pack TEXT,
+      source TEXT,
+      metadata TEXT
     );
     
     CREATE INDEX IF NOT EXISTS idx_leads_zip ON leads(zip);
@@ -931,6 +944,197 @@ describe('Premium Expiration', () => {
     
     assert.strictEqual(expiredProviders.length, 1);
     assert.strictEqual(expiredProviders[0].company_name, 'Expired Premium');
+  });
+});
+
+// ============================================
+// PROVIDER REGISTRATION TESTS
+// ============================================
+
+describe('Provider Registration Flow', () => {
+  beforeEach(() => {
+    initTestDatabase();
+  });
+  
+  afterEach(() => {
+    closeTestDatabase();
+  });
+  
+  it('should create new provider from registration', () => {
+    const email = 'newprovider@dumpsterpro.com';
+    const companyName = 'Dumpster Pro LLC';
+    
+    // Register new provider
+    const result = testDb.prepare(`
+      INSERT INTO providers (company_name, email, phone, city, state, status)
+      VALUES (?, ?, ?, ?, ?, 'Active')
+    `).run(companyName, email, '555-123-4567', 'Naples', 'FL');
+    
+    assert.ok(result.lastInsertRowid > 0);
+    
+    // Verify provider was created
+    const provider = testDb.prepare('SELECT * FROM providers WHERE email = ?').get(email);
+    assert.strictEqual(provider.company_name, companyName);
+    assert.strictEqual(provider.status, 'Active');
+    assert.strictEqual(provider.credit_balance, 0); // Starts with 0 credits
+  });
+  
+  it('should recognize existing provider by email', () => {
+    const email = 'existing@test.com';
+    
+    // Create provider first
+    testDb.prepare(`
+      INSERT INTO providers (company_name, email, credit_balance, status)
+      VALUES (?, ?, 5, 'Active')
+    `).run('Existing Company', email);
+    
+    // Check if exists
+    const existing = testDb.prepare('SELECT * FROM providers WHERE LOWER(email) = LOWER(?)').get(email);
+    assert.ok(existing);
+    assert.strictEqual(existing.company_name, 'Existing Company');
+    assert.strictEqual(existing.credit_balance, 5);
+  });
+  
+  it('should handle email case-insensitively', () => {
+    const email = 'Test@Example.COM';
+    
+    testDb.prepare(`
+      INSERT INTO providers (company_name, email, status)
+      VALUES (?, ?, 'Active')
+    `).run('Test Company', email.toLowerCase());
+    
+    // Should find with different case
+    const found = testDb.prepare('SELECT * FROM providers WHERE LOWER(email) = LOWER(?)').get(email);
+    assert.ok(found);
+    assert.strictEqual(found.company_name, 'Test Company');
+  });
+  
+  it('should track registration events', () => {
+    // Create registration event
+    testDb.prepare(`
+      INSERT INTO registration_events (event_type, provider_id, email, selected_pack, source)
+      VALUES (?, ?, ?, ?, ?)
+    `).run('registration', 1, 'new@test.com', 'starter', 'website');
+    
+    const event = testDb.prepare('SELECT * FROM registration_events WHERE email = ?').get('new@test.com');
+    assert.ok(event);
+    assert.strictEqual(event.event_type, 'registration');
+    assert.strictEqual(event.selected_pack, 'starter');
+  });
+  
+  it('should link purchase to pre-registered provider', () => {
+    // Pre-register provider
+    const result = testDb.prepare(`
+      INSERT INTO providers (company_name, email, status)
+      VALUES (?, ?, 'Active')
+    `).run('Pre-registered Co', 'prereg@test.com');
+    
+    const providerId = result.lastInsertRowid;
+    
+    // Simulate purchase callback with PROVIDER-{id} reference
+    const clientRefId = `PROVIDER-${providerId}`;
+    const match = clientRefId.match(/^PROVIDER-(\d+)$/);
+    assert.ok(match);
+    
+    const parsedId = parseInt(match[1], 10);
+    assert.strictEqual(parsedId, providerId);
+    
+    // Add credits to matched provider
+    testDb.prepare('UPDATE providers SET credit_balance = credit_balance + 5 WHERE id = ?').run(providerId);
+    
+    const updated = testDb.prepare('SELECT * FROM providers WHERE id = ?').get(providerId);
+    assert.strictEqual(updated.credit_balance, 5);
+  });
+});
+
+describe('Provider Activity Metrics', () => {
+  beforeEach(() => {
+    initTestDatabase();
+    
+    // Create providers with varying activity
+    testDb.prepare(`
+      INSERT INTO providers (id, company_name, email, credit_balance, total_leads, status, created_at)
+      VALUES 
+        (1, 'Top Performer', 'top@test.com', 20, 50, 'Active', datetime('now', '-30 days')),
+        (2, 'New Provider', 'new@test.com', 5, 0, 'Active', datetime('now', '-2 days')),
+        (3, 'High Balance Inactive', 'inactive@test.com', 15, 5, 'Active', datetime('now', '-60 days'))
+    `).run();
+    
+    // Create some leads assigned to providers
+    testDb.prepare(`
+      INSERT INTO leads (lead_id, name, zip, status, assigned_provider_id, created_at)
+      VALUES 
+        ('LEAD-001', 'Customer 1', '34102', 'Sent', 1, datetime('now', '-5 days')),
+        ('LEAD-002', 'Customer 2', '34103', 'Sent', 1, datetime('now', '-10 days')),
+        ('LEAD-003', 'Customer 3', '34104', 'Sent', 1, datetime('now', '-15 days'))
+    `).run();
+    
+    // Create purchase history
+    testDb.prepare(`
+      INSERT INTO purchase_log (buyer_email, amount, status, timestamp)
+      VALUES 
+        ('top@test.com', 700, 'Credits Added', datetime('now', '-20 days')),
+        ('top@test.com', 200, 'Credits Added', datetime('now', '-5 days'))
+    `).run();
+  });
+  
+  afterEach(() => {
+    closeTestDatabase();
+  });
+  
+  it('should identify top providers by leads', () => {
+    const topProviders = testDb.prepare(`
+      SELECT p.id, p.company_name, COUNT(l.id) as recent_leads
+      FROM providers p
+      LEFT JOIN leads l ON l.assigned_provider_id = p.id
+        AND l.created_at > datetime('now', '-30 days')
+      WHERE p.status = 'Active'
+      GROUP BY p.id
+      ORDER BY recent_leads DESC
+    `).all();
+    
+    assert.strictEqual(topProviders[0].company_name, 'Top Performer');
+    assert.strictEqual(topProviders[0].recent_leads, 3);
+  });
+  
+  it('should calculate provider total spend', () => {
+    const spending = testDb.prepare(`
+      SELECT COALESCE(SUM(amount), 0) as total
+      FROM purchase_log
+      WHERE LOWER(buyer_email) = 'top@test.com'
+      AND (status LIKE '%Success%' OR status = 'Credits Added')
+    `).get();
+    
+    assert.strictEqual(spending.total, 900); // 700 + 200
+  });
+  
+  it('should identify high-balance inactive providers', () => {
+    const inactive = testDb.prepare(`
+      SELECT p.id, p.company_name, p.credit_balance
+      FROM providers p
+      WHERE p.status = 'Active' 
+      AND p.credit_balance >= 5
+      AND NOT EXISTS (
+        SELECT 1 FROM leads l WHERE l.assigned_provider_id = p.id 
+        AND l.created_at > datetime('now', '-14 days')
+      )
+    `).all();
+    
+    // Should find provider 3 (high balance, no recent leads)
+    const found = inactive.find(p => p.company_name === 'High Balance Inactive');
+    assert.ok(found);
+    assert.strictEqual(found.credit_balance, 15);
+  });
+  
+  it('should find new providers', () => {
+    const recent = testDb.prepare(`
+      SELECT id, company_name
+      FROM providers
+      WHERE created_at > datetime('now', '-7 days')
+    `).all();
+    
+    assert.strictEqual(recent.length, 1);
+    assert.strictEqual(recent[0].company_name, 'New Provider');
   });
 });
 

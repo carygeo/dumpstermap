@@ -135,8 +135,8 @@ All tests covering lead flow, payments, credit management, provider matching, an
 ▶ Subscription Renewals (4 tests)
 ▶ Premium Expiration (2 tests)
 
-Tests:       57 passed, 57 total
-Duration:    ~175ms
+Tests:       67 passed, 67 total
+Duration:    ~200ms
 ```
 
 ## Local Development
@@ -265,6 +265,7 @@ The webhook automatically handles `invoice.paid` events for recurring subscripti
 | `/api/admin/search-providers` | GET | Quick provider search (?q=term) - requires key |
 | `/api/admin/provider/:id/leads` | GET | Get all leads for a specific provider - requires key |
 | `/api/admin/weekly-summary` | GET | Weekly stats with trends (?weeks=4) - requires key |
+| `/api/admin/provider-activity` | GET | Provider performance metrics (top performers, inactive, new) - requires key |
 | `/admin/export/credit-history` | GET | Export credit transaction history as CSV - requires key |
 | `/api/health` | GET | Health check |
 | `/admin` | GET | Admin dashboard |
