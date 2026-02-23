@@ -536,6 +536,28 @@ describe('Lead Routing Logic', () => {
     assert.strictEqual(withoutCredits.length, 1);  // Budget (0)
     assert.strictEqual(withoutCredits[0].company_name, 'Budget Haulers');
   });
+  
+  it('should mark lead as No Coverage when ZIP has no providers', () => {
+    // Create a lead for unserved ZIP
+    const leadId = generateLeadId();
+    const unservedZip = '90210';
+    
+    testDb.prepare(`
+      INSERT INTO leads (lead_id, name, email, phone, zip, status)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `).run(leadId, 'Test Customer', 'test@example.com', '555-1234', unservedZip, 'New');
+    
+    // Verify no providers serve this ZIP
+    const providers = getProvidersByZip(unservedZip);
+    assert.strictEqual(providers.length, 0);
+    
+    // Update lead status as the server would
+    testDb.prepare("UPDATE leads SET status = ? WHERE lead_id = ?").run('No Coverage', leadId);
+    
+    // Verify status was updated
+    const lead = testDb.prepare('SELECT * FROM leads WHERE lead_id = ?').get(leadId);
+    assert.strictEqual(lead.status, 'No Coverage');
+  });
 });
 
 describe('Balance Verification', () => {

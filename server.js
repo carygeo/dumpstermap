@@ -664,11 +664,16 @@ app.post('/api/lead', async (req, res) => {
     } else if (teaserCount > 0) {
       db.prepare('UPDATE leads SET status = ?, providers_notified = ? WHERE lead_id = ?')
         .run('Teaser Sent', allNotified, leadId);
+    } else if (providers.length === 0 && !isDirect) {
+      // No providers serve this ZIP - track for coverage expansion
+      db.prepare('UPDATE leads SET status = ? WHERE lead_id = ?')
+        .run('No Coverage', leadId);
     }
     
     const isExclusive = providers.length === 1;
-    await sendAdminNotification(`${isExclusive ? '🎯' : '📢'} ${leadType.toUpperCase()} lead: ${leadId}`,
-      `${leadId} (${leadType})\n${name} | ${data.phone} | ${data.email}\n${data.zip} | ${data.size || 'TBD'}\nFull: ${sentCount} | Teasers: ${teaserCount} | Cost: ${creditCost}/provider`);
+    const emoji = providers.length === 0 ? '❌' : isExclusive ? '🎯' : '📢';
+    await sendAdminNotification(`${emoji} ${leadType.toUpperCase()} lead: ${leadId}`,
+      `${leadId} (${leadType})\n${name} | ${data.phone} | ${data.email}\n${data.zip} | ${data.size || 'TBD'}\nFull: ${sentCount} | Teasers: ${teaserCount}${providers.length === 0 ? ' | ⚠️ NO COVERAGE' : ''} | Cost: ${creditCost}/provider`);
     
     res.json({ status: 'ok', leadId, leadType, message: 'Lead submitted successfully' });
   } catch (error) {
@@ -4838,6 +4843,13 @@ app.get('/api/admin/health-check', (req, res) => {
   // Check leads today
   const leadsToday = db.prepare(`SELECT COUNT(*) as cnt FROM leads WHERE date(created_at) = date('now')`).get().cnt;
   metrics.leadsToday = leadsToday;
+  
+  // Check uncovered leads (no providers serving the ZIP)
+  const uncoveredLeads = db.prepare(`SELECT COUNT(*) as cnt FROM leads WHERE status = 'No Coverage' AND date(created_at) > date('now', '-7 days')`).get().cnt;
+  if (uncoveredLeads > 0) {
+    alerts.push({ level: 'warning', message: `${uncoveredLeads} lead(s) with no provider coverage in last 7 days` });
+  }
+  metrics.uncoveredLeadsLast7d = uncoveredLeads;
   
   // Check revenue today
   const revenueToday = db.prepare(`
