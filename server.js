@@ -5008,3 +5008,86 @@ app.listen(PORT, () => {
   console.log(`Database: ${DB_PATH}`);
   console.log(`Email: ${emailTransporter ? 'enabled' : 'disabled'}`);
 });
+
+// Admin endpoint to reset outreach table with cleaned data
+app.post('/api/admin/reset-outreach', async (req, res) => {
+  if (req.query.key !== ADMIN_PASSWORD) return res.status(401).json({ error: 'Unauthorized' });
+  
+  const confirm = req.body.confirm;
+  if (confirm !== 'RESET_OUTREACH') {
+    return res.json({ 
+      error: 'Confirmation required',
+      message: 'Send { "confirm": "RESET_OUTREACH" } to proceed'
+    });
+  }
+  
+  try {
+    // Clear existing outreach
+    const deleted = db.prepare('DELETE FROM outreach').run();
+    
+    // Import from cleaned providers.json
+    const fs = require('fs');
+    const path = require('path');
+    const providersPath = path.join(__dirname, 'data', 'providers.json');
+    
+    if (!fs.existsSync(providersPath)) {
+      return res.json({ error: 'providers.json not found' });
+    }
+    
+    const data = JSON.parse(fs.readFileSync(providersPath, 'utf8'));
+    const providers = data.providers || [];
+    
+    let imported = 0;
+    let skipped = 0;
+    
+    const insert = db.prepare(`
+      INSERT INTO outreach (provider_email, company_name, phone, zip, source, campaign, email_status)
+      VALUES (?, ?, ?, ?, ?, ?, 'Pending')
+    `);
+    
+    for (const p of providers) {
+      // Generate email from website domain
+      let email = null;
+      if (p.website) {
+        try {
+          const url = new URL(p.website);
+          const domain = url.hostname.replace('www.', '');
+          if (domain && !domain.includes('google') && !domain.includes('facebook')) {
+            email = `info@${domain}`;
+          }
+        } catch (e) {}
+      }
+      
+      if (!email) {
+        skipped++;
+        continue;
+      }
+      
+      try {
+        insert.run(
+          email,
+          p.name,
+          p.phone,
+          p.zip,
+          'providers.json-cleaned',
+          'initial-outreach-2026'
+        );
+        imported++;
+      } catch (e) {
+        // Duplicate or error
+        skipped++;
+      }
+    }
+    
+    res.json({
+      success: true,
+      deleted: deleted.changes,
+      imported,
+      skipped,
+      total: providers.length
+    });
+  } catch (err) {
+    console.error('Reset outreach error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
