@@ -197,8 +197,21 @@ function initTestDatabase() {
       metadata TEXT
     );
     
+    CREATE TABLE IF NOT EXISTS credit_transactions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      timestamp TEXT DEFAULT CURRENT_TIMESTAMP,
+      provider_id INTEGER NOT NULL,
+      provider_email TEXT,
+      type TEXT NOT NULL,
+      amount INTEGER NOT NULL,
+      balance_after INTEGER,
+      reference TEXT,
+      notes TEXT
+    );
+    
     CREATE INDEX IF NOT EXISTS idx_leads_zip ON leads(zip);
     CREATE INDEX IF NOT EXISTS idx_providers_email ON providers(email);
+    CREATE INDEX IF NOT EXISTS idx_credit_tx_provider ON credit_transactions(provider_id);
   `);
   
   return testDb;
@@ -1135,6 +1148,96 @@ describe('Provider Activity Metrics', () => {
     
     assert.strictEqual(recent.length, 1);
     assert.strictEqual(recent[0].company_name, 'New Provider');
+  });
+});
+
+describe('API Provider Management', () => {
+  beforeEach(() => {
+    initTestDatabase();
+    
+    // Create test provider
+    testDb.prepare(`
+      INSERT INTO providers (id, company_name, email, phone, credit_balance, status, verified, priority, service_zips)
+      VALUES (1, 'API Test Company', 'api@test.com', '555-1234', 10, 'Active', 0, 0, '34102,34103')
+    `).run();
+  });
+  
+  afterEach(() => {
+    closeTestDatabase();
+  });
+  
+  it('should support partial provider updates', () => {
+    // Simulate PUT update - only updating specific fields
+    const updates = {
+      company_name: 'Updated Company Name',
+      verified: 1
+    };
+    
+    const setClauses = Object.keys(updates).map(k => `${k} = ?`).join(', ');
+    const values = [...Object.values(updates), 1];
+    testDb.prepare(`UPDATE providers SET ${setClauses} WHERE id = ?`).run(...values);
+    
+    const updated = testDb.prepare('SELECT * FROM providers WHERE id = 1').get();
+    assert.strictEqual(updated.company_name, 'Updated Company Name');
+    assert.strictEqual(updated.verified, 1);
+    assert.strictEqual(updated.email, 'api@test.com'); // Unchanged
+    assert.strictEqual(updated.credit_balance, 10); // Unchanged
+  });
+  
+  it('should add credits via API and log transaction', () => {
+    const credits = 5;
+    const reason = 'Promotional bonus';
+    
+    // Add credits
+    testDb.prepare('UPDATE providers SET credit_balance = credit_balance + ? WHERE id = ?').run(credits, 1);
+    
+    // Log transaction
+    testDb.prepare(`
+      INSERT INTO credit_transactions (provider_id, provider_email, type, amount, balance_after, reference, notes)
+      VALUES (?, ?, 'admin_add', ?, ?, ?, ?)
+    `).run(1, 'api@test.com', credits, 15, 'api-test', reason);
+    
+    // Verify
+    const provider = testDb.prepare('SELECT credit_balance FROM providers WHERE id = 1').get();
+    assert.strictEqual(provider.credit_balance, 15);
+    
+    const tx = testDb.prepare('SELECT * FROM credit_transactions WHERE provider_id = 1 ORDER BY id DESC LIMIT 1').get();
+    assert.strictEqual(tx.amount, 5);
+    assert.strictEqual(tx.type, 'admin_add');
+    assert.strictEqual(tx.notes, reason);
+  });
+  
+  it('should deduct credits and track negative amounts', () => {
+    const deduction = -3;
+    
+    testDb.prepare('UPDATE providers SET credit_balance = credit_balance + ? WHERE id = ?').run(deduction, 1);
+    
+    testDb.prepare(`
+      INSERT INTO credit_transactions (provider_id, provider_email, type, amount, balance_after, notes)
+      VALUES (?, ?, 'admin_deduct', ?, ?, 'Refund adjustment')
+    `).run(1, 'api@test.com', deduction, 7);
+    
+    const provider = testDb.prepare('SELECT credit_balance FROM providers WHERE id = 1').get();
+    assert.strictEqual(provider.credit_balance, 7);
+    
+    const tx = testDb.prepare('SELECT * FROM credit_transactions WHERE provider_id = 1 AND type = ?').get('admin_deduct');
+    assert.strictEqual(tx.amount, -3);
+  });
+  
+  it('should preserve unchanged fields on partial update', () => {
+    // Store original values
+    const original = testDb.prepare('SELECT * FROM providers WHERE id = 1').get();
+    
+    // Update only one field
+    testDb.prepare('UPDATE providers SET phone = ? WHERE id = ?').run('999-8888', 1);
+    
+    // Verify other fields unchanged
+    const updated = testDb.prepare('SELECT * FROM providers WHERE id = 1').get();
+    assert.strictEqual(updated.phone, '999-8888');
+    assert.strictEqual(updated.company_name, original.company_name);
+    assert.strictEqual(updated.email, original.email);
+    assert.strictEqual(updated.credit_balance, original.credit_balance);
+    assert.strictEqual(updated.service_zips, original.service_zips);
   });
 });
 

@@ -134,8 +134,11 @@ All tests covering lead flow, payments, credit management, provider matching, an
 ▶ Full Purchase Flow (2 tests)
 ▶ Subscription Renewals (4 tests)
 ▶ Premium Expiration (2 tests)
+▶ Provider Registration Flow (5 tests)
+▶ Provider Activity Metrics (4 tests)
+▶ API Provider Management (4 tests)
 
-Tests:       67 passed, 67 total
+Tests:       71 passed, 71 total
 Duration:    ~200ms
 ```
 
@@ -253,6 +256,8 @@ The webhook automatically handles `invoice.paid` events for recurring subscripti
 | `/api/admin/errors/cleanup` | POST | Delete errors older than 7 days - requires key |
 | `/api/admin/maintenance` | POST | Run all cleanup tasks (premium expiration, log cleanup, reminders) - requires key |
 | `/api/admin/provider/:id` | GET | Get detailed provider info by ID - requires key |
+| `/api/admin/provider/:id` | PUT | Update provider fields programmatically - requires key |
+| `/api/admin/provider/:id/credits` | POST | Add/deduct credits for provider (with audit log) - requires key |
 | `/api/admin/premium-status` | GET | View premium/verified providers - requires key |
 | `/api/admin/test-webhook` | POST | Test webhook detection (dev only) - requires key |
 | `/api/admin/webhook-log` | GET | View recent webhook events - requires key |

@@ -3705,6 +3705,85 @@ app.get('/api/admin/provider/:id', (req, res) => {
   });
 });
 
+// Admin endpoint: Update provider programmatically (API)
+app.put('/api/admin/provider/:id', (req, res) => {
+  const auth = req.query.key || req.headers['x-admin-key'];
+  if (auth !== ADMIN_PASSWORD) return res.status(401).json({ error: 'Unauthorized' });
+  
+  const providerId = parseInt(req.params.id);
+  const provider = db.prepare('SELECT * FROM providers WHERE id = ?').get(providerId);
+  if (!provider) return res.status(404).json({ error: 'Provider not found' });
+  
+  // Extract updateable fields from request body
+  const updates = {};
+  const allowedFields = [
+    'company_name', 'email', 'phone', 'street_address', 'city', 'state', 
+    'business_zip', 'website', 'service_zips', 'status', 'priority', 
+    'verified', 'notes'
+  ];
+  
+  for (const field of allowedFields) {
+    if (req.body[field] !== undefined) {
+      updates[field] = req.body[field];
+    }
+  }
+  
+  if (Object.keys(updates).length === 0) {
+    return res.status(400).json({ error: 'No valid fields to update', allowedFields });
+  }
+  
+  // Handle state normalization
+  if (updates.state) {
+    updates.state = updates.state.toUpperCase();
+  }
+  
+  // Handle verified as boolean → integer
+  if (updates.verified !== undefined) {
+    updates.verified = updates.verified ? 1 : 0;
+  }
+  
+  // Build composite address if address fields are updated
+  if (updates.street_address || updates.city || updates.state || updates.business_zip) {
+    const street = updates.street_address ?? provider.street_address;
+    const city = updates.city ?? provider.city;
+    const state = updates.state ?? provider.state;
+    const zip = updates.business_zip ?? provider.business_zip;
+    updates.address = [street, city, state, zip].filter(Boolean).join(', ');
+  }
+  
+  // Build UPDATE query dynamically
+  const setClauses = Object.keys(updates).map(k => `${k} = ?`).join(', ');
+  const values = [...Object.values(updates), providerId];
+  
+  try {
+    db.prepare(`UPDATE providers SET ${setClauses} WHERE id = ?`).run(...values);
+    
+    // Fetch updated provider
+    const updated = db.prepare('SELECT * FROM providers WHERE id = ?').get(providerId);
+    
+    console.log(`API: Provider ${providerId} updated - fields: ${Object.keys(updates).join(', ')}`);
+    
+    res.json({
+      status: 'ok',
+      provider: {
+        id: updated.id,
+        companyName: updated.company_name,
+        email: updated.email,
+        phone: updated.phone,
+        serviceZips: (updated.service_zips || '').split(',').map(z => z.trim()).filter(z => z),
+        creditBalance: updated.credit_balance,
+        status: updated.status,
+        verified: !!updated.verified,
+        priority: updated.priority || 0,
+        notes: updated.notes
+      }
+    });
+  } catch (e) {
+    logError('api', 'Provider update failed', { providerId, updates }, e);
+    res.status(500).json({ error: 'Update failed', message: e.message });
+  }
+});
+
 // Admin endpoint: View credit transaction history
 app.get('/api/admin/credit-history', (req, res) => {
   const auth = req.query.key || req.headers['x-admin-key'];
@@ -4035,6 +4114,53 @@ app.post('/api/admin/batch-email', async (req, res) => {
     total: providers.length,
     filter: filter || 'all_active',
     results
+  });
+});
+
+// Admin endpoint: Add credits to single provider (API)
+app.post('/api/admin/provider/:id/credits', (req, res) => {
+  const auth = req.query.key || req.headers['x-admin-key'];
+  if (auth !== ADMIN_PASSWORD) return res.status(401).json({ error: 'Unauthorized' });
+  
+  const providerId = parseInt(req.params.id);
+  const provider = db.prepare('SELECT * FROM providers WHERE id = ?').get(providerId);
+  if (!provider) return res.status(404).json({ error: 'Provider not found' });
+  
+  const credits = parseInt(req.body.credits) || 0;
+  const reason = req.body.reason || 'API credit addition';
+  
+  if (credits === 0) {
+    return res.status(400).json({ error: 'credits must be non-zero' });
+  }
+  
+  // Update balance
+  db.prepare('UPDATE providers SET credit_balance = credit_balance + ? WHERE id = ?').run(credits, providerId);
+  
+  // Get new balance
+  const newBalance = db.prepare('SELECT credit_balance FROM providers WHERE id = ?').get(providerId).credit_balance;
+  
+  // Log transaction
+  const type = credits > 0 ? 'admin_add' : 'admin_deduct';
+  logCreditTransaction(providerId, type, credits, 'api-' + Date.now(), reason);
+  
+  // Log to purchase log
+  db.prepare('INSERT INTO purchase_log (lead_id, buyer_email, amount, payment_id, status) VALUES (?, ?, ?, ?, ?)').run(
+    credits > 0 ? 'API_ADD' : 'API_DEDUCT', 
+    provider.email, 
+    0, 
+    'api-' + Date.now(), 
+    `API: ${credits > 0 ? '+' : ''}${credits} credits. ${reason}`
+  );
+  
+  console.log(`API: Added ${credits} credits to ${provider.company_name} (ID: ${providerId}) - new balance: ${newBalance}`);
+  
+  res.json({
+    status: 'ok',
+    providerId,
+    companyName: provider.company_name,
+    creditsAdded: credits,
+    newBalance,
+    reason
   });
 });
 
