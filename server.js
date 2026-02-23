@@ -792,21 +792,19 @@ const CREDIT_PACKS = {
 //
 // Or use Stripe CLI: stripe products list --expand data.default_price
 //
+// Stripe Payment Links (for reference):
+// - Single Lead ($40):     https://buy.stripe.com/cNidR9aQ76T46IF78j5Rm04
+// - Starter ($200, 5cr):   https://buy.stripe.com/00w14n5vNa5g5EB2S35Rm00
+// - Pro ($700, 20cr):      https://buy.stripe.com/fZu6oH7DVgtE7MJdwH5Rm02
+// - Premium ($1500, 60cr): https://buy.stripe.com/bJefZh0btcdod73eAL5Rm03
+// - Featured ($99/mo):     https://buy.stripe.com/28EdR9e2jelwgjfgIT5Rm01
+//
 const STRIPE_PRODUCT_MAP = {
-  // DumpsterMap Products (add your actual price_xxx IDs here):
-  // 
-  // Stripe Payment Links:
-  // - Single Lead ($40):     https://buy.stripe.com/cNidR9aQ76T46IF78j5Rm04
-  // - Starter ($200, 5cr):   https://buy.stripe.com/00w14n5vNa5g5EB2S35Rm00
-  // - Pro ($700, 20cr):      https://buy.stripe.com/fZu6oH7DVgtE7MJdwH5Rm02
-  // - Premium ($1500, 60cr): https://buy.stripe.com/bJefZh0btcdod73eAL5Rm03
-  // - Featured ($99/mo):     https://buy.stripe.com/28EdR9e2jelwgjfgIT5Rm01
-  //
-  // Example mappings (uncomment & replace with your actual IDs):
-  // 'price_starter_xxx': { credits: 5, name: 'Starter Pack' },
-  // 'price_pro_xxx': { credits: 20, name: 'Pro Pack', perks: true },
-  // 'price_premium_xxx': { credits: 60, name: 'Premium Pack', perks: true },
-  // 'price_featured_xxx': { credits: 3, name: 'Featured Partner', perks: ['verified', 'priority'] },
+  // Add your Stripe price_xxx IDs here for bulletproof detection:
+  // 'price_1xxx': { credits: 5, name: 'Starter Pack' },
+  // 'price_2xxx': { credits: 20, name: 'Pro Pack', perks: true },
+  // 'price_3xxx': { credits: 60, name: 'Premium Pack', perks: true },
+  // 'price_4xxx': { credits: 3, name: 'Featured Partner', perks: ['verified', 'priority'] },
 };
 
 // Webhook event log for debugging payment issues
