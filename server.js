@@ -3332,6 +3332,8 @@ app.get('/api/admin/stats', (req, res) => {
   const purchasedLeads = db.prepare("SELECT COUNT(*) as cnt FROM leads WHERE status = 'Purchased'").get().cnt;
   const totalProviders = db.prepare('SELECT COUNT(*) as cnt FROM providers').get().cnt;
   const activeProviders = db.prepare("SELECT COUNT(*) as cnt FROM providers WHERE status = 'Active'").get().cnt;
+  const premiumProviders = db.prepare("SELECT COUNT(*) as cnt FROM providers WHERE status = 'Active' AND (verified = 1 OR priority > 0)").get().cnt;
+  const providersWithCredits = db.prepare("SELECT COUNT(*) as cnt FROM providers WHERE status = 'Active' AND credit_balance > 0").get().cnt;
   const totalRevenue = db.prepare("SELECT COALESCE(SUM(amount), 0) as total FROM purchase_log WHERE status LIKE '%Success%' OR status = 'Credits Added'").get().total;
   const outstandingCredits = db.prepare('SELECT COALESCE(SUM(credit_balance), 0) as total FROM providers').get().total;
   const leadsToday = db.prepare("SELECT COUNT(*) as cnt FROM leads WHERE date(created_at) = date('now')").get().cnt;
@@ -3340,7 +3342,7 @@ app.get('/api/admin/stats', (req, res) => {
   
   res.json({
     leads: { total: totalLeads, purchased: purchasedLeads, today: leadsToday },
-    providers: { total: totalProviders, active: activeProviders },
+    providers: { total: totalProviders, active: activeProviders, premium: premiumProviders, withCredits: providersWithCredits },
     revenue: { total: totalRevenue, today: revenueToday },
     credits: { outstanding: outstandingCredits },
     errors: { last24h: recentErrors },
