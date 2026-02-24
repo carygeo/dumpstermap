@@ -1,0 +1,227 @@
+[
+  {
+    "name": "Hullaway",
+    "yelp_url": "https://www.yelp.com/biz/hullaway-smyrna",
+    "yelp_rating": 4.9,
+    "yelp_reviews": 79,
+    "city": "Smyrna",
+    "state": "GA",
+    "region": "Atlanta",
+    "discovery_date": "2026-02-23",
+    "notes": "16 years in business, locally owned"
+  },
+  {
+    "name": "CallMigo Junk Removal & Services",
+    "yelp_url": "https://www.yelp.com/biz/callmigo-junk-removal-and-services-atlanta-3",
+    "yelp_rating": 5.0,
+    "yelp_reviews": 20,
+    "city": "Atlanta",
+    "state": "GA",
+    "region": "Atlanta",
+    "discovery_date": "2026-02-23"
+  },
+  {
+    "name": "Stan's Cans Dumpsters & Demo",
+    "yelp_url": "https://www.yelp.com/biz/stan-s-cans-dumpsters-and-demo-dacula",
+    "yelp_rating": 4.6,
+    "yelp_reviews": 8,
+    "city": "Dacula",
+    "state": "GA",
+    "region": "Atlanta",
+    "discovery_date": "2026-02-23"
+  },
+  {
+    "name": "786 Dumpsters",
+    "yelp_url": "https://www.yelp.com/biz/786-dumpsters-rosenberg-6",
+    "yelp_rating": 5.0,
+    "yelp_reviews": 12,
+    "city": "Rosenberg",
+    "state": "TX",
+    "region": "Houston",
+    "discovery_date": "2026-02-23",
+    "notes": "TOP PERFORMER - 133 quote requests"
+  },
+  {
+    "name": "Junk Guys",
+    "yelp_url": "https://www.yelp.com/biz/junk-guys-houston",
+    "yelp_rating": 5.0,
+    "yelp_reviews": 83,
+    "city": "Houston",
+    "state": "TX",
+    "region": "Houston",
+    "discovery_date": "2026-02-23",
+    "notes": "TOP PERFORMER - 83 reviews!"
+  },
+  {
+    "name": "Space City Dumpster",
+    "yelp_url": "https://www.yelp.com/biz/space-city-dumpster-houston-2",
+    "yelp_rating": null,
+    "yelp_reviews": 0,
+    "city": "Houston",
+    "state": "TX",
+    "region": "Houston",
+    "discovery_date": "2026-02-23",
+    "notes": "Houston-themed name!"
+  },
+  {
+    "name": "Bin There Dump That - Houston",
+    "yelp_url": "https://www.yelp.com/biz/bin-there-dump-that-houston-spring",
+    "yelp_rating": 4.8,
+    "yelp_reviews": 20,
+    "city": "Spring",
+    "state": "TX",
+    "region": "Houston",
+    "discovery_date": "2026-02-23"
+  },
+  {
+    "name": "Maverick Dumpster Rentals",
+    "yelp_url": "https://www.yelp.com/biz/maverick-dumpster-rentals-hurst",
+    "yelp_rating": 5.0,
+    "yelp_reviews": 4,
+    "city": "Hurst",
+    "state": "TX",
+    "region": "Dallas-Fort Worth",
+    "discovery_date": "2026-02-23",
+    "notes": "Locally owned, midnight delivery available!"
+  },
+  {
+    "name": "Iron Man Roll Offs",
+    "yelp_url": "https://www.yelp.com/biz/iron-man-roll-offs-royse-city-2",
+    "yelp_rating": 5.0,
+    "yelp_reviews": 1,
+    "city": "Royse City",
+    "state": "TX",
+    "region": "Dallas-Fort Worth",
+    "discovery_date": "2026-02-23",
+    "notes": "Great name!"
+  },
+  {
+    "name": "S & M Dumpsters",
+    "yelp_url": "https://www.yelp.com/biz/s-and-m-dumpsters-mansfield",
+    "yelp_rating": 5.0,
+    "yelp_reviews": 1,
+    "city": "Mansfield",
+    "state": "TX",
+    "region": "Dallas-Fort Worth",
+    "discovery_date": "2026-02-23",
+    "notes": "Same-day delivery"
+  },
+  {
+    "name": "Bin There Dump That - Phoenix",
+    "yelp_url": "https://www.yelp.com/biz/bin-there-dump-that-phoenix-phoenix",
+    "yelp_rating": 4.9,
+    "yelp_reviews": 50,
+    "city": "Phoenix",
+    "state": "AZ",
+    "region": "Phoenix",
+    "discovery_date": "2026-02-23",
+    "notes": "TOP PERFORMER - 50 reviews, 12 years in business"
+  },
+  {
+    "name": "Southwestern Dumpster Rental and Junk Removal",
+    "yelp_url": "https://www.yelp.com/biz/southwestern-dumpster-rental-and-junk-removal-phoenix-2",
+    "yelp_rating": 5.0,
+    "yelp_reviews": 16,
+    "city": "Phoenix",
+    "state": "AZ",
+    "region": "Phoenix",
+    "discovery_date": "2026-02-23",
+    "notes": "Firefighter and family owned!"
+  },
+  {
+    "name": "Waste Solution",
+    "yelp_url": "https://www.yelp.com/biz/waste-solution-scottsdale",
+    "yelp_rating": 4.8,
+    "yelp_reviews": 89,
+    "city": "Scottsdale",
+    "state": "AZ",
+    "region": "Phoenix",
+    "discovery_date": "2026-02-23",
+    "notes": "TOP PERFORMER - 89 reviews, best in Valley"
+  },
+  {
+    "name": "Scott Waste Services",
+    "yelp_url": "https://www.yelp.com/biz/scott-waste-services-phoenix-3",
+    "yelp_rating": 4.3,
+    "yelp_reviews": 68,
+    "city": "Phoenix",
+    "state": "AZ",
+    "region": "Phoenix",
+    "discovery_date": "2026-02-23"
+  },
+  {
+    "name": "Bin There Dump That - Charlotte",
+    "yelp_url": "https://www.yelp.com/biz/bin-there-dump-that-charlotte-charlotte-2",
+    "yelp_rating": 4.9,
+    "yelp_reviews": 9,
+    "city": "Charlotte",
+    "state": "NC",
+    "region": "Charlotte",
+    "discovery_date": "2026-02-23"
+  },
+  {
+    "name": "1776 Dumpster Rentals",
+    "yelp_url": "https://www.yelp.com/biz/1776-dumpster-rentals-gastonia",
+    "yelp_rating": 5.0,
+    "yelp_reviews": 2,
+    "city": "Gastonia",
+    "state": "NC",
+    "region": "Charlotte",
+    "discovery_date": "2026-02-23",
+    "notes": "Patriotic name!"
+  },
+  {
+    "name": "Purple Heart Dumpsters",
+    "yelp_url": "https://www.yelp.com/biz/purple-heart-dumpsters-kershaw",
+    "yelp_rating": 5.0,
+    "yelp_reviews": 1,
+    "city": "Kershaw",
+    "state": "SC",
+    "region": "Charlotte",
+    "discovery_date": "2026-02-23",
+    "notes": "Veteran-themed name!"
+  },
+  {
+    "name": "Crown Waste And Recycling Systems",
+    "yelp_url": "https://www.yelp.com/biz/crown-waste-and-recycling-systems-huntersville",
+    "yelp_rating": 3.0,
+    "yelp_reviews": 2,
+    "city": "Huntersville",
+    "state": "NC",
+    "region": "Charlotte",
+    "discovery_date": "2026-02-23",
+    "notes": "Est. 1958 - 65+ years in business!"
+  },
+  {
+    "name": "Red Dog Dumpsters",
+    "yelp_url": "https://www.yelp.com/biz/red-dog-dumpsters-nashville-2",
+    "yelp_rating": 5.0,
+    "yelp_reviews": 11,
+    "city": "Nashville",
+    "state": "TN",
+    "region": "Nashville",
+    "discovery_date": "2026-02-23",
+    "notes": "Great name!"
+  },
+  {
+    "name": "AP3 Dumpster Rentals",
+    "yelp_url": "https://www.yelp.com/biz/ap3-dumpster-rentals-franklin-4",
+    "yelp_rating": 5.0,
+    "yelp_reviews": 8,
+    "city": "Franklin",
+    "state": "TN",
+    "region": "Nashville",
+    "discovery_date": "2026-02-23"
+  },
+  {
+    "name": "Music City Removal",
+    "yelp_url": "https://www.yelp.com/biz/music-city-removal-nashville",
+    "yelp_rating": 4.5,
+    "yelp_reviews": 11,
+    "city": "Nashville",
+    "state": "TN",
+    "region": "Nashville",
+    "discovery_date": "2026-02-23",
+    "notes": "Nashville-themed name!"
+  }
+]
