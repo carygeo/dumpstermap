@@ -179,11 +179,23 @@ function initDatabase() {
       FOREIGN KEY (provider_id) REFERENCES providers(id)
     );
     
+    CREATE TABLE IF NOT EXISTS coverage_gaps (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      zip TEXT UNIQUE NOT NULL,
+      first_seen TEXT DEFAULT CURRENT_TIMESTAMP,
+      last_seen TEXT DEFAULT CURRENT_TIMESTAMP,
+      lead_count INTEGER DEFAULT 1,
+      state TEXT,
+      city TEXT,
+      notes TEXT
+    );
+    
     CREATE INDEX IF NOT EXISTS idx_leads_lead_id ON leads(lead_id);
     CREATE INDEX IF NOT EXISTS idx_outreach_email ON outreach(provider_email);
     CREATE INDEX IF NOT EXISTS idx_leads_zip ON leads(zip);
     CREATE INDEX IF NOT EXISTS idx_providers_email ON providers(email);
     CREATE INDEX IF NOT EXISTS idx_credit_tx_provider ON credit_transactions(provider_id);
+    CREATE INDEX IF NOT EXISTS idx_coverage_gaps_zip ON coverage_gaps(zip);
   `);
   
   // Migration: Add last_purchase_at column if it doesn't exist
@@ -473,6 +485,35 @@ function getProviderByEmail(email) {
   return db.prepare('SELECT * FROM providers WHERE LOWER(email) = LOWER(?)').get(email);
 }
 
+// Track coverage gaps for expansion opportunities
+function trackCoverageGap(zip, city = null, state = null) {
+  if (!zip) return;
+  
+  try {
+    // Try to insert or update
+    const existing = db.prepare('SELECT * FROM coverage_gaps WHERE zip = ?').get(zip);
+    
+    if (existing) {
+      db.prepare(`
+        UPDATE coverage_gaps 
+        SET last_seen = datetime('now'), lead_count = lead_count + 1,
+            city = COALESCE(?, city), state = COALESCE(?, state)
+        WHERE zip = ?
+      `).run(city, state, zip);
+    } else {
+      db.prepare(`
+        INSERT INTO coverage_gaps (zip, city, state)
+        VALUES (?, ?, ?)
+      `).run(zip, city, state);
+    }
+    
+    console.log(`Coverage gap tracked: ${zip} (${city || 'unknown'}, ${state || 'unknown'})`);
+  } catch (e) {
+    // Table might not exist yet, that's ok
+    console.log('Coverage gap tracking skipped:', e.message);
+  }
+}
+
 async function sendEmail(to, subject, html, text, fromAddress = EMAIL_FROM) {
   // Use Resend if available
   if (useResend && RESEND_API_KEY) {
@@ -668,6 +709,9 @@ app.post('/api/lead', async (req, res) => {
       // No providers serve this ZIP - track for coverage expansion
       db.prepare('UPDATE leads SET status = ? WHERE lead_id = ?')
         .run('No Coverage', leadId);
+      
+      // Track as coverage gap for business intelligence
+      trackCoverageGap(data.zip, data.city, data.state);
     }
     
     const isExclusive = providers.length === 1;
@@ -3714,12 +3758,31 @@ app.get('/api/admin/zip-coverage', (req, res) => {
     }))
     .sort((a, b) => b.leadCount - a.leadCount);
   
+  // Get tracked coverage gaps for historical data
+  let trackedGaps = [];
+  try {
+    trackedGaps = db.prepare(`
+      SELECT zip, lead_count, first_seen, last_seen, city, state 
+      FROM coverage_gaps 
+      ORDER BY lead_count DESC 
+      LIMIT 50
+    `).all();
+  } catch (e) { /* table may not exist */ }
+  
   res.json({
     totalZipsCovered: Object.keys(zipMap).length,
     totalActiveProviders: providers.length,
     providersWithCredits: providers.filter(p => p.credit_balance > 0).length,
     coverage: zipMap,
     gaps,
+    // Priority gaps - ZIPs with most demand but no coverage
+    priorityGaps: trackedGaps.slice(0, 20).map(g => ({
+      zip: g.zip,
+      totalLeads: g.lead_count,
+      firstSeen: g.first_seen?.split('T')[0],
+      lastSeen: g.last_seen?.split('T')[0],
+      location: g.city && g.state ? `${g.city}, ${g.state}` : g.state || 'Unknown'
+    })),
     timestamp: new Date().toISOString()
   });
 });
