@@ -19,17 +19,43 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.css" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.Default.css" />
     
-    <!-- Schema.org markup for SEO -->
+    <!-- Schema.org markup for SEO - dynamically populated -->
     <script type="application/ld+json" id="schema-json">
     {
       "@context": "https://schema.org",
-      "@type": "LocalBusiness",
-      "name": "DumpsterMap - Dumpster Rentals",
-      "description": "Find local dumpster rental providers",
-      "areaServed": {
-        "@type": "City",
-        "name": ""
-      }
+      "@graph": [
+        {
+          "@type": "WebPage",
+          "@id": "",
+          "name": "Dumpster Rentals | DumpsterMap",
+          "description": "Find local dumpster rental providers",
+          "url": "",
+          "breadcrumb": { "@id": "#breadcrumb" }
+        },
+        {
+          "@type": "BreadcrumbList",
+          "@id": "#breadcrumb",
+          "itemListElement": []
+        },
+        {
+          "@type": "Service",
+          "name": "Dumpster Rental Service",
+          "serviceType": "Dumpster Rental",
+          "provider": {
+            "@type": "Organization",
+            "name": "DumpsterMap",
+            "url": "https://dumpstermap.io"
+          },
+          "areaServed": {
+            "@type": "City",
+            "name": ""
+          }
+        },
+        {
+          "@type": "FAQPage",
+          "mainEntity": []
+        }
+      ]
     }
     </script>
     
@@ -826,6 +852,115 @@
                 `Dumpster rental prices in ${fullLocation} vary by size and provider. A 10-yard dumpster typically costs $250-$400, while a 20-yard runs $350-$500. Request free quotes from multiple providers to compare.`;
             
             document.getElementById('faq3-q').textContent = `Do I need a permit for a dumpster in ${city || 'my city'}?`;
+            
+            // Update JSON-LD structured data
+            updateSchemaMarkup(city, state, fullLocation);
+        }
+        
+        function updateSchemaMarkup(city, state, fullLocation) {
+            const pageUrl = window.location.href;
+            const schema = {
+                "@context": "https://schema.org",
+                "@graph": [
+                    {
+                        "@type": "WebPage",
+                        "@id": pageUrl,
+                        "name": `Dumpster Rentals in ${fullLocation} | DumpsterMap`,
+                        "description": `Find the best dumpster rental providers in ${fullLocation}. Compare prices, read reviews, and get free quotes from local haulers.`,
+                        "url": pageUrl,
+                        "breadcrumb": { "@id": `${pageUrl}#breadcrumb` }
+                    },
+                    {
+                        "@type": "BreadcrumbList",
+                        "@id": `${pageUrl}#breadcrumb`,
+                        "itemListElement": [
+                            {
+                                "@type": "ListItem",
+                                "position": 1,
+                                "name": "Home",
+                                "item": "https://dumpstermap.io/"
+                            },
+                            {
+                                "@type": "ListItem",
+                                "position": 2,
+                                "name": state,
+                                "item": `https://dumpstermap.io/dumpster-rental/${state.toLowerCase()}.html`
+                            },
+                            {
+                                "@type": "ListItem",
+                                "position": 3,
+                                "name": city || fullLocation
+                            }
+                        ]
+                    },
+                    {
+                        "@type": "Service",
+                        "name": `Dumpster Rental in ${fullLocation}`,
+                        "serviceType": "Dumpster Rental",
+                        "description": `Compare dumpster rental prices in ${fullLocation}. Roll-off containers from 10 to 40 yards for home cleanouts, renovations, and construction projects.`,
+                        "provider": {
+                            "@type": "Organization",
+                            "name": "DumpsterMap",
+                            "url": "https://dumpstermap.io",
+                            "logo": "https://dumpstermap.io/og-image.png"
+                        },
+                        "areaServed": {
+                            "@type": "City",
+                            "name": city || fullLocation,
+                            "containedInPlace": {
+                                "@type": "State",
+                                "name": state
+                            }
+                        },
+                        "offers": {
+                            "@type": "AggregateOffer",
+                            "priceCurrency": "USD",
+                            "lowPrice": "250",
+                            "highPrice": "800",
+                            "offerCount": "Multiple providers"
+                        }
+                    },
+                    {
+                        "@type": "FAQPage",
+                        "mainEntity": [
+                            {
+                                "@type": "Question",
+                                "name": `How much does a dumpster cost in ${city || 'this area'}?`,
+                                "acceptedAnswer": {
+                                    "@type": "Answer",
+                                    "text": `Dumpster rental prices in ${fullLocation} vary by size and provider. A 10-yard dumpster typically costs $250-$400, while a 20-yard runs $350-$500. Request free quotes from multiple providers to compare.`
+                                }
+                            },
+                            {
+                                "@type": "Question",
+                                "name": "What size dumpster do I need?",
+                                "acceptedAnswer": {
+                                    "@type": "Answer",
+                                    "text": "For small cleanouts, a 10-yard is usually sufficient. Multi-room renovations typically need a 20-yard. Large construction or demo projects may require 30 or 40-yard containers."
+                                }
+                            },
+                            {
+                                "@type": "Question",
+                                "name": `Do I need a permit for a dumpster in ${city || 'my city'}?`,
+                                "acceptedAnswer": {
+                                    "@type": "Answer",
+                                    "text": `Permit requirements vary by location. In ${fullLocation}, if the dumpster is placed on your private property (driveway), you typically don't need a permit. Street placement usually requires a permit from your local municipality.`
+                                }
+                            },
+                            {
+                                "@type": "Question",
+                                "name": "How long can I keep a dumpster?",
+                                "acceptedAnswer": {
+                                    "@type": "Answer",
+                                    "text": "Most providers offer 7-10 day rental periods. Extensions are usually available for an additional daily fee. Ask about rental periods when you request your quote."
+                                }
+                            }
+                        ]
+                    }
+                ]
+            };
+            
+            document.getElementById('schema-json').textContent = JSON.stringify(schema);
         }
         
         function updateStats(providerList) {
