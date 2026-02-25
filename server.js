@@ -4,6 +4,9 @@ const Database = require('better-sqlite3');
 const nodemailer = require('nodemailer');
 const crypto = require('crypto');
 const multer = require('multer');
+const session = require('express-session');
+const rateLimit = require('express-rate-limit');
+const cookieParser = require('cookie-parser');
 
 // Configure photo uploads
 const UPLOADS_DIR = process.env.NODE_ENV === 'production' ? '/data/uploads' : path.join(__dirname, 'uploads');
@@ -40,7 +43,18 @@ const NOTIFICATION_EMAIL = 'admin@dumpstermap.io';
 const SINGLE_LEAD_PRICE = 40;
 const SINGLE_LEAD_STRIPE_LINK = 'https://buy.stripe.com/cNidR9aQ76T46IF78j5Rm04';
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'dumpstermap2026';
+const ADMIN_USERNAME = process.env.ADMIN_USERNAME || 'admin';
+const SESSION_SECRET = process.env.SESSION_SECRET || crypto.randomBytes(32).toString('hex');
 const STRIPE_WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET;
+
+// Rate limiting for auth endpoints
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 10, // limit each IP to 10 login attempts per window
+  message: { error: 'Too many login attempts, please try again after 15 minutes' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
 
 // Email config - Resend (primary) or SMTP (fallback)
 const RESEND_API_KEY = process.env.RESEND_API_KEY;
@@ -53,6 +67,119 @@ const OUTREACH_FROM = process.env.OUTREACH_FROM || 'DumpsterMap Partners <partne
 app.use('/api/stripe-webhook', express.raw({ type: 'application/json' }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(cookieParser());
+
+// Session middleware for admin auth
+app.use(session({
+  secret: SESSION_SECRET,
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    secure: process.env.NODE_ENV === 'production',
+    httpOnly: true,
+    maxAge: 24 * 60 * 60 * 1000, // 24 hours
+    sameSite: 'strict'
+  }
+}));
+
+// ============================================
+// ADMIN AUTH MIDDLEWARE
+// ============================================
+
+// Check for session, HTTP Basic Auth, or legacy key param
+function requireAdminAuth(req, res, next) {
+  // 1. Check session
+  if (req.session && req.session.isAdmin) {
+    return next();
+  }
+  
+  // 2. Check HTTP Basic Auth
+  const authHeader = req.headers.authorization;
+  if (authHeader && authHeader.startsWith('Basic ')) {
+    const base64Credentials = authHeader.split(' ')[1];
+    const credentials = Buffer.from(base64Credentials, 'base64').toString('ascii');
+    const [username, password] = credentials.split(':');
+    if (username === ADMIN_USERNAME && password === ADMIN_PASSWORD) {
+      return next();
+    }
+  }
+  
+  // 3. Legacy: Check key param (for backwards compatibility, will be removed)
+  if (req.query.key === ADMIN_PASSWORD) {
+    return next();
+  }
+  
+  // Not authenticated - redirect to login
+  if (req.accepts('html')) {
+    return res.redirect('/admin/login');
+  }
+  
+  // API request - send 401
+  res.status(401).json({ error: 'Unauthorized' });
+}
+
+// Login page
+app.get('/admin/login', (req, res) => {
+  const error = req.query.error ? '<p style="color: #dc2626; margin-bottom: 15px;">Invalid username or password</p>' : '';
+  res.send(`
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <title>Admin Login - DumpsterMap</title>
+      <meta name="viewport" content="width=device-width, initial-scale=1">
+      <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f1f5f9; min-height: 100vh; display: flex; align-items: center; justify-content: center; }
+        .login-box { background: white; padding: 40px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); width: 100%; max-width: 400px; margin: 20px; }
+        h1 { color: #1e293b; font-size: 24px; margin-bottom: 8px; }
+        .subtitle { color: #64748b; margin-bottom: 30px; }
+        label { display: block; color: #475569; font-weight: 500; margin-bottom: 6px; font-size: 14px; }
+        input[type="text"], input[type="password"] { width: 100%; padding: 12px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 16px; margin-bottom: 20px; }
+        input:focus { outline: none; border-color: #f97316; box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.1); }
+        button { width: 100%; padding: 14px; background: #f97316; color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: 600; cursor: pointer; transition: background 0.2s; }
+        button:hover { background: #ea580c; }
+        .logo { font-size: 32px; margin-bottom: 20px; }
+      </style>
+    </head>
+    <body>
+      <div class="login-box">
+        <div class="logo">🗺️</div>
+        <h1>Admin Login</h1>
+        <p class="subtitle">DumpsterMap Dashboard</p>
+        ${error}
+        <form method="POST" action="/admin/login">
+          <label for="username">Username</label>
+          <input type="text" id="username" name="username" required autocomplete="username">
+          <label for="password">Password</label>
+          <input type="password" id="password" name="password" required autocomplete="current-password">
+          <button type="submit">Sign In</button>
+        </form>
+      </div>
+    </body>
+    </html>
+  `);
+});
+
+// Login POST handler with rate limiting
+app.post('/admin/login', authLimiter, (req, res) => {
+  const { username, password } = req.body;
+  
+  if (username === ADMIN_USERNAME && password === ADMIN_PASSWORD) {
+    req.session.isAdmin = true;
+    req.session.loginTime = new Date().toISOString();
+    return res.redirect('/admin');
+  }
+  
+  res.redirect('/admin/login?error=1');
+});
+
+// Logout
+app.get('/admin/logout', (req, res) => {
+  req.session.destroy((err) => {
+    res.redirect('/admin/login');
+  });
+});
+
 
 // ============================================
 // DATABASE SETUP
@@ -1649,11 +1776,7 @@ app.get('/api/balance', (req, res) => {
 // ============================================
 // ADMIN UI
 // ============================================
-app.get('/admin', (req, res) => {
-  const auth = req.query.key;
-  if (auth !== ADMIN_PASSWORD) {
-    return res.send('<h1>Admin Login</h1><form><input name="key" type="password" placeholder="Password"><button>Login</button></form>');
-  }
+app.get('/admin', requireAdminAuth, (req, res) => {
   
   const leads = db.prepare('SELECT * FROM leads ORDER BY id DESC LIMIT 100').all();
   const providers = db.prepare('SELECT * FROM providers ORDER BY id DESC').all();
@@ -1726,19 +1849,19 @@ app.get('/admin', (req, res) => {
     <a href="#providers">Providers</a>
     <a href="#add-credits">Add Credits</a>
     <a href="#purchases">Purchases</a>
-    <a href="/admin/outreach?key=${auth}">Outreach</a>
-    <a href="/admin/logs?key=${auth}">System Logs</a>
-    <a href="/admin/funnel?key=${auth}">📊 Funnel</a>
-    <a href="/admin/activity?key=${auth}">📈 Activity</a>
-    <a href="/api/admin/credit-history?key=${auth}" target="_blank">💳 Credit History</a>
-    <a href="/api/admin/subscriptions?key=${auth}" target="_blank">🔄 Subscriptions</a>
-    <a href="/api/admin/stats?key=${auth}" target="_blank">📈 API Stats</a>
-    <span style="margin-left: auto;">
-      <form action="/admin/search?key=${auth}" method="GET" style="display: inline-flex; gap: 5px;">
-        <input type="hidden" name="key" value="${auth}">
+    <a href="/admin/outreach">Outreach</a>
+    <a href="/admin/logs">System Logs</a>
+    <a href="/admin/funnel">📊 Funnel</a>
+    <a href="/admin/activity">📈 Activity</a>
+    <a href="/api/admin/credit-history" target="_blank">💳 Credit History</a>
+    <a href="/api/admin/subscriptions" target="_blank">🔄 Subscriptions</a>
+    <a href="/api/admin/stats" target="_blank">📈 API Stats</a>
+    <span style="margin-left: auto; display: flex; gap: 10px; align-items: center;">
+      <form action="/admin/search" method="GET" style="display: inline-flex; gap: 5px;">
         <input name="q" placeholder="🔍 Search providers..." style="padding: 6px 10px; border-radius: 4px; border: 1px solid #d1d5db; width: 180px;">
         <button type="submit" class="btn btn-sm">Search</button>
       </form>
+      <a href="/admin/logout" class="btn btn-sm btn-red">🚪 Logout</a>
     </span>
   </div>
   
@@ -1746,17 +1869,17 @@ app.get('/admin', (req, res) => {
   <div class="card" style="background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); border-left: 4px solid #16a34a;">
     <h3 style="margin: 0 0 15px 0; color: #16a34a;">⚡ Quick Actions</h3>
     <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-      <form action="/api/admin/maintenance?key=${auth}" method="POST" style="display: inline;">
+      <form action="/api/admin/maintenance" method="POST" style="display: inline;">
         <button class="btn btn-sm btn-green" title="Run premium expiration, send reminders, cleanup logs">🔧 Run Maintenance</button>
       </form>
-      <a href="/api/admin/daily-summary?key=${auth}" class="btn btn-sm" target="_blank" title="View today's summary JSON">📊 Daily Summary</a>
-      <a href="/api/admin/zip-coverage?key=${auth}" class="btn btn-sm" target="_blank" title="See ZIP coverage gaps">🗺️ ZIP Coverage</a>
-      <a href="/api/admin/stripe-status?key=${auth}" class="btn btn-sm" target="_blank" title="Check Stripe webhook config">💳 Stripe Status</a>
-      <form action="/api/admin/expire-premium?key=${auth}" method="POST" style="display: inline;">
+      <a href="/api/admin/daily-summary" class="btn btn-sm" target="_blank" title="View today's summary JSON">📊 Daily Summary</a>
+      <a href="/api/admin/zip-coverage" class="btn btn-sm" target="_blank" title="See ZIP coverage gaps">🗺️ ZIP Coverage</a>
+      <a href="/api/admin/stripe-status" class="btn btn-sm" target="_blank" title="Check Stripe webhook config">💳 Stripe Status</a>
+      <form action="/api/admin/expire-premium" method="POST" style="display: inline;">
         <button class="btn btn-sm" style="background: #f59e0b;">⏱️ Expire Premium</button>
       </form>
-      <a href="/api/admin/weekly-summary?key=${auth}" class="btn btn-sm" target="_blank" title="Weekly trends and comparison">📈 Weekly Summary</a>
-      ${providersWithCreditsNoZips > 0 ? `<form action="/api/admin/send-zip-reminders?key=${auth}" method="POST" style="display: inline;" onsubmit="return confirm('Send ZIP setup reminders to ${providersWithCreditsNoZips} provider(s)?')"><button class="btn btn-sm btn-red" title="Email providers with credits but no ZIPs">📧 Send ZIP Reminders</button></form>` : ''}
+      <a href="/api/admin/weekly-summary" class="btn btn-sm" target="_blank" title="Weekly trends and comparison">📈 Weekly Summary</a>
+      ${providersWithCreditsNoZips > 0 ? `<form action="/api/admin/send-zip-reminders" method="POST" style="display: inline;" onsubmit="return confirm('Send ZIP setup reminders to ${providersWithCreditsNoZips} provider(s)?')"><button class="btn btn-sm btn-red" title="Email providers with credits but no ZIPs">📧 Send ZIP Reminders</button></form>` : ''}
     </div>
   </div>
   
@@ -1778,7 +1901,7 @@ app.get('/admin', (req, res) => {
     <p style="color: #7f1d1d; font-size: 13px; margin-bottom: 10px;">These providers paid for leads but won't receive any until their service ZIPs are configured:</p>
     <div style="display: flex; gap: 10px; flex-wrap: wrap;">
       ${providersNoZipsList.filter(p => providers.find(pr => pr.id === p.id)?.credit_balance > 0).slice(0, 5).map(p => `
-        <a href="/admin/edit-provider/${p.id}?key=${auth}" style="background: white; padding: 8px 12px; border-radius: 4px; text-decoration: none; color: #1e293b; font-size: 13px; box-shadow: 0 1px 2px rgba(0,0,0,0.1);">
+        <a href="/admin/edit-provider/${p.id}" style="background: white; padding: 8px 12px; border-radius: 4px; text-decoration: none; color: #1e293b; font-size: 13px; box-shadow: 0 1px 2px rgba(0,0,0,0.1);">
           <strong>${p.company_name}</strong><br>
           <span style="color: #64748b; font-size: 11px;">${p.email}</span>
         </a>
@@ -1800,7 +1923,7 @@ app.get('/admin', (req, res) => {
         </tr>
       `).join('')}
     </table>
-    <a href="/admin/logs?key=${auth}" style="font-size: 12px; color: #dc2626; text-decoration: underline;">View all logs →</a>
+    <a href="/admin/logs" style="font-size: 12px; color: #dc2626; text-decoration: underline;">View all logs →</a>
   </div>
   ` : ''}
   
@@ -1832,7 +1955,7 @@ app.get('/admin', (req, res) => {
         <td title="${notifiedTitle}">${notifiedCount > 0 ? notifiedCount + ' providers' : '<em style="color:#dc2626">none</em>'}</td>
         <td>${l.purchased_by || ''}</td>
         <td>
-          <form action="/admin/resend-lead/${l.lead_id}?key=${auth}" method="POST" style="display:inline;">
+          <form action="/admin/resend-lead/${l.lead_id}" method="POST" style="display:inline;">
             <button class="btn btn-sm" title="Resend to matching providers">↻</button>
           </form>
         </td>
@@ -1917,7 +2040,7 @@ app.get('/admin', (req, res) => {
           <td>${premiumStatus}</td>
           <td>${lastPurchase}</td>
           <td>
-            <a href="/admin/edit-provider/${p.id}?key=${auth}" class="btn btn-sm">Edit</a>
+            <a href="/admin/edit-provider/${p.id}" class="btn btn-sm">Edit</a>
           </td>
         </tr>
       `;
@@ -1926,7 +2049,7 @@ app.get('/admin', (req, res) => {
   
   <div class="card">
     <h3>Add New Provider</h3>
-    <form action="/admin/add-provider?key=${auth}" method="POST" style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
+    <form action="/admin/add-provider" method="POST" style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
       <input name="company_name" placeholder="Company Name" required style="min-width: 180px;">
       <input name="email" placeholder="Email" required type="email">
       <input name="phone" placeholder="Phone">
@@ -1940,7 +2063,7 @@ app.get('/admin', (req, res) => {
   
   <div class="card" id="add-credits">
     <h3>Quick Add Credits</h3>
-    <form action="/admin/add-credits?key=${auth}" method="POST" style="display: flex; gap: 10px; align-items: center;">
+    <form action="/admin/add-credits" method="POST" style="display: flex; gap: 10px; align-items: center;">
       <select name="provider_id" required style="min-width: 200px;">
         <option value="">Select Provider...</option>
         ${providers.map(p => `<option value="${p.id}">${p.company_name} (${p.credit_balance} credits)</option>`).join('')}
@@ -1954,7 +2077,7 @@ app.get('/admin', (req, res) => {
   <div class="card" id="bulk-credits">
     <h3>📦 Bulk Add Credits</h3>
     <p style="color: #64748b; font-size: 13px; margin-bottom: 10px;">Add credits to multiple providers at once. Hold Ctrl/Cmd to select multiple.</p>
-    <form action="/admin/bulk-add-credits?key=${auth}" method="POST" style="display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-start;">
+    <form action="/admin/bulk-add-credits" method="POST" style="display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-start;">
       <select name="provider_ids" multiple required style="min-width: 280px; height: 120px;">
         ${providers.filter(p => p.status === 'Active').map(p => `<option value="${p.id}">${p.company_name} (${p.credit_balance} cr)</option>`).join('')}
       </select>
@@ -1982,10 +2105,10 @@ app.get('/admin', (req, res) => {
   </table>
   
   <h2>Export</h2>
-  <a href="/admin/export/leads?key=${auth}" class="btn">Export Leads CSV</a>
-  <a href="/admin/export/providers?key=${auth}" class="btn">Export Providers CSV</a>
-  <a href="/admin/export/purchases?key=${auth}" class="btn">Export Purchases CSV</a>
-  <a href="/admin/export/credit-history?key=${auth}" class="btn">Export Credit History CSV</a>
+  <a href="/admin/export/leads" class="btn">Export Leads CSV</a>
+  <a href="/admin/export/providers" class="btn">Export Providers CSV</a>
+  <a href="/admin/export/purchases" class="btn">Export Purchases CSV</a>
+  <a href="/admin/export/credit-history" class="btn">Export Credit History CSV</a>
 </body>
 </html>`;
   
@@ -1993,8 +2116,8 @@ app.get('/admin', (req, res) => {
 });
 
 // Edit provider page
-app.get('/admin/edit-provider/:id', (req, res) => {
-  if (req.query.key !== ADMIN_PASSWORD) return res.status(401).send('Unauthorized');
+app.get('/admin/edit-provider/:id', requireAdminAuth, (req, res) => {
+  
   
   const provider = db.prepare('SELECT * FROM providers WHERE id = ?').get(req.params.id);
   if (!provider) return res.status(404).send('Provider not found');
@@ -2031,11 +2154,11 @@ app.get('/admin/edit-provider/:id', (req, res) => {
   </style>
 </head>
 <body>
-  <a href="/admin?key=${req.query.key}" class="back">← Back to Admin</a>
+  <a href="/admin" class="back">← Back to Admin</a>
   <h1>Edit: ${provider.company_name}</h1>
   
   <div class="card">
-    <form action="/admin/update-provider/${provider.id}?key=${req.query.key}" method="POST">
+    <form action="/admin/update-provider/${provider.id}" method="POST">
       <label>Company Name</label>
       <input name="company_name" value="${provider.company_name || ''}" required>
       
@@ -2118,7 +2241,7 @@ app.get('/admin/edit-provider/:id', (req, res) => {
   <div class="card">
     <h3>💰 Add Credits</h3>
     <p style="color: #64748b; font-size: 13px; margin-bottom: 12px;">Add credits with proper audit logging (tracked separately from balance edits above).</p>
-    <form action="/admin/add-credits/${provider.id}?key=${req.query.key}" method="POST" style="display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap;">
+    <form action="/admin/add-credits/${provider.id}" method="POST" style="display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap;">
       <div>
         <label style="font-size: 12px;">Credits to Add</label>
         <input name="credits" type="number" min="1" value="5" style="width: 80px;" required>
@@ -2134,10 +2257,10 @@ app.get('/admin/edit-provider/:id', (req, res) => {
   <div class="card">
     <h3>📧 Provider Communication</h3>
     <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-      <form action="/admin/send-welcome/${provider.id}?key=${req.query.key}" method="POST" style="display: inline;">
+      <form action="/admin/send-welcome/${provider.id}" method="POST" style="display: inline;">
         <button type="submit" class="btn btn-green">Send Welcome Email</button>
       </form>
-      <form action="/admin/send-low-balance/${provider.id}?key=${req.query.key}" method="POST" style="display: inline;">
+      <form action="/admin/send-low-balance/${provider.id}" method="POST" style="display: inline;">
         <button type="submit" class="btn" ${provider.credit_balance > 2 ? 'disabled title="Balance not low"' : ''}>Send Low Balance Reminder</button>
       </form>
     </div>
@@ -2146,7 +2269,7 @@ app.get('/admin/edit-provider/:id', (req, res) => {
   <div class="card">
     <h3>🧪 Test Lead Flow</h3>
     <p style="color: #64748b; font-size: 14px; margin-bottom: 10px;">Send a test lead to verify email templates are working.</p>
-    <form action="/api/admin/send-test-lead?key=${req.query.key}" method="POST" style="display: flex; gap: 10px; align-items: center;">
+    <form action="/api/admin/send-test-lead" method="POST" style="display: flex; gap: 10px; align-items: center;">
       <input type="hidden" name="provider_id" value="${provider.id}">
       <input name="zip" placeholder="Test ZIP (default: 34102)" style="width: 160px;">
       <button type="submit" class="btn" style="background: #9333ea;">Send Test Lead Email</button>
@@ -2156,7 +2279,7 @@ app.get('/admin/edit-provider/:id', (req, res) => {
   
   <div class="card" style="border: 2px solid #fecaca;">
     <h3 style="color: #dc2626;">Danger Zone</h3>
-    <form action="/admin/delete-provider/${provider.id}?key=${req.query.key}" method="POST" onsubmit="return confirm('Delete this provider?')">
+    <form action="/admin/delete-provider/${provider.id}" method="POST" onsubmit="return confirm('Delete this provider?')">
       <button type="submit" class="btn btn-red">Delete Provider</button>
     </form>
   </div>
@@ -2166,8 +2289,8 @@ app.get('/admin/edit-provider/:id', (req, res) => {
 });
 
 // Update provider
-app.post('/admin/update-provider/:id', (req, res) => {
-  if (req.query.key !== ADMIN_PASSWORD) return res.status(401).send('Unauthorized');
+app.post('/admin/update-provider/:id', requireAdminAuth, (req, res) => {
+  
   
   const { company_name, email, phone, street_address, city, state, business_zip, website, service_zips, credit_balance, status, priority, verified, notes } = req.body;
   
@@ -2208,19 +2331,19 @@ app.post('/admin/update-provider/:id', (req, res) => {
   }
   
   console.log(`Provider ${req.params.id} updated`);
-  res.redirect(`/admin?key=${req.query.key}`);
+  res.redirect(`/admin`);
 });
 
 // Add credits to provider (with proper audit logging)
-app.post('/admin/add-credits/:id', (req, res) => {
-  if (req.query.key !== ADMIN_PASSWORD) return res.status(401).send('Unauthorized');
+app.post('/admin/add-credits/:id', requireAdminAuth, (req, res) => {
+  
   
   const providerId = parseInt(req.params.id);
   const credits = parseInt(req.body.credits) || 0;
   const reason = req.body.reason || 'Admin credit add';
   
   if (credits <= 0) {
-    return res.redirect(`/admin/edit-provider/${providerId}?key=${req.query.key}&msg=invalid_credits`);
+    return res.redirect(`/admin/edit-provider/${providerId}&msg=invalid_credits`);
   }
   
   const provider = db.prepare('SELECT * FROM providers WHERE id = ?').get(providerId);
@@ -2238,12 +2361,12 @@ app.post('/admin/add-credits/:id', (req, res) => {
   );
   
   console.log(`Added ${credits} credits to ${provider.company_name}: ${reason}`);
-  res.redirect(`/admin/edit-provider/${providerId}?key=${req.query.key}&msg=credits_added`);
+  res.redirect(`/admin/edit-provider/${providerId}&msg=credits_added`);
 });
 
 // Resend lead to matching providers
-app.post('/admin/resend-lead/:leadId', async (req, res) => {
-  if (req.query.key !== ADMIN_PASSWORD) return res.status(401).send('Unauthorized');
+app.post('/admin/resend-lead/:leadId', requireAdminAuth, async (req, res) => {
+  
   
   const lead = db.prepare('SELECT * FROM leads WHERE lead_id = ?').get(req.params.leadId);
   if (!lead) return res.status(404).send('Lead not found');
@@ -2277,20 +2400,20 @@ app.post('/admin/resend-lead/:leadId', async (req, res) => {
   await sendAdminNotification(`🔄 Lead resent: ${lead.lead_id}`, 
     `Full: ${sentCount} | Teasers: ${teaserCount}\n${notified.join(', ')}`);
   
-  res.redirect(`/admin?key=${req.query.key}`);
+  res.redirect(`/admin`);
 });
 
 // Delete provider
-app.post('/admin/delete-provider/:id', (req, res) => {
-  if (req.query.key !== ADMIN_PASSWORD) return res.status(401).send('Unauthorized');
+app.post('/admin/delete-provider/:id', requireAdminAuth, (req, res) => {
+  
   db.prepare('DELETE FROM providers WHERE id = ?').run(req.params.id);
   console.log(`Provider ${req.params.id} deleted`);
-  res.redirect(`/admin?key=${req.query.key}`);
+  res.redirect(`/admin`);
 });
 
 // Send welcome email to provider
-app.post('/admin/send-welcome/:id', async (req, res) => {
-  if (req.query.key !== ADMIN_PASSWORD) return res.status(401).send('Unauthorized');
+app.post('/admin/send-welcome/:id', requireAdminAuth, async (req, res) => {
+  
   
   const provider = db.prepare('SELECT * FROM providers WHERE id = ?').get(req.params.id);
   if (!provider) return res.status(404).send('Provider not found');
@@ -2333,12 +2456,12 @@ app.post('/admin/send-welcome/:id', async (req, res) => {
   const sent = await sendEmail(provider.email, 'Welcome to DumpsterMap! 🗑️', html);
   console.log(`Welcome email ${sent ? 'sent' : 'FAILED'} to ${provider.email}`);
   
-  res.redirect(`/admin/edit-provider/${req.params.id}?key=${req.query.key}&msg=welcome_${sent ? 'sent' : 'failed'}`);
+  res.redirect(`/admin/edit-provider/${req.params.id}&msg=welcome_${sent ? 'sent' : 'failed'}`);
 });
 
 // Send low balance reminder to provider
-app.post('/admin/send-low-balance/:id', async (req, res) => {
-  if (req.query.key !== ADMIN_PASSWORD) return res.status(401).send('Unauthorized');
+app.post('/admin/send-low-balance/:id', requireAdminAuth, async (req, res) => {
+  
   
   const provider = db.prepare('SELECT * FROM providers WHERE id = ?').get(req.params.id);
   if (!provider) return res.status(404).send('Provider not found');
@@ -2394,12 +2517,12 @@ app.post('/admin/send-low-balance/:id', async (req, res) => {
   const sent = await sendEmail(provider.email, `Low Balance Alert: ${provider.credit_balance} credits remaining`, html);
   console.log(`Low balance email ${sent ? 'sent' : 'FAILED'} to ${provider.email}`);
   
-  res.redirect(`/admin/edit-provider/${req.params.id}?key=${req.query.key}&msg=lowbalance_${sent ? 'sent' : 'failed'}`);
+  res.redirect(`/admin/edit-provider/${req.params.id}&msg=lowbalance_${sent ? 'sent' : 'failed'}`);
 });
 
 // Quick add credits
-app.post('/admin/add-credits', (req, res) => {
-  if (req.query.key !== ADMIN_PASSWORD) return res.status(401).send('Unauthorized');
+app.post('/admin/add-credits', requireAdminAuth, (req, res) => {
+  
   
   const { provider_id, credits, reason } = req.body;
   const creditAmount = parseInt(credits) || 0;
@@ -2414,12 +2537,12 @@ app.post('/admin/add-credits', (req, res) => {
   logCreditTransaction(parseInt(provider_id), 'admin_add', creditAmount, 'admin', reason || 'Manual addition');
   
   console.log(`Added ${creditAmount} credits to provider ${provider_id}: ${reason || 'no reason'}`);
-  res.redirect(`/admin?key=${req.query.key}`);
+  res.redirect(`/admin`);
 });
 
 // Bulk add credits (form version)
-app.post('/admin/bulk-add-credits', (req, res) => {
-  if (req.query.key !== ADMIN_PASSWORD) return res.status(401).send('Unauthorized');
+app.post('/admin/bulk-add-credits', requireAdminAuth, (req, res) => {
+  
   
   let { provider_ids, credits, reason } = req.body;
   
@@ -2430,7 +2553,7 @@ app.post('/admin/bulk-add-credits', (req, res) => {
   
   const creditAmount = parseInt(credits) || 0;
   if (creditAmount <= 0 || provider_ids.length === 0) {
-    return res.redirect(`/admin?key=${req.query.key}`);
+    return res.redirect(`/admin`);
   }
   
   let updated = 0;
@@ -2449,12 +2572,12 @@ app.post('/admin/bulk-add-credits', (req, res) => {
   }
   
   console.log(`Bulk added ${creditAmount} credits to ${updated} providers: ${reason || 'no reason'}`);
-  res.redirect(`/admin?key=${req.query.key}`);
+  res.redirect(`/admin`);
 });
 
 // Provider outreach management
-app.get('/admin/outreach', (req, res) => {
-  if (req.query.key !== ADMIN_PASSWORD) return res.status(401).send('Unauthorized');
+app.get('/admin/outreach', requireAdminAuth, (req, res) => {
+  
   
   const outreach = db.prepare('SELECT * FROM outreach ORDER BY id DESC LIMIT 200').all();
   const campaigns = db.prepare('SELECT DISTINCT campaign FROM outreach WHERE campaign IS NOT NULL').all();
@@ -2495,7 +2618,7 @@ app.get('/admin/outreach', (req, res) => {
   </style>
 </head>
 <body>
-  <a href="/admin?key=${req.query.key}" class="back">← Back to Admin</a>
+  <a href="/admin" class="back">← Back to Admin</a>
   <h1>📧 Provider Outreach</h1>
   
   <div class="stats">
@@ -2509,7 +2632,7 @@ app.get('/admin/outreach', (req, res) => {
   
   <div class="card">
     <h3>Add Outreach Contact</h3>
-    <form action="/admin/outreach/add?key=${req.query.key}" method="POST" style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
+    <form action="/admin/outreach/add" method="POST" style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
       <input name="company_name" placeholder="Company Name" required>
       <input name="provider_email" placeholder="Email" required type="email">
       <input name="phone" placeholder="Phone">
@@ -2525,7 +2648,7 @@ app.get('/admin/outreach', (req, res) => {
   
   <div class="card">
     <h3>Bulk Import (CSV)</h3>
-    <form action="/admin/outreach/import?key=${req.query.key}" method="POST" style="display: flex; gap: 10px; align-items: flex-start;">
+    <form action="/admin/outreach/import" method="POST" style="display: flex; gap: 10px; align-items: flex-start;">
       <textarea name="csv_data" placeholder="company_name,email,phone,zip,source&#10;ABC Dumpsters,abc@example.com,555-1234,10001,Google Maps" rows="4" style="width: 500px;"></textarea>
       <input name="campaign" placeholder="Campaign name">
       <button class="btn">Import CSV</button>
@@ -2560,7 +2683,7 @@ app.get('/admin/outreach', (req, res) => {
           <td class="${statusClass}">${o.email_status}${o.replied_at ? ' (replied)' : ''}</td>
           <td>${o.converted ? '✅' : ''}</td>
           <td>
-            <form action="/admin/outreach/update/${o.id}?key=${req.query.key}" method="POST" style="display: inline;">
+            <form action="/admin/outreach/update/${o.id}" method="POST" style="display: inline;">
               <select name="action" onchange="this.form.submit()" style="padding: 4px; font-size: 11px;">
                 <option value="">Actions...</option>
                 <option value="sent">Mark Sent</option>
@@ -2578,7 +2701,7 @@ app.get('/admin/outreach', (req, res) => {
   <div class="card">
     <h3>📧 Bulk Send Outreach Emails</h3>
     <p style="color: #64748b; font-size: 14px; margin-bottom: 10px;">Send outreach emails to all contacts with "Pending" status.</p>
-    <form action="/admin/outreach/bulk-send?key=${req.query.key}" method="POST" style="display: flex; gap: 10px; align-items: center;" onsubmit="return confirm('Send outreach emails to all Pending contacts?')">
+    <form action="/admin/outreach/bulk-send" method="POST" style="display: flex; gap: 10px; align-items: center;" onsubmit="return confirm('Send outreach emails to all Pending contacts?')">
       <select name="campaign" style="min-width: 150px;">
         <option value="">All campaigns</option>
         ${campaigns.map(c => `<option value="${c.campaign}">${c.campaign}</option>`).join('')}
@@ -2589,15 +2712,15 @@ app.get('/admin/outreach', (req, res) => {
   </div>
   
   <h2>Export</h2>
-  <a href="/admin/export/outreach?key=${req.query.key}" class="btn">Export Outreach CSV</a>
+  <a href="/admin/export/outreach" class="btn">Export Outreach CSV</a>
 </body>
 </html>`;
   res.send(html);
 });
 
 // Bulk send outreach emails
-app.post('/admin/outreach/bulk-send', async (req, res) => {
-  if (req.query.key !== ADMIN_PASSWORD) return res.status(401).send('Unauthorized');
+app.post('/admin/outreach/bulk-send', requireAdminAuth, async (req, res) => {
+  
   
   const campaign = req.body.campaign || null;
   const limit = Math.min(parseInt(req.body.limit) || 10, 50);
@@ -2639,7 +2762,7 @@ app.post('/admin/outreach/bulk-send', async (req, res) => {
   }
   
   console.log(`Bulk outreach (Gmail): ${sent} sent, ${failed} failed`);
-  res.redirect(`/admin/outreach?key=${req.query.key}&sent=${sent}&failed=${failed}`);
+  res.redirect(`/admin/outreach&sent=${sent}&failed=${failed}`);
 });
 
 // API endpoint for cron job to send outreach emails
@@ -2823,8 +2946,8 @@ function generateOutreachEmail(contact) {
 }
 
 // Add outreach contact
-app.post('/admin/outreach/add', (req, res) => {
-  if (req.query.key !== ADMIN_PASSWORD) return res.status(401).send('Unauthorized');
+app.post('/admin/outreach/add', requireAdminAuth, (req, res) => {
+  
   
   const { company_name, provider_email, phone, zip, source, campaign } = req.body;
   db.prepare(`
@@ -2832,15 +2955,15 @@ app.post('/admin/outreach/add', (req, res) => {
     VALUES (?, ?, ?, ?, ?, ?)
   `).run(company_name, provider_email, phone, zip, source, campaign);
   
-  res.redirect(`/admin/outreach?key=${req.query.key}`);
+  res.redirect(`/admin/outreach`);
 });
 
 // Bulk import outreach
-app.post('/admin/outreach/import', (req, res) => {
-  if (req.query.key !== ADMIN_PASSWORD) return res.status(401).send('Unauthorized');
+app.post('/admin/outreach/import', requireAdminAuth, (req, res) => {
+  
   
   const { csv_data, campaign } = req.body;
-  if (!csv_data) return res.redirect(`/admin/outreach?key=${req.query.key}`);
+  if (!csv_data) return res.redirect(`/admin/outreach`);
   
   const lines = csv_data.trim().split('\n');
   let imported = 0;
@@ -2864,12 +2987,12 @@ app.post('/admin/outreach/import', (req, res) => {
   }
   
   console.log(`Imported ${imported} outreach contacts`);
-  res.redirect(`/admin/outreach?key=${req.query.key}`);
+  res.redirect(`/admin/outreach`);
 });
 
 // Update outreach status
-app.post('/admin/outreach/update/:id', (req, res) => {
-  if (req.query.key !== ADMIN_PASSWORD) return res.status(401).send('Unauthorized');
+app.post('/admin/outreach/update/:id', requireAdminAuth, (req, res) => {
+  
   
   const action = req.body.action;
   const id = req.params.id;
@@ -2896,15 +3019,15 @@ app.post('/admin/outreach/update/:id', (req, res) => {
     db.prepare('DELETE FROM outreach WHERE id = ?').run(id);
   }
   
-  res.redirect(`/admin/outreach?key=${req.query.key}`);
+  res.redirect(`/admin/outreach`);
 });
 
 // Admin search results page
-app.get('/admin/search', (req, res) => {
-  if (req.query.key !== ADMIN_PASSWORD) return res.status(401).send('Unauthorized');
+app.get('/admin/search', requireAdminAuth, (req, res) => {
+  
   
   const query = (req.query.q || '').trim().toLowerCase();
-  if (!query) return res.redirect(`/admin?key=${req.query.key}`);
+  if (!query) return res.redirect(`/admin`);
   
   // Search providers
   const providers = db.prepare(`
@@ -2951,7 +3074,7 @@ app.get('/admin/search', (req, res) => {
   </style>
 </head>
 <body>
-  <a href="/admin?key=${req.query.key}" class="back">← Back to Admin</a>
+  <a href="/admin" class="back">← Back to Admin</a>
   <h1>🔍 Search Results for "${query}"</h1>
   
   <div class="card">
@@ -2968,7 +3091,7 @@ app.get('/admin/search', (req, res) => {
           <td style="max-width: 150px; overflow: hidden; text-overflow: ellipsis;">${p.service_zips || '<em>None</em>'}</td>
           <td><span class="credit-badge">${p.credit_balance || 0}</span></td>
           <td>${p.status}</td>
-          <td><a href="/admin/edit-provider/${p.id}?key=${req.query.key}" class="btn">Edit</a></td>
+          <td><a href="/admin/edit-provider/${p.id}" class="btn">Edit</a></td>
         </tr>
       `).join('')}
     </table>
@@ -3004,8 +3127,8 @@ app.get('/admin/search', (req, res) => {
 });
 
 // Registration funnel page
-app.get('/admin/funnel', async (req, res) => {
-  if (req.query.key !== ADMIN_PASSWORD) return res.status(401).send('Unauthorized');
+app.get('/admin/funnel', requireAdminAuth, async (req, res) => {
+  
   
   // Fetch funnel data
   let funnelData = { registrations: 0, purchases: 0, conversionRate: '0%', byPack: {}, dailyBreakdown: [] };
@@ -3076,7 +3199,7 @@ app.get('/admin/funnel', async (req, res) => {
   </style>
 </head>
 <body>
-  <a href="/admin?key=${req.query.key}" class="back">← Back to Admin</a>
+  <a href="/admin" class="back">← Back to Admin</a>
   <h1>📊 Registration Funnel (Last 30 Days)</h1>
   
   <div class="stats">
@@ -3139,8 +3262,8 @@ app.get('/admin/funnel', async (req, res) => {
 });
 
 // Provider Activity Dashboard (visual UI for the API)
-app.get('/admin/activity', async (req, res) => {
-  if (req.query.key !== ADMIN_PASSWORD) return res.status(401).send('Unauthorized');
+app.get('/admin/activity', requireAdminAuth, async (req, res) => {
+  
   
   const days = parseInt(req.query.days) || 30;
   
@@ -3235,13 +3358,13 @@ app.get('/admin/activity', async (req, res) => {
   </style>
 </head>
 <body>
-  <a href="/admin?key=${req.query.key}" class="back">← Back to Admin</a>
+  <a href="/admin" class="back">← Back to Admin</a>
   <h1>📈 Provider Activity Dashboard</h1>
   
   <div class="period-select">
-    <a href="?key=${req.query.key}&days=7" class="${days === 7 ? 'active' : ''}">7 Days</a>
-    <a href="?key=${req.query.key}&days=30" class="${days === 30 ? 'active' : ''}">30 Days</a>
-    <a href="?key=${req.query.key}&days=90" class="${days === 90 ? 'active' : ''}">90 Days</a>
+    <a href="&days=7" class="${days === 7 ? 'active' : ''}">7 Days</a>
+    <a href="&days=30" class="${days === 30 ? 'active' : ''}">30 Days</a>
+    <a href="&days=90" class="${days === 90 ? 'active' : ''}">90 Days</a>
   </div>
   
   <div class="stats">
@@ -3275,7 +3398,7 @@ app.get('/admin/activity', async (req, res) => {
             <td style="font-weight: bold; color: #16a34a;">${p.recent_leads}</td>
             <td>${p.total_leads}</td>
             <td><span class="credit-badge">${p.credit_balance}</span></td>
-            <td><a href="/admin/edit-provider/${p.id}?key=${req.query.key}" class="btn">View</a></td>
+            <td><a href="/admin/edit-provider/${p.id}" class="btn">View</a></td>
           </tr>
         `).join('')}
       </table>` : '<p style="color: #94a3b8;">No leads sent in this period</p>'}
@@ -3292,7 +3415,7 @@ app.get('/admin/activity', async (req, res) => {
             <td style="font-weight: bold; color: #16a34a;">$${p.total_spent}</td>
             <td>${p.purchase_count}</td>
             <td><span class="credit-badge">${p.credit_balance}</span></td>
-            <td><a href="/admin/edit-provider/${p.id}?key=${req.query.key}" class="btn">View</a></td>
+            <td><a href="/admin/edit-provider/${p.id}" class="btn">View</a></td>
           </tr>
         `).join('')}
       </table>` : '<p style="color: #94a3b8;">No purchases in this period</p>'}
@@ -3312,7 +3435,7 @@ app.get('/admin/activity', async (req, res) => {
             <td><span class="credit-badge">${p.credit_balance}</span></td>
             <td>${p.leads_30d}</td>
             <td style="font-size: 11px;">${p.last_purchase_at?.split('T')[0] || 'Never'}</td>
-            <td><a href="/admin/edit-provider/${p.id}?key=${req.query.key}" class="btn">View</a></td>
+            <td><a href="/admin/edit-provider/${p.id}" class="btn">View</a></td>
           </tr>
         `).join('')}
       </table>` : '<p style="color: #16a34a;">✅ No churn risk providers</p>'}
@@ -3331,7 +3454,7 @@ app.get('/admin/activity', async (req, res) => {
             <td><span class="credit-badge">${p.credit_balance}</span></td>
             <td>${hasZips ? '✅' : '<span class="warning">⚠️ No ZIPs</span>'}</td>
             <td style="font-size: 11px;">${p.created_at?.split('T')[0] || ''}</td>
-            <td><a href="/admin/edit-provider/${p.id}?key=${req.query.key}" class="btn">View</a></td>
+            <td><a href="/admin/edit-provider/${p.id}" class="btn">View</a></td>
           </tr>`;
         }).join('')}
       </table>` : '<p style="color: #94a3b8;">No new providers this week</p>'}
@@ -3341,10 +3464,10 @@ app.get('/admin/activity', async (req, res) => {
   <div class="card" style="margin-top: 20px;">
     <h3>🔗 Quick Links</h3>
     <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-      <a href="/api/admin/provider-activity?key=${req.query.key}&days=${days}" target="_blank" class="btn">📊 JSON API</a>
-      <a href="/api/admin/daily-summary?key=${req.query.key}" target="_blank" class="btn">📅 Daily Summary</a>
-      <a href="/api/admin/weekly-summary?key=${req.query.key}" target="_blank" class="btn">📈 Weekly Summary</a>
-      <a href="/admin/export/providers?key=${req.query.key}" class="btn">📥 Export Providers</a>
+      <a href="/api/admin/provider-activity&days=${days}" target="_blank" class="btn">📊 JSON API</a>
+      <a href="/api/admin/daily-summary" target="_blank" class="btn">📅 Daily Summary</a>
+      <a href="/api/admin/weekly-summary" target="_blank" class="btn">📈 Weekly Summary</a>
+      <a href="/admin/export/providers" class="btn">📥 Export Providers</a>
     </div>
   </div>
 </body>
@@ -3354,8 +3477,8 @@ app.get('/admin/activity', async (req, res) => {
 });
 
 // System logs page
-app.get('/admin/logs', (req, res) => {
-  if (req.query.key !== ADMIN_PASSWORD) return res.status(401).send('Unauthorized');
+app.get('/admin/logs', requireAdminAuth, (req, res) => {
+  
   
   const purchases = db.prepare('SELECT * FROM purchase_log ORDER BY id DESC LIMIT 200').all();
   const errors = db.prepare('SELECT * FROM error_log ORDER BY id DESC LIMIT 100').all();
@@ -3392,7 +3515,7 @@ app.get('/admin/logs', (req, res) => {
   </style>
 </head>
 <body>
-  <a href="/admin?key=${req.query.key}" class="back">← Back to Admin</a>
+  <a href="/admin" class="back">← Back to Admin</a>
   <h1>📋 System Logs</h1>
   
   <div style="display: grid; grid-template-columns: repeat(6, 1fr); gap: 15px; margin-bottom: 30px;">
@@ -3496,8 +3619,8 @@ app.get('/admin/logs', (req, res) => {
   res.send(html);
 });
 
-app.post('/admin/add-provider', (req, res) => {
-  if (req.query.key !== ADMIN_PASSWORD) return res.status(401).send('Unauthorized');
+app.post('/admin/add-provider', requireAdminAuth, (req, res) => {
+  
   
   const { company_name, email, phone, city, state, service_zips, credit_balance } = req.body;
   
@@ -3507,11 +3630,11 @@ app.post('/admin/add-provider', (req, res) => {
   `).run(company_name, email.toLowerCase().trim(), phone, city || null, (state || '').toUpperCase() || null, service_zips, parseInt(credit_balance) || 0);
   
   console.log(`Provider added: ${company_name} (${email})`);
-  res.redirect(`/admin?key=${req.query.key}`);
+  res.redirect(`/admin`);
 });
 
-app.get('/admin/export/:type', (req, res) => {
-  if (req.query.key !== ADMIN_PASSWORD) return res.status(401).send('Unauthorized');
+app.get('/admin/export/:type', requireAdminAuth, (req, res) => {
+  
   
   const type = req.params.type;
   let data, filename;
@@ -3691,7 +3814,7 @@ app.get('/api/stats', (req, res) => {
 });
 
 // Admin stats (requires auth - supports query param, x-admin-key header, or Authorization bearer)
-app.get('/api/admin/stats', (req, res) => {
+app.get('/api/admin/stats', requireAdminAuth, (req, res) => {
   const auth = req.query.key || 
                req.headers['x-admin-key'] || 
                (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
@@ -3722,7 +3845,7 @@ app.get('/api/admin/stats', (req, res) => {
 });
 
 // ZIP coverage analysis - which zips have active providers
-app.get('/api/admin/zip-coverage', (req, res) => {
+app.get('/api/admin/zip-coverage', requireAdminAuth, (req, res) => {
   const auth = req.query.key || req.headers['x-admin-key'];
   if (auth !== ADMIN_PASSWORD) {
     return res.status(401).json({ error: 'Unauthorized' });
@@ -3788,7 +3911,7 @@ app.get('/api/admin/zip-coverage', (req, res) => {
 });
 
 // Daily summary for monitoring/cron
-app.get('/api/admin/daily-summary', (req, res) => {
+app.get('/api/admin/daily-summary', requireAdminAuth, (req, res) => {
   const auth = req.query.key || req.headers['x-admin-key'];
   if (auth !== ADMIN_PASSWORD) {
     return res.status(401).json({ error: 'Unauthorized' });
@@ -3846,7 +3969,7 @@ app.get('/api/admin/daily-summary', (req, res) => {
 });
 
 // Credit pack pricing config (admin view)
-app.get('/api/admin/pricing', (req, res) => {
+app.get('/api/admin/pricing', requireAdminAuth, (req, res) => {
   const auth = req.query.key || req.headers['x-admin-key'];
   if (auth !== ADMIN_PASSWORD) {
     return res.status(401).json({ error: 'Unauthorized' });
@@ -3866,7 +3989,7 @@ app.get('/api/admin/pricing', (req, res) => {
 });
 
 // Geocode providers without lat/lng (admin)
-app.post('/api/admin/geocode-providers', async (req, res) => {
+app.post('/api/admin/geocode-providers', requireAdminAuth, async (req, res) => {
   const auth = req.query.key || req.headers['x-admin-key'];
   if (auth !== ADMIN_PASSWORD) {
     return res.status(401).json({ error: 'Unauthorized' });
@@ -3926,7 +4049,7 @@ app.post('/api/provider/upload-photo', upload.single('photo'), (req, res) => {
 });
 
 // Admin upload photo for any provider
-app.post('/api/admin/upload-photo/:id', upload.single('photo'), (req, res) => {
+app.post('/api/admin/upload-photo/:id', requireAdminAuth, upload.single('photo'), (req, res) => {
   const auth = req.query.key || req.headers['x-admin-key'];
   if (auth !== ADMIN_PASSWORD) {
     return res.status(401).json({ error: 'Unauthorized' });
@@ -3947,7 +4070,7 @@ app.post('/api/admin/upload-photo/:id', upload.single('photo'), (req, res) => {
 });
 
 // Clear test data (admin)
-app.post('/api/admin/clear-test-data', (req, res) => {
+app.post('/api/admin/clear-test-data', requireAdminAuth, (req, res) => {
   const auth = req.query.key || req.headers['x-admin-key'];
   if (auth !== ADMIN_PASSWORD) {
     return res.status(401).json({ error: 'Unauthorized' });
@@ -3995,7 +4118,7 @@ app.delete('/api/admin/provider/:id', (req, res) => {
 });
 
 // Update provider priority/featured status (admin)
-app.post('/api/admin/set-featured/:id', (req, res) => {
+app.post('/api/admin/set-featured/:id', requireAdminAuth, (req, res) => {
   const auth = req.query.key || req.headers['x-admin-key'];
   if (auth !== ADMIN_PASSWORD) {
     return res.status(401).json({ error: 'Unauthorized' });
@@ -4014,7 +4137,7 @@ app.post('/api/admin/set-featured/:id', (req, res) => {
 });
 
 // Error log viewer API (admin)
-app.get('/api/admin/errors', (req, res) => {
+app.get('/api/admin/errors', requireAdminAuth, (req, res) => {
   const auth = req.query.key || req.headers['x-admin-key'];
   if (auth !== ADMIN_PASSWORD) {
     return res.status(401).json({ error: 'Unauthorized' });
@@ -4043,7 +4166,7 @@ app.get('/api/admin/errors', (req, res) => {
 });
 
 // Clear old error logs (admin) - keeps last 7 days
-app.post('/api/admin/errors/cleanup', (req, res) => {
+app.post('/api/admin/errors/cleanup', requireAdminAuth, (req, res) => {
   const auth = req.query.key || req.headers['x-admin-key'];
   if (auth !== ADMIN_PASSWORD) {
     return res.status(401).json({ error: 'Unauthorized' });
@@ -4054,7 +4177,7 @@ app.post('/api/admin/errors/cleanup', (req, res) => {
 });
 
 // Admin endpoint: Get provider details by ID
-app.get('/api/admin/provider/:id', (req, res) => {
+app.get('/api/admin/provider/:id', requireAdminAuth, (req, res) => {
   const auth = req.query.key || req.headers['x-admin-key'];
   if (auth !== ADMIN_PASSWORD) return res.status(401).json({ error: 'Unauthorized' });
   
@@ -4182,7 +4305,7 @@ app.put('/api/admin/provider/:id', (req, res) => {
 });
 
 // Admin endpoint: View credit transaction history
-app.get('/api/admin/credit-history', (req, res) => {
+app.get('/api/admin/credit-history', requireAdminAuth, (req, res) => {
   const auth = req.query.key || req.headers['x-admin-key'];
   if (auth !== ADMIN_PASSWORD) return res.status(401).json({ error: 'Unauthorized' });
   
@@ -4239,7 +4362,7 @@ app.get('/api/admin/credit-history', (req, res) => {
 });
 
 // Admin endpoint: View and manage premium status
-app.get('/api/admin/premium-status', (req, res) => {
+app.get('/api/admin/premium-status', requireAdminAuth, (req, res) => {
   const auth = req.query.key || req.headers['x-admin-key'];
   if (auth !== ADMIN_PASSWORD) return res.status(401).json({ error: 'Unauthorized' });
   
@@ -4266,7 +4389,7 @@ app.get('/api/admin/premium-status', (req, res) => {
 });
 
 // Admin endpoint: View subscription statistics
-app.get('/api/admin/subscriptions', (req, res) => {
+app.get('/api/admin/subscriptions', requireAdminAuth, (req, res) => {
   const auth = req.query.key || req.headers['x-admin-key'];
   if (auth !== ADMIN_PASSWORD) return res.status(401).json({ error: 'Unauthorized' });
   
@@ -4336,7 +4459,7 @@ app.get('/api/admin/subscriptions', (req, res) => {
 });
 
 // Admin endpoint: Manually expire premium status
-app.post('/api/admin/expire-premium', (req, res) => {
+app.post('/api/admin/expire-premium', requireAdminAuth, (req, res) => {
   const auth = req.query.key || req.headers['x-admin-key'];
   if (auth !== ADMIN_PASSWORD) return res.status(401).json({ error: 'Unauthorized' });
   
@@ -4345,7 +4468,7 @@ app.post('/api/admin/expire-premium', (req, res) => {
 });
 
 // Admin endpoint: Send premium expiration reminders now
-app.post('/api/admin/send-premium-reminders', async (req, res) => {
+app.post('/api/admin/send-premium-reminders', requireAdminAuth, async (req, res) => {
   const auth = req.query.key || req.headers['x-admin-key'];
   if (auth !== ADMIN_PASSWORD) return res.status(401).json({ error: 'Unauthorized' });
   
@@ -4358,7 +4481,7 @@ app.post('/api/admin/send-premium-reminders', async (req, res) => {
 });
 
 // Admin endpoint: View webhook event log
-app.get('/api/admin/webhook-log', (req, res) => {
+app.get('/api/admin/webhook-log', requireAdminAuth, (req, res) => {
   const auth = req.query.key || req.headers['x-admin-key'];
   if (auth !== ADMIN_PASSWORD) return res.status(401).json({ error: 'Unauthorized' });
   
@@ -4385,7 +4508,7 @@ app.get('/api/admin/webhook-log', (req, res) => {
 });
 
 // Admin endpoint: Registration funnel stats
-app.get('/api/admin/registration-funnel', (req, res) => {
+app.get('/api/admin/registration-funnel', requireAdminAuth, (req, res) => {
   const auth = req.query.key || req.headers['x-admin-key'];
   if (auth !== ADMIN_PASSWORD) return res.status(401).json({ error: 'Unauthorized' });
   
@@ -4446,7 +4569,7 @@ app.get('/api/admin/registration-funnel', (req, res) => {
 });
 
 // Admin endpoint: Send batch email to providers (announcements, promotions)
-app.post('/api/admin/batch-email', async (req, res) => {
+app.post('/api/admin/batch-email', requireAdminAuth, async (req, res) => {
   const auth = req.query.key || req.headers['x-admin-key'];
   if (auth !== ADMIN_PASSWORD) return res.status(401).json({ error: 'Unauthorized' });
   
@@ -4515,7 +4638,7 @@ app.post('/api/admin/batch-email', async (req, res) => {
 });
 
 // Admin endpoint: Add credits to single provider (API)
-app.post('/api/admin/provider/:id/credits', (req, res) => {
+app.post('/api/admin/provider/:id/credits', requireAdminAuth, (req, res) => {
   const auth = req.query.key || req.headers['x-admin-key'];
   if (auth !== ADMIN_PASSWORD) return res.status(401).json({ error: 'Unauthorized' });
   
@@ -4599,7 +4722,7 @@ app.post('/api/admin/bulk-add-credits', (req, res) => {
 // ============================================
 
 // Send ZIP setup reminders to providers with credits but no ZIPs
-app.post('/api/admin/send-zip-reminders', async (req, res) => {
+app.post('/api/admin/send-zip-reminders', requireAdminAuth, async (req, res) => {
   const auth = req.query.key || req.headers['x-admin-key'];
   if (auth !== ADMIN_PASSWORD) return res.status(401).json({ error: 'Unauthorized' });
   
@@ -4673,8 +4796,8 @@ app.post('/api/admin/send-zip-reminders', async (req, res) => {
 });
 
 // Export credit transactions as CSV
-app.get('/admin/export/credit-history', (req, res) => {
-  if (req.query.key !== ADMIN_PASSWORD) return res.status(401).send('Unauthorized');
+app.get('/admin/export/credit-history', requireAdminAuth, (req, res) => {
+  
   
   try {
     const transactions = db.prepare(`
@@ -4734,7 +4857,7 @@ app.get('/api/admin/search-providers', (req, res) => {
 });
 
 // Get provider leads (for admin deep-dive)
-app.get('/api/admin/provider/:id/leads', (req, res) => {
+app.get('/api/admin/provider/:id/leads', requireAdminAuth, (req, res) => {
   const auth = req.query.key || req.headers['x-admin-key'];
   if (auth !== ADMIN_PASSWORD) return res.status(401).json({ error: 'Unauthorized' });
   
@@ -4772,7 +4895,7 @@ app.get('/api/admin/provider/:id/leads', (req, res) => {
 });
 
 // Weekly stats summary (for reports)
-app.get('/api/admin/weekly-summary', (req, res) => {
+app.get('/api/admin/weekly-summary', requireAdminAuth, (req, res) => {
   const auth = req.query.key || req.headers['x-admin-key'];
   if (auth !== ADMIN_PASSWORD) return res.status(401).json({ error: 'Unauthorized' });
   
@@ -4954,7 +5077,7 @@ app.post('/api/admin/test-webhook', async (req, res) => {
 });
 
 // Send a test lead to a provider (admin only)
-app.post('/api/admin/send-test-lead', async (req, res) => {
+app.post('/api/admin/send-test-lead', requireAdminAuth, async (req, res) => {
   const auth = req.query.key || req.headers['x-admin-key'];
   if (auth !== ADMIN_PASSWORD) {
     return res.status(401).json({ error: 'Unauthorized' });
@@ -4995,7 +5118,7 @@ app.post('/api/admin/send-test-lead', async (req, res) => {
   
   // If submitted via form, redirect back
   if (req.headers['content-type']?.includes('form')) {
-    return res.redirect(`/admin/edit-provider/${provider_id}?key=${req.query.key}&msg=test_sent`);
+    return res.redirect(`/admin/edit-provider/${provider_id}&msg=test_sent`);
   }
   res.json({ success: true, ...result });
 });
@@ -5094,7 +5217,7 @@ app.post('/api/admin/test-emails', async (req, res) => {
 });
 
 // Provider activity / performance metrics (admin)
-app.get('/api/admin/provider-activity', (req, res) => {
+app.get('/api/admin/provider-activity', requireAdminAuth, (req, res) => {
   const auth = req.query.key || req.headers['x-admin-key'];
   if (auth !== ADMIN_PASSWORD) return res.status(401).json({ error: 'Unauthorized' });
   
