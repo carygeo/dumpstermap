@@ -15,6 +15,44 @@
     <meta name="twitter:title" id="twitter-title" content="Provider Details | DumpsterMap">
     <meta name="twitter:description" id="twitter-desc" content="Get a free quote from this dumpster rental provider.">
     <meta name="twitter:image" content="https://dumpstermap.io/og-image.png">
+    
+    <!-- LocalBusiness Schema.org Structured Data - populated dynamically -->
+    <script type="application/ld+json" id="schema-localbusiness">
+    {
+      "@context": "https://schema.org",
+      "@type": "LocalBusiness",
+      "@id": "",
+      "name": "",
+      "description": "Dumpster rental services",
+      "url": "",
+      "telephone": "",
+      "address": {
+        "@type": "PostalAddress",
+        "addressLocality": "",
+        "addressRegion": "",
+        "postalCode": ""
+      },
+      "geo": {
+        "@type": "GeoCoordinates",
+        "latitude": "",
+        "longitude": ""
+      },
+      "aggregateRating": null,
+      "image": "",
+      "priceRange": "$$",
+      "serviceType": "Dumpster Rental"
+    }
+    </script>
+    
+    <!-- BreadcrumbList Schema -->
+    <script type="application/ld+json" id="schema-breadcrumb">
+    {
+      "@context": "https://schema.org",
+      "@type": "BreadcrumbList",
+      "itemListElement": []
+    }
+    </script>
+    
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
@@ -820,6 +858,9 @@
             // Breadcrumbs
             document.getElementById('bc-name').textContent = provider.name;
             
+            // Update LocalBusiness JSON-LD Schema
+            updateSchemaMarkup();
+            
             // Basic info
             document.getElementById('providerName').textContent = provider.name;
             document.getElementById('providerLocation').innerHTML = `📍 ${provider.city}, ${provider.state} ${provider.zip || ''}`;
@@ -946,6 +987,102 @@
         function nextPhoto() {
             currentPhotoIndex = (currentPhotoIndex + 1) % photos.length;
             document.getElementById('lightboxImg').src = photos[currentPhotoIndex];
+        }
+        
+        function updateSchemaMarkup() {
+            // Update LocalBusiness schema
+            const localBusinessSchema = {
+                "@context": "https://schema.org",
+                "@type": "LocalBusiness",
+                "@id": `https://dumpstermap.io/provider.html?id=${provider.id}`,
+                "name": provider.name,
+                "description": `${provider.name} offers dumpster rental services in ${provider.city}, ${provider.state}. Professional waste management and roll-off container rentals.`,
+                "url": `https://dumpstermap.io/provider.html?id=${provider.id}`,
+                "telephone": provider.phone || undefined,
+                "address": {
+                    "@type": "PostalAddress",
+                    "streetAddress": provider.address || "",
+                    "addressLocality": provider.city,
+                    "addressRegion": provider.state,
+                    "postalCode": provider.zip || ""
+                },
+                "priceRange": "$$",
+                "serviceType": ["Dumpster Rental", "Roll-Off Container Rental", "Waste Management"]
+            };
+            
+            // Add geo coordinates if available
+            if (provider.lat && provider.lng) {
+                localBusinessSchema.geo = {
+                    "@type": "GeoCoordinates",
+                    "latitude": provider.lat,
+                    "longitude": provider.lng
+                };
+            }
+            
+            // Add aggregate rating if provider has reviews
+            if (provider.reviewCount && provider.reviewCount > 0 && provider.rating) {
+                localBusinessSchema.aggregateRating = {
+                    "@type": "AggregateRating",
+                    "ratingValue": provider.rating.toFixed(1),
+                    "reviewCount": provider.reviewCount,
+                    "bestRating": "5",
+                    "worstRating": "1"
+                };
+            }
+            
+            // Add image if available
+            if (provider.photo) {
+                localBusinessSchema.image = provider.photo;
+            } else if (provider.logo) {
+                localBusinessSchema.image = provider.logo;
+            }
+            
+            // Add website if available
+            if (provider.website) {
+                localBusinessSchema.sameAs = [provider.website];
+            }
+            
+            // Update the schema element
+            const schemaEl = document.getElementById('schema-localbusiness');
+            if (schemaEl) {
+                schemaEl.textContent = JSON.stringify(localBusinessSchema, null, 2);
+            }
+            
+            // Update BreadcrumbList schema
+            const breadcrumbSchema = {
+                "@context": "https://schema.org",
+                "@type": "BreadcrumbList",
+                "itemListElement": [
+                    {
+                        "@type": "ListItem",
+                        "position": 1,
+                        "name": "Home",
+                        "item": "https://dumpstermap.io/"
+                    },
+                    {
+                        "@type": "ListItem",
+                        "position": 2,
+                        "name": `${provider.state} Dumpster Rentals`,
+                        "item": `https://dumpstermap.io/dumpster-rental/${provider.state.toLowerCase()}.html`
+                    },
+                    {
+                        "@type": "ListItem",
+                        "position": 3,
+                        "name": `${provider.city}, ${provider.state}`,
+                        "item": `https://dumpstermap.io/dumpster-rental/${provider.city.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${provider.state.toLowerCase()}.html`
+                    },
+                    {
+                        "@type": "ListItem",
+                        "position": 4,
+                        "name": provider.name
+                    }
+                ]
+            };
+            
+            const breadcrumbEl = document.getElementById('schema-breadcrumb');
+            if (breadcrumbEl) {
+                breadcrumbEl.textContent = JSON.stringify(breadcrumbSchema, null, 2);
+            }
         }
         
         function submitQuote(e) {
