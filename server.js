@@ -86,14 +86,14 @@ app.use(session({
 // ADMIN AUTH MIDDLEWARE
 // ============================================
 
-// Check for session, HTTP Basic Auth, or legacy key param
+// Check for session, HTTP Basic Auth, or x-admin-key header
 function requireAdminAuth(req, res, next) {
-  // 1. Check session
+  // 1. Check session (login form)
   if (req.session && req.session.isAdmin) {
     return next();
   }
   
-  // 2. Check HTTP Basic Auth
+  // 2. Check HTTP Basic Auth (for curl/programmatic access)
   const authHeader = req.headers.authorization;
   if (authHeader && authHeader.startsWith('Basic ')) {
     const base64Credentials = authHeader.split(' ')[1];
@@ -104,12 +104,13 @@ function requireAdminAuth(req, res, next) {
     }
   }
   
-  // 3. Legacy: Check key param (for backwards compatibility, will be removed)
-  if (req.query.key === ADMIN_PASSWORD) {
+  // 3. Check x-admin-key header (for API/automation)
+  const apiKey = req.headers['x-admin-key'];
+  if (apiKey === ADMIN_PASSWORD) {
     return next();
   }
   
-  // Not authenticated - redirect to login
+  // Not authenticated - redirect to login for browsers
   if (req.accepts('html')) {
     return res.redirect('/admin/login');
   }
