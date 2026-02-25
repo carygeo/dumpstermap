@@ -188,9 +188,8 @@ function main() {
     
     console.log(`✅ ${validCities.length} cities have ${minProviders}+ providers\n`);
     
-    // Generate top 100 city pages (can increase later)
-    const maxCities = 100;
-    const citiesToGenerate = validCities.slice(0, maxCities);
+    // Generate all valid city pages (no limit - all cities with 3+ providers)
+    const citiesToGenerate = validCities;
     
     let generated = 0;
     citiesToGenerate.forEach(([key, list]) => {

@@ -1,0 +1,964 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title id="page-title">Dumpster Rentals | DumpsterMap</title>
+    <meta name="description" id="meta-desc" content="Find dumpster rental providers near you.">
+    <link rel="canonical" id="canonical-url" href="">
+    
+    <!-- Open Graph / Social -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" id="og-url" content="https://dumpstermap.io/">
+    <meta property="og:title" id="og-title" content="Dumpster Rentals | DumpsterMap">
+    <meta property="og:description" id="og-desc" content="Find dumpster rental providers near you.">
+    <meta property="og:image" content="https://dumpstermap.io/og-image.png">
+    <meta name="twitter:card" content="summary_large_image">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.Default.css" />
+    
+    <!-- Schema.org markup for SEO -->
+    <script type="application/ld+json" id="schema-json">
+    {
+      "@context": "https://schema.org",
+      "@type": "LocalBusiness",
+      "name": "DumpsterMap - Dumpster Rentals",
+      "description": "Find local dumpster rental providers",
+      "areaServed": {
+        "@type": "City",
+        "name": ""
+      }
+    }
+    </script>
+    
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        :root {
+            --primary: #2563eb;
+            --primary-dark: #1d4ed8;
+            --secondary: #059669;
+            --accent: #f59e0b;
+            --text: #1f2937;
+            --text-light: #6b7280;
+            --bg: #ffffff;
+            --bg-light: #f9fafb;
+            --border: #e5e7eb;
+        }
+        
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            color: var(--text);
+            line-height: 1.6;
+            background: var(--bg-light);
+        }
+        
+        /* Header */
+        header {
+            background: var(--bg);
+            border-bottom: 1px solid var(--border);
+            padding: 1rem 2rem;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        
+        .header-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .logo {
+            font-size: 1.5rem;
+            font-weight: 800;
+            color: var(--primary);
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .logo-icon {
+            width: 40px;
+            height: 40px;
+            background: var(--primary);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 1.2rem;
+        }
+        
+        .logo-icon svg {
+            width: 24px;
+            height: 24px;
+            fill: white;
+        }
+        
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            font-weight: 600;
+            text-decoration: none;
+            transition: all 0.2s;
+            cursor: pointer;
+            border: none;
+            font-size: 1rem;
+        }
+        
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-primary:hover { background: var(--primary-dark); }
+        .btn-secondary { background: var(--bg-light); color: var(--text); border: 1px solid var(--border); }
+        .btn-secondary:hover { background: var(--border); }
+        
+        /* Hero Section */
+        .city-hero {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white;
+            padding: 3rem 2rem;
+            text-align: center;
+        }
+        
+        .city-hero h1 {
+            font-size: 2.5rem;
+            font-weight: 800;
+            margin-bottom: 0.5rem;
+        }
+        
+        .city-hero .subtitle {
+            font-size: 1.25rem;
+            opacity: 0.9;
+            margin-bottom: 1.5rem;
+        }
+        
+        .city-stats {
+            display: flex;
+            justify-content: center;
+            gap: 3rem;
+            flex-wrap: wrap;
+        }
+        
+        .stat {
+            text-align: center;
+        }
+        
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 800;
+        }
+        
+        .stat-label {
+            font-size: 0.875rem;
+            opacity: 0.8;
+        }
+        
+        /* Breadcrumbs */
+        .breadcrumbs {
+            max-width: 1400px;
+            margin: 1rem auto;
+            padding: 0 2rem;
+            font-size: 0.875rem;
+            color: var(--text-light);
+        }
+        .breadcrumbs a { color: var(--primary); text-decoration: none; }
+        .breadcrumbs a:hover { text-decoration: underline; }
+        
+        /* Main Content - same as results page */
+        .main-content {
+            max-width: 1800px;
+            margin: 0 auto;
+            padding: 1rem;
+            display: grid;
+            grid-template-columns: 260px 1fr 1fr;
+            gap: 1rem;
+            height: calc(100vh - 300px);
+            min-height: 600px;
+        }
+        
+        #map {
+            height: 100%;
+            min-height: 500px;
+            border-radius: 12px;
+            z-index: 1;
+        }
+        
+        .marker-cluster-small,
+        .marker-cluster-medium,
+        .marker-cluster-large {
+            background: rgba(37, 99, 235, 0.6);
+        }
+        .marker-cluster-small div,
+        .marker-cluster-medium div,
+        .marker-cluster-large div {
+            background: var(--primary);
+            color: white;
+            font-weight: 600;
+        }
+        
+        /* Sidebar */
+        .sidebar {
+            background: var(--bg);
+            border-radius: 12px;
+            padding: 1.5rem;
+            height: fit-content;
+            position: sticky;
+            top: 100px;
+        }
+        
+        .sidebar h3 {
+            font-size: 1rem;
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .filter-section { margin-bottom: 1.5rem; }
+        .filter-section h4 { font-size: 0.875rem; font-weight: 600; margin-bottom: 0.75rem; }
+        .filter-option { display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 0; cursor: pointer; }
+        .filter-option input { accent-color: var(--primary); }
+        
+        /* Results Container */
+        .results-container {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+            overflow-y: auto;
+        }
+        
+        /* Compact provider cards */
+        .provider-card-compact {
+            background: white;
+            border-radius: 10px;
+            border: 1px solid #e5e7eb;
+            display: flex;
+            align-items: center;
+            padding: 0.75rem;
+            gap: 0.75rem;
+            transition: all 0.2s;
+        }
+        .provider-card-compact:hover {
+            border-color: var(--primary);
+            box-shadow: 0 4px 12px rgba(37,99,235,0.15);
+        }
+        .card-link {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            flex: 1;
+            text-decoration: none;
+            color: inherit;
+            min-width: 0;
+        }
+        .card-photo { width: 48px; height: 48px; flex-shrink: 0; }
+        .card-photo img { width: 48px; height: 48px; border-radius: 8px; object-fit: cover; }
+        .card-photo .provider-logo-fallback { 
+            width: 48px; height: 48px; border-radius: 8px;
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            color: white; display: flex; align-items: center; justify-content: center;
+            font-weight: 700; font-size: 1.25rem;
+        }
+        .card-info { flex: 1; min-width: 0; }
+        .card-name { 
+            font-weight: 600; font-size: 0.95rem; color: #1f2937;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        .card-meta { font-size: 0.8rem; color: #6b7280; margin-top: 2px; }
+        .card-quote-btn {
+            background: var(--primary); color: white; border: none;
+            padding: 0.5rem 1rem; border-radius: 6px; font-weight: 600;
+            font-size: 0.85rem; cursor: pointer; white-space: nowrap;
+            transition: background 0.2s;
+        }
+        .card-quote-btn:hover { background: var(--primary-dark); }
+        
+        .provider-card {
+            background: white !important;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            transition: all 0.3s;
+            border: 1px solid #e5e7eb;
+            padding: 0;
+            margin-bottom: 1rem;
+            display: block !important;
+            min-height: 100px;
+        }
+        
+        .provider-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+        }
+        
+        .provider-header {
+            padding: 1.5rem;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            gap: 1rem;
+        }
+        
+        .provider-link {
+            text-decoration: none;
+            color: inherit;
+            cursor: pointer;
+        }
+        
+        .provider-link:hover .provider-info h3 {
+            color: var(--primary);
+        }
+        
+        .provider-image-container { width: 80px; height: 80px; flex-shrink: 0; }
+        .provider-photo { width: 80px; height: 80px; object-fit: cover; border-radius: 8px; }
+        .provider-logo-fallback {
+            width: 80px; height: 80px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            border-radius: 8px;
+            display: flex; align-items: center; justify-content: center;
+            color: white; font-size: 1.75rem; font-weight: 700;
+        }
+        
+        .provider-info { flex: 1; }
+        .provider-info h3 { font-size: 1.25rem; margin-bottom: 0.25rem; color: #1f2937 !important; }
+        .provider-location { color: var(--text-light); font-size: 0.875rem; }
+        .provider-rating { display: flex; align-items: center; gap: 0.5rem; margin-top: 0.5rem; }
+        .stars { color: var(--accent); font-size: 1rem; }
+        .rating-value { font-weight: 600; }
+        .no-rating { color: var(--text-light); font-style: italic; }
+        .rating-count { color: var(--text-light); font-size: 0.875rem; }
+        
+        .provider-category-tag {
+            font-size: 0.7rem; color: #6366f1; background: #eef2ff;
+            padding: 0.15rem 0.4rem; border-radius: 4px; display: inline-block; margin-top: 0.25rem;
+        }
+        
+        .provider-badges { display: flex; gap: 0.5rem; margin-top: 0.5rem; }
+        .badge { font-size: 0.7rem; padding: 0.2rem 0.5rem; border-radius: 4px; font-weight: 600; }
+        .badge-top { background: #fef3c7; color: #92400e; }
+        .badge-popular { background: #fee2e2; color: #991b1b; }
+        
+        .provider-body { padding: 1rem 1.5rem; }
+        .provider-actions { display: flex; gap: 0.75rem; }
+        .provider-actions .btn { flex: 1; text-align: center; }
+        
+        .no-results { text-align: center; padding: 4rem 2rem; background: white; border-radius: 12px; }
+        .no-results h3 { font-size: 1.5rem; margin-bottom: 0.5rem; }
+        .no-results p { color: var(--text-light); }
+        
+        /* SEO Content Section */
+        .seo-content {
+            max-width: 1200px;
+            margin: 3rem auto;
+            padding: 0 2rem;
+        }
+        
+        .seo-content h2 {
+            font-size: 1.75rem;
+            margin-bottom: 1rem;
+        }
+        
+        .seo-content p {
+            color: var(--text-light);
+            margin-bottom: 1rem;
+            line-height: 1.8;
+        }
+        
+        .faq-section {
+            background: white;
+            border-radius: 12px;
+            padding: 2rem;
+            margin-top: 2rem;
+        }
+        
+        .faq-section h2 { margin-bottom: 1.5rem; }
+        
+        .faq-item {
+            border-bottom: 1px solid var(--border);
+            padding: 1rem 0;
+        }
+        
+        .faq-item:last-child { border-bottom: none; }
+        .faq-item h3 { font-size: 1rem; margin-bottom: 0.5rem; color: var(--primary); }
+        .faq-item p { color: var(--text-light); font-size: 0.9rem; }
+        
+        .nearby-cities {
+            margin-top: 2rem;
+        }
+        
+        .nearby-cities h3 { margin-bottom: 1rem; }
+        
+        .city-links {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+        }
+        
+        .city-link {
+            padding: 0.5rem 1rem;
+            background: white;
+            border-radius: 8px;
+            text-decoration: none;
+            color: var(--primary);
+            font-weight: 500;
+            border: 1px solid var(--border);
+            transition: all 0.2s;
+        }
+        
+        .city-link:hover {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+        
+        /* Responsive */
+        @media (max-width: 968px) {
+            .main-content { grid-template-columns: 1fr; height: auto; }
+            #map { min-height: 300px; order: -1; }
+            .sidebar { position: static; }
+            .city-hero h1 { font-size: 1.75rem; }
+            .city-stats { gap: 1.5rem; }
+        }
+    </style>
+<script data-goatcounter="https://dumpstermap.goatcounter.com/count" async src="//gc.zgo.at/count.js"></script>
+</head>
+<body>
+    <!-- Header -->
+    <header>
+        <div class="header-content">
+            <a href="../index.html" class="logo">
+                <div class="logo-icon">
+                    <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M2 8L4 4h16l2 4v2H2V8z"/>
+                        <path d="M3 10h18v9a1 1 0 01-1 1H4a1 1 0 01-1-1v-9z"/>
+                        <rect x="5" y="12" width="2" height="5" rx="0.5" fill="#2563eb"/>
+                        <rect x="11" y="12" width="2" height="5" rx="0.5" fill="#2563eb"/>
+                        <rect x="17" y="12" width="2" height="5" rx="0.5" fill="#2563eb"/>
+                    </svg>
+                </div>
+                DumpsterMap
+            </a>
+            <a href="../index.html" class="btn btn-secondary">New Search</a>
+        </div>
+    </header>
+
+    <!-- City Hero -->
+    <section class="city-hero">
+        <h1 id="city-title">Dumpster Rentals in Loading...</h1>
+        <p class="subtitle" id="city-subtitle">Compare prices and get free quotes from local providers</p>
+        <div class="city-stats">
+            <div class="stat">
+                <div class="stat-value" id="stat-providers">--</div>
+                <div class="stat-label">Local Providers</div>
+            </div>
+            <div class="stat">
+                <div class="stat-value" id="stat-rating">--</div>
+                <div class="stat-label">Avg Rating</div>
+            </div>
+            <div class="stat">
+                <div class="stat-value" id="stat-reviews">--</div>
+                <div class="stat-label">Total Reviews</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Breadcrumbs -->
+    <nav class="breadcrumbs">
+        <a href="../index.html">Home</a> / 
+        <a href="#" id="bc-state">State</a> / 
+        <span id="bc-city">City</span>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <h3>Filter Results</h3>
+            
+            <div class="filter-section">
+                <h4>Minimum Rating</h4>
+                <label class="filter-option"><input type="radio" name="min-rating" value="0" checked> Any rating</label>
+                <label class="filter-option"><input type="radio" name="min-rating" value="3"> 3+ stars</label>
+                <label class="filter-option"><input type="radio" name="min-rating" value="4"> 4+ stars</label>
+                <label class="filter-option"><input type="radio" name="min-rating" value="4.5"> 4.5+ stars</label>
+            </div>
+            
+            <div class="filter-section">
+                <h4>Reviews</h4>
+                <label class="filter-option"><input type="radio" name="min-reviews" value="0" checked> Any</label>
+                <label class="filter-option"><input type="radio" name="min-reviews" value="10"> 10+ reviews</label>
+                <label class="filter-option"><input type="radio" name="min-reviews" value="50"> 50+ reviews</label>
+            </div>
+        </aside>
+
+        <!-- Results -->
+        <div id="results-container" class="results-container">
+            <div class="no-results">
+                <h3>Loading providers...</h3>
+                <p>Please wait while we find haulers in your area.</p>
+            </div>
+        </div>
+        
+        <!-- Map -->
+        <div id="map"></div>
+    </div>
+
+    <!-- SEO Content -->
+    <section class="seo-content">
+        <h2 id="seo-heading">About Dumpster Rentals in This Area</h2>
+        <p id="seo-text">Find the best dumpster rental providers in your area. Whether you're doing a home cleanout, renovation, roofing project, or construction job, we connect you with local haulers who can deliver the right size dumpster for your needs.</p>
+        
+        <div class="faq-section">
+            <h2>Frequently Asked Questions</h2>
+            <div class="faq-item">
+                <h3 id="faq1-q">How much does a dumpster rental cost?</h3>
+                <p id="faq1-a">Dumpster rental prices vary by size and location. A 10-yard dumpster typically costs $250-$400, while a 20-yard runs $350-$500. Get free quotes from multiple providers to compare prices.</p>
+            </div>
+            <div class="faq-item">
+                <h3>What size dumpster do I need?</h3>
+                <p>For small cleanouts, a 10-yard is usually sufficient. Multi-room renovations typically need a 20-yard. Large construction or demo projects may require 30 or 40-yard containers.</p>
+            </div>
+            <div class="faq-item">
+                <h3 id="faq3-q">How long can I keep a dumpster?</h3>
+                <p>Most providers offer 7-10 day rental periods. Extensions are usually available for an additional daily fee. Ask about rental periods when you request your quote.</p>
+            </div>
+        </div>
+        
+        <div class="nearby-cities" id="nearby-cities">
+            <h3>Find Dumpster Rentals Nearby</h3>
+            <div class="city-links" id="nearby-links">
+                <!-- Populated by JS -->
+            </div>
+        </div>
+    </section>
+
+    <!-- Quote Modal (same as results page) -->
+    <div class="modal-overlay" id="quoteModal">
+        <div class="quote-modal" style="background:white;border-radius:16px;max-width:500px;width:90%;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.3);">
+            <div style="padding:1.5rem;border-bottom:1px solid #e5e7eb;display:flex;justify-content:space-between;align-items:center;">
+                <h2 style="font-size:1.25rem;margin:0;">🚛 Get Your Free Quote</h2>
+                <button onclick="closeQuoteModal()" style="background:none;border:none;font-size:1.5rem;cursor:pointer;color:#6b7280;">&times;</button>
+            </div>
+            <div style="padding:1.5rem;">
+                <div id="modalProviderPreview" style="display:flex;gap:1rem;padding:1rem;background:#f9fafb;border-radius:8px;margin-bottom:1.5rem;"></div>
+                <form id="quoteForm" onsubmit="submitQuote(event)">
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem;">
+                        <div><label style="display:block;font-weight:500;margin-bottom:0.5rem;font-size:0.875rem;">First Name *</label><input type="text" name="firstName" required style="width:100%;padding:0.75rem;border:2px solid #e5e7eb;border-radius:8px;font-size:1rem;"></div>
+                        <div><label style="display:block;font-weight:500;margin-bottom:0.5rem;font-size:0.875rem;">Last Name *</label><input type="text" name="lastName" required style="width:100%;padding:0.75rem;border:2px solid #e5e7eb;border-radius:8px;font-size:1rem;"></div>
+                    </div>
+                    <div style="margin-bottom:1rem;"><label style="display:block;font-weight:500;margin-bottom:0.5rem;font-size:0.875rem;">Phone *</label><input type="tel" name="phone" required placeholder="(555) 123-4567" style="width:100%;padding:0.75rem;border:2px solid #e5e7eb;border-radius:8px;font-size:1rem;"></div>
+                    <div style="margin-bottom:1rem;"><label style="display:block;font-weight:500;margin-bottom:0.5rem;font-size:0.875rem;">Email *</label><input type="email" name="email" required style="width:100%;padding:0.75rem;border:2px solid #e5e7eb;border-radius:8px;font-size:1rem;"></div>
+                    <div style="margin-bottom:1rem;"><label style="display:block;font-weight:500;margin-bottom:0.5rem;font-size:0.875rem;">ZIP Code *</label><input type="text" name="zip" id="modalZip" required pattern="[0-9]{5}" maxlength="5" style="width:100%;padding:0.75rem;border:2px solid #e5e7eb;border-radius:8px;font-size:1rem;"></div>
+                    <div style="margin-bottom:1rem;"><label style="display:block;font-weight:500;margin-bottom:0.5rem;font-size:0.875rem;">Dumpster Size</label><select name="size" style="width:100%;padding:0.75rem;border:2px solid #e5e7eb;border-radius:8px;font-size:1rem;"><option value="">Not sure yet</option><option value="10">10 Yard</option><option value="20">20 Yard</option><option value="30">30 Yard</option><option value="40">40 Yard</option></select></div>
+                    <input type="hidden" name="providerId" id="quoteProviderId">
+                    <input type="hidden" name="providerName" id="quoteProviderName">
+                    <button type="submit" style="width:100%;padding:1rem;background:#2563eb;color:white;border:none;border-radius:8px;font-size:1rem;font-weight:600;cursor:pointer;">Get My Free Quote →</button>
+                </form>
+                <div id="quoteSuccess" style="display:none;text-align:center;padding:2rem;">
+                    <div style="width:64px;height:64px;background:#10b981;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 1rem;font-size:2rem;color:white;">✓</div>
+                    <h3>Quote Request Sent!</h3>
+                    <p>The provider will contact you shortly.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    <style>.modal-overlay{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);z-index:9999;align-items:center;justify-content:center;}.modal-overlay.active{display:flex;}</style>
+
+    <script>window.CITY_CONFIG = {"city":"Myrtle Beach","state":"South Carolina","stateAbbr":"South Carolina","stateName":"South Carolina","lat":33.685482799999996,"lng":-78.96782565714285,"zoom":11,"providerCount":7,"avgRating":"4.3","totalReviews":178};</script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet.markercluster@1.4.1/dist/leaflet.markercluster.js"></script>
+    <script>
+        // City page configuration (populated by generator or from URL)
+        let cityConfig = {
+            city: '',
+            state: '',
+            stateAbbr: '',
+            lat: 0,
+            lng: 0,
+            zoom: 11
+        };
+        
+        let providers = [];
+        let map, markers;
+        
+        // Parse city from URL path or query params
+        function parseCityFromUrl() {
+            // Check for static page config (set by generator)
+            if (window.CITY_CONFIG) {
+                return window.CITY_CONFIG;
+            }
+            
+            // Try URL params
+            const params = new URLSearchParams(window.location.search);
+            if (params.get('city') && params.get('state')) {
+                return {
+                    city: params.get('city'),
+                    state: params.get('state'),
+                    stateAbbr: params.get('state'),
+                    lat: parseFloat(params.get('lat')) || 0,
+                    lng: parseFloat(params.get('lng')) || 0,
+                    zoom: parseInt(params.get('zoom')) || 11
+                };
+            }
+            
+            // Try path: /dumpster-rental/tampa-fl
+            const path = window.location.pathname;
+            const match = path.match(/dumpster-rental\/([^/]+)$/);
+            if (match) {
+                const slug = match[1].replace(/-/g, ' ');
+                const parts = slug.split(' ');
+                const stateAbbr = parts.pop().toUpperCase();
+                const city = parts.map(p => p.charAt(0).toUpperCase() + p.slice(1)).join(' ');
+                return { city, state: stateAbbr, stateAbbr, lat: 0, lng: 0, zoom: 11 };
+            }
+            
+            // Fallback
+            return { city: 'United States', state: '', stateAbbr: '', lat: 39.8283, lng: -98.5795, zoom: 4 };
+        }
+        
+        async function loadProviders() {
+            try {
+                // Adjust path based on page location
+                const basePath = window.location.pathname.includes('/dumpster-rental/') ? '../' : '';
+                const response = await fetch(basePath + '../data/providers.json');
+                const data = await response.json();
+                providers = data.providers;
+                return providers;
+            } catch (error) {
+                console.error('Error loading providers:', error);
+                return [];
+            }
+        }
+        
+        function filterProvidersByCity(city, state) {
+            if (!city) return providers;
+            const cityLower = city.toLowerCase();
+            const stateLower = state.toLowerCase();
+            
+            return providers.filter(p => {
+                if (stateLower && p.state && p.state.toLowerCase() !== stateLower) return false;
+                if (p.city && p.city.toLowerCase() === cityLower) return true;
+                // Also include nearby (would need geo calculation for real implementation)
+                return false;
+            });
+        }
+        
+        function filterProvidersByState(state) {
+            if (!state) return providers;
+            const stateLower = state.toLowerCase();
+            return providers.filter(p => p.state && p.state.toLowerCase() === stateLower);
+        }
+        
+        async function geocodeCity(city, state) {
+            try {
+                const query = `${city}, ${state}, United States`;
+                const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`);
+                const data = await response.json();
+                if (data.length > 0) {
+                    return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
+                }
+            } catch (e) {
+                console.error('Geocode error:', e);
+            }
+            return null;
+        }
+        
+        function initMap() {
+            map = L.map('map').setView([cityConfig.lat || 39.8283, cityConfig.lng || -98.5795], cityConfig.zoom || 4);
+            
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+                attribution: '© OpenStreetMap © CARTO',
+                subdomains: 'abcd',
+                maxZoom: 19
+            }).addTo(map);
+            
+            markers = L.markerClusterGroup({
+                maxClusterRadius: 60,
+                showCoverageOnHover: false,
+                chunkedLoading: true
+            });
+            map.addLayer(markers);
+            
+            map.on('moveend', updateCardListFromMap);
+        }
+        
+        function addMarkersToMap(providerList) {
+            markers.clearLayers();
+            
+            providerList.forEach(p => {
+                if (!p.lat || !p.lng) return;
+                
+                const rating = p.rating || 0;
+                const color = rating >= 4.5 ? '#10b981' : rating >= 4 ? '#3b82f6' : rating >= 3 ? '#f59e0b' : '#6b7280';
+                
+                const icon = L.divIcon({
+                    html: `<div style="background:${color};border:2px solid white;border-radius:50%;width:14px;height:14px;box-shadow:0 2px 4px rgba(0,0,0,0.3);"></div>`,
+                    className: '',
+                    iconSize: [14, 14],
+                    iconAnchor: [7, 7]
+                });
+                
+                const marker = L.marker([p.lat, p.lng], { icon });
+                const providerData = JSON.stringify(p).replace(/'/g, "\\'");
+                marker.bindPopup(`
+                    <div style="text-align:center;min-width:150px;">
+                        <strong>${p.name}</strong><br>
+                        <span style="color:#6b7280;">📍 ${p.city}, ${p.state}</span><br>
+                        <button onclick='openQuoteModal(${providerData})' style="margin-top:8px;padding:8px 16px;background:#2563eb;color:white;border:none;border-radius:6px;cursor:pointer;font-weight:600;">
+                            Get Quote
+                        </button>
+                    </div>
+                `);
+                markers.addLayer(marker);
+            });
+        }
+        
+        // Store the filtered local providers for this city/state
+        let localProvidersList = [];
+        
+        function updateCardListFromMap() {
+            if (!map || !localProvidersList.length) return;
+            
+            const bounds = map.getBounds();
+            const visibleProviders = localProvidersList.filter(p => {
+                if (!p.lat || !p.lng) return false;
+                return bounds.contains([p.lat, p.lng]);
+            });
+            
+            visibleProviders.sort((a, b) => {
+                const ratingDiff = (b.rating || 0) - (a.rating || 0);
+                if (ratingDiff !== 0) return ratingDiff;
+                return (b.reviewCount || 0) - (a.reviewCount || 0);
+            });
+            
+            // Always show at least the local providers, even if map bounds are off
+            const toShow = visibleProviders.length > 0 ? visibleProviders : localProvidersList;
+            renderProviderCards(toShow.slice(0, 100));
+        }
+        
+        function renderProviderCards(providerList) {
+            const container = document.getElementById('results-container');
+            if (!container) return;
+            
+            if (providerList.length === 0) {
+                container.innerHTML = `
+                    <div class="no-results">
+                        <h3>No providers in this area</h3>
+                        <p>Try zooming out or searching a different location.</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            container.innerHTML = providerList.map(p => renderProviderCard(p)).join('');
+        }
+        
+        function renderProviderCard(p) {
+            const image = p.photo || p.logo;
+            const reviewCount = p.reviewCount || 0;
+            const hasValidRating = reviewCount > 0 && p.rating;
+            const rating = hasValidRating ? p.rating : 0;
+            
+            const imageHtml = image 
+                ? `<img src="${image}" alt="${p.name}" class="provider-photo" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+                   <div class="provider-logo-fallback" style="display:none;">${(p.name || '?').charAt(0)}</div>`
+                : `<div class="provider-logo-fallback">${(p.name || '?').charAt(0)}</div>`;
+            
+            const ratingHtml = hasValidRating 
+                ? `<div class="provider-rating"><span class="stars">${'★'.repeat(Math.floor(rating))}${'☆'.repeat(5-Math.floor(rating))}</span><span class="rating-value">${rating.toFixed(1)}</span><span class="rating-count">(${reviewCount})</span></div>`
+                : `<div class="provider-rating"><span class="no-rating">New provider</span></div>`;
+            
+            const providerData = JSON.stringify(p).replace(/'/g, "\\'").replace(/"/g, '&quot;');
+            const basePath = window.location.pathname.includes('/dumpster-rental/') ? '../' : '';
+            const providerUrl = `${basePath}provider.html?id=${encodeURIComponent(p.id)}`;
+            
+            return `
+                <div class="provider-card-compact">
+                    <a href="${providerUrl}" class="card-link">
+                        <div class="card-photo">${imageHtml}</div>
+                        <div class="card-info">
+                            <div class="card-name">${p.name || 'Local Provider'}</div>
+                            <div class="card-meta">📍 ${p.city || ''} · ${hasValidRating ? `⭐ ${rating.toFixed(1)} (${reviewCount})` : 'New'}</div>
+                        </div>
+                    </a>
+                    <button class="card-quote-btn" onclick='openQuoteModal(${providerData})'>Quote</button>
+                </div>
+            `;
+        }
+        
+        function updatePageContent() {
+            const { city, state, stateAbbr } = cityConfig;
+            const fullLocation = city && state ? `${city}, ${state}` : state || 'Your Area';
+            
+            // Title and meta
+            document.getElementById('page-title').textContent = `Dumpster Rentals in ${fullLocation} | Compare Prices | DumpsterMap`;
+            document.getElementById('meta-desc').setAttribute('content', 
+                `Find the best dumpster rental providers in ${fullLocation}. Compare prices, read reviews, and get free quotes from local haulers.`
+            );
+            document.getElementById('canonical-url').href = window.location.href;
+            
+            // Open Graph tags
+            document.getElementById('og-url').setAttribute('content', window.location.href);
+            document.getElementById('og-title').setAttribute('content', `Dumpster Rentals in ${fullLocation} | DumpsterMap`);
+            document.getElementById('og-desc').setAttribute('content', 
+                `Compare dumpster rental prices in ${fullLocation}. Get free quotes from local haulers.`
+            );
+            
+            // Hero
+            document.getElementById('city-title').textContent = `Dumpster Rentals in ${fullLocation}`;
+            document.getElementById('city-subtitle').textContent = `Compare prices and get free quotes from ${city || 'local'} providers`;
+            
+            // Breadcrumbs
+            document.getElementById('bc-state').textContent = state;
+            document.getElementById('bc-state').href = `?state=${encodeURIComponent(state)}`;
+            document.getElementById('bc-city').textContent = city || 'All';
+            
+            // SEO content
+            document.getElementById('seo-heading').textContent = `About Dumpster Rentals in ${fullLocation}`;
+            document.getElementById('seo-text').textContent = 
+                `Looking for a dumpster rental in ${fullLocation}? DumpsterMap connects you with trusted local providers who offer competitive pricing on roll-off containers. Whether you're doing a home cleanout, renovation, roofing project, or construction job, we make it easy to compare options and get free quotes.`;
+            
+            document.getElementById('faq1-q').textContent = `How much does a dumpster cost in ${city || 'this area'}?`;
+            document.getElementById('faq1-a').textContent = 
+                `Dumpster rental prices in ${fullLocation} vary by size and provider. A 10-yard dumpster typically costs $250-$400, while a 20-yard runs $350-$500. Request free quotes from multiple providers to compare.`;
+            
+            document.getElementById('faq3-q').textContent = `Do I need a permit for a dumpster in ${city || 'my city'}?`;
+        }
+        
+        function updateStats(providerList) {
+            document.getElementById('stat-providers').textContent = providerList.length;
+            
+            const withRating = providerList.filter(p => p.rating && p.reviewCount > 0);
+            if (withRating.length > 0) {
+                const avgRating = withRating.reduce((sum, p) => sum + p.rating, 0) / withRating.length;
+                document.getElementById('stat-rating').textContent = avgRating.toFixed(1) + '⭐';
+            } else {
+                document.getElementById('stat-rating').textContent = '--';
+            }
+            
+            const totalReviews = providerList.reduce((sum, p) => sum + (p.reviewCount || 0), 0);
+            document.getElementById('stat-reviews').textContent = totalReviews.toLocaleString();
+        }
+        
+        function generateNearbyCities(providerList) {
+            // Find unique cities from nearby providers
+            const citySet = new Set();
+            providerList.forEach(p => {
+                if (p.city && p.state) {
+                    citySet.add(`${p.city}|${p.state}`);
+                }
+            });
+            
+            const cities = Array.from(citySet)
+                .slice(0, 12)
+                .map(c => {
+                    const [city, state] = c.split('|');
+                    const slug = `${city.toLowerCase().replace(/\s+/g, '-')}-${state.toLowerCase()}`;
+                    return { city, state, slug };
+                });
+            
+            const container = document.getElementById('nearby-links');
+            if (container && cities.length > 0) {
+                const basePath = window.location.pathname.includes('/dumpster-rental/') ? '' : 'dumpster-rental/';
+                container.innerHTML = cities.map(c => 
+                    `<a href="${basePath}${c.slug}.html" class="city-link">${c.city}, ${c.state}</a>`
+                ).join('');
+            }
+        }
+        
+        // Quote modal functions
+        function openQuoteModal(provider) {
+            const preview = document.getElementById('modalProviderPreview');
+            const rating = provider.rating || 0;
+            preview.innerHTML = `
+                ${provider.photo ? `<img src="${provider.photo}" alt="${provider.name}" style="width:60px;height:60px;border-radius:8px;object-fit:cover;">` : ''}
+                <div>
+                    <strong>${provider.name}</strong><br>
+                    <span style="color:#6b7280;">📍 ${provider.city}, ${provider.state}</span>
+                </div>
+            `;
+            document.getElementById('quoteProviderId').value = provider.id;
+            document.getElementById('quoteProviderName').value = provider.name;
+            if (provider.zip) document.getElementById('modalZip').value = provider.zip;
+            document.getElementById('quoteModal').classList.add('active');
+            document.body.style.overflow = 'hidden';
+            document.getElementById('quoteForm').style.display = 'block';
+            document.getElementById('quoteSuccess').style.display = 'none';
+        }
+        
+        function closeQuoteModal() {
+            document.getElementById('quoteModal').classList.remove('active');
+            document.body.style.overflow = '';
+        }
+        
+        function submitQuote(e) {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            const data = Object.fromEntries(formData);
+            console.log('=== LEAD CAPTURED ===', data);
+            document.getElementById('quoteForm').style.display = 'none';
+            document.getElementById('quoteSuccess').style.display = 'block';
+            setTimeout(() => { closeQuoteModal(); e.target.reset(); }, 3000);
+        }
+        
+        document.getElementById('quoteModal').addEventListener('click', (e) => {
+            if (e.target.id === 'quoteModal') closeQuoteModal();
+        });
+        
+        // Initialize
+        async function init() {
+            cityConfig = parseCityFromUrl();
+            updatePageContent();
+            
+            // Load providers BEFORE initializing map to avoid race condition
+            await loadProviders();
+            
+            // Get coordinates if not provided
+            if (!cityConfig.lat || !cityConfig.lng) {
+                const coords = await geocodeCity(cityConfig.city, cityConfig.state);
+                if (coords) {
+                    cityConfig.lat = coords.lat;
+                    cityConfig.lng = coords.lng;
+                }
+            }
+            
+            // Filter and display
+            let localProviders;
+            if (cityConfig.city) {
+                localProviders = filterProvidersByCity(cityConfig.city, cityConfig.state);
+                // If no exact match, widen to state
+                if (localProviders.length < 5) {
+                    localProviders = filterProvidersByState(cityConfig.state);
+                }
+            } else if (cityConfig.state) {
+                localProviders = filterProvidersByState(cityConfig.state);
+            } else {
+                localProviders = providers;
+            }
+            
+            // Store for updateCardListFromMap to use
+            localProvidersList = localProviders;
+            
+            // Initialize map AFTER providers are loaded and filtered
+            initMap();
+            
+            updateStats(localProviders);
+            addMarkersToMap(localProviders);
+            generateNearbyCities(localProviders);
+            
+            // Render initial cards
+            renderProviderCards(localProviders.slice(0, 100));
+            
+            // Zoom to city
+            if (cityConfig.lat && cityConfig.lng) {
+                map.flyTo([cityConfig.lat, cityConfig.lng], cityConfig.zoom || 11, { duration: 1 });
+            }
+        }
+        
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>
