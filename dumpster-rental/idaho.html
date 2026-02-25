@@ -6,6 +6,14 @@
     <title id="page-title">Dumpster Rentals | DumpsterMap</title>
     <meta name="description" id="meta-desc" content="Find dumpster rental providers near you.">
     <link rel="canonical" id="canonical-url" href="">
+    
+    <!-- Open Graph / Social -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" id="og-url" content="https://dumpstermap.io/">
+    <meta property="og:title" id="og-title" content="Dumpster Rentals | DumpsterMap">
+    <meta property="og:description" id="og-desc" content="Find dumpster rental providers near you.">
+    <meta property="og:image" content="https://dumpstermap.io/og-image.png">
+    <meta name="twitter:card" content="summary_large_image">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.css" />
@@ -559,7 +567,7 @@
     </div>
     <style>.modal-overlay{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);z-index:9999;align-items:center;justify-content:center;}.modal-overlay.active{display:flex;}</style>
 
-    <script>window.CITY_CONFIG = {"city":"","state":"IDAHO","stateAbbr":"IDAHO","stateName":"IDAHO","lat":43.82995902641509,"lng":-115.11184009999998,"zoom":6,"providerCount":53,"avgRating":"4.6","totalReviews":5091};</script>
+    <script>window.CITY_CONFIG = {"city":"","state":"IDAHO","stateAbbr":"IDAHO","stateName":"IDAHO","lat":43.891159024999986,"lng":-115.24952109249996,"zoom":6,"providerCount":40,"avgRating":"4.5","totalReviews":4296};</script>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://unpkg.com/leaflet.markercluster@1.4.1/dist/leaflet.markercluster.js"></script>
     <script>
@@ -791,6 +799,13 @@
                 `Find the best dumpster rental providers in ${fullLocation}. Compare prices, read reviews, and get free quotes from local haulers.`
             );
             document.getElementById('canonical-url').href = window.location.href;
+            
+            // Open Graph tags
+            document.getElementById('og-url').setAttribute('content', window.location.href);
+            document.getElementById('og-title').setAttribute('content', `Dumpster Rentals in ${fullLocation} | DumpsterMap`);
+            document.getElementById('og-desc').setAttribute('content', 
+                `Compare dumpster rental prices in ${fullLocation}. Get free quotes from local haulers.`
+            );
             
             // Hero
             document.getElementById('city-title').textContent = `Dumpster Rentals in ${fullLocation}`;

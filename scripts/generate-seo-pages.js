@@ -31,7 +31,22 @@ const stateNames = {
     'WI': 'Wisconsin', 'WY': 'Wyoming', 'DC': 'District Of Columbia'
 };
 
-function createSlug(city, stateAbbr) {
+// Reverse lookup: full state name -> abbreviation
+const stateAbbreviations = Object.fromEntries(
+    Object.entries(stateNames).map(([abbr, name]) => [name.toLowerCase(), abbr])
+);
+
+// Normalize state to abbreviation (handles both "NY" and "New York")
+function normalizeState(state) {
+    if (!state) return null;
+    const upper = state.toUpperCase();
+    if (stateNames[upper]) return upper;  // Already an abbreviation
+    const lower = state.toLowerCase();
+    return stateAbbreviations[lower] || null;
+}
+
+function createSlug(city, state) {
+    const stateAbbr = normalizeState(state) || state;
     return `${city.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${stateAbbr.toLowerCase()}`;
 }
 
