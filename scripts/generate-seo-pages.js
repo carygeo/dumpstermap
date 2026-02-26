@@ -180,13 +180,24 @@ function main() {
     console.log(`🏙️  Found ${Object.keys(cityGroups).length} unique cities`);
     console.log(`🗺️  Found ${Object.keys(stateGroups).length} states\n`);
     
+    // Major metros that should always have pages (even with fewer providers)
+    const majorMetros = new Set([
+        'Pittsburgh|Pennsylvania', 'Cleveland|Ohio', 'St. Louis|Missouri',
+        'Baltimore|Maryland', 'Salt Lake City|Utah', 'Hartford|Connecticut',
+        'Providence|Rhode Island', 'Buffalo|New York', 'Rochester|New York',
+        'Richmond|Virginia', 'Norfolk|Virginia', 'Louisville|Kentucky',
+        'Memphis|Tennessee', 'Nashville|Tennessee', 'New Orleans|Louisiana',
+        'Oklahoma City|Oklahoma', 'Milwaukee|Wisconsin', 'Kansas City|Missouri',
+        'Virginia Beach|Virginia', 'Raleigh|North Carolina', 'Greensboro|North Carolina'
+    ]);
+    
     // Filter cities with minimum providers (for SEO value)
     const minProviders = 3;
     const validCities = Object.entries(cityGroups)
-        .filter(([, list]) => list.length >= minProviders)
+        .filter(([key, list]) => list.length >= minProviders || majorMetros.has(key))
         .sort((a, b) => b[1].length - a[1].length);
     
-    console.log(`✅ ${validCities.length} cities have ${minProviders}+ providers\n`);
+    console.log(`✅ ${validCities.length} cities have ${minProviders}+ providers (or are major metros)\n`);
     
     // Generate all valid city pages (no limit - all cities with 3+ providers)
     const citiesToGenerate = validCities;

@@ -2466,6 +2466,26 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://dumpstermap.io/dumpster-rental/cleveland-oh.html</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://dumpstermap.io/dumpster-rental/pittsburgh-pa.html</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://dumpstermap.io/dumpster-rental/norfolk-va.html</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://dumpstermap.io/dumpster-rental/hartford-ct.html</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://dumpstermap.io/dumpster-rental/nevada.html</loc>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
