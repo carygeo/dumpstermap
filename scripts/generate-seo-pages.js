@@ -74,6 +74,12 @@ function generateCityPage(city, stateAbbr, providers, template) {
     const slug = createSlug(city, stateAbbr);
     const stateName = stateNames[stateAbbr.toUpperCase()] || stateAbbr;
     const stats = getCityStats(providers);
+    const baseUrl = 'https://dumpstermap.io';
+    const pageUrl = `${baseUrl}/dumpster-rental/${slug}.html`;
+    
+    // SEO-optimized title and description
+    const pageTitle = `Dumpster Rental ${city}, ${stateAbbr} - Compare ${stats.count} Local Providers | DumpsterMap`;
+    const metaDesc = `Compare ${stats.count} dumpster rental companies in ${city}, ${stateAbbr}. ${stats.avgRating ? `Avg rating: ${stats.avgRating}★.` : ''} Get instant quotes for roll-off dumpsters. No phone calls needed.`;
     
     // Create CITY_CONFIG injection
     const cityConfig = {
@@ -89,11 +95,84 @@ function generateCityPage(city, stateAbbr, providers, template) {
         totalReviews: stats.totalReviews
     };
     
+    // Pre-rendered Schema.org JSON-LD
+    const schemaJson = {
+        "@context": "https://schema.org",
+        "@graph": [
+            {
+                "@type": "WebPage",
+                "@id": pageUrl,
+                "name": pageTitle,
+                "description": metaDesc,
+                "url": pageUrl,
+                "breadcrumb": { "@id": `${pageUrl}#breadcrumb` }
+            },
+            {
+                "@type": "BreadcrumbList",
+                "@id": `${pageUrl}#breadcrumb`,
+                "itemListElement": [
+                    { "@type": "ListItem", "position": 1, "name": "Home", "item": baseUrl },
+                    { "@type": "ListItem", "position": 2, "name": stateName, "item": `${baseUrl}/dumpster-rental/${stateAbbr.toLowerCase()}.html` },
+                    { "@type": "ListItem", "position": 3, "name": `${city}, ${stateAbbr}`, "item": pageUrl }
+                ]
+            },
+            {
+                "@type": "Service",
+                "name": `Dumpster Rental in ${city}, ${stateAbbr}`,
+                "serviceType": "Dumpster Rental",
+                "provider": {
+                    "@type": "Organization",
+                    "name": "DumpsterMap",
+                    "url": baseUrl
+                },
+                "areaServed": {
+                    "@type": "City",
+                    "name": city,
+                    "containedInPlace": { "@type": "State", "name": stateName }
+                }
+            },
+            {
+                "@type": "FAQPage",
+                "mainEntity": [
+                    {
+                        "@type": "Question",
+                        "name": `How much does a dumpster rental cost in ${city}, ${stateAbbr}?`,
+                        "acceptedAnswer": {
+                            "@type": "Answer",
+                            "text": `Dumpster rental prices in ${city} typically range from $250-$600 depending on size. 10-yard dumpsters start around $250-350, 20-yard at $300-450, and 30-40 yard at $400-600. Prices vary by provider and rental duration.`
+                        }
+                    },
+                    {
+                        "@type": "Question",
+                        "name": `How many dumpster rental companies are in ${city}?`,
+                        "acceptedAnswer": {
+                            "@type": "Answer",
+                            "text": `DumpsterMap lists ${stats.count} dumpster rental providers serving ${city}, ${stateAbbr}. ${stats.avgRating ? `These providers have an average rating of ${stats.avgRating} stars from ${stats.totalReviews} reviews.` : ''}`
+                        }
+                    }
+                ]
+            }
+        ]
+    };
+    
     // Inject config at the start of the first script
     const configScript = `<script>window.CITY_CONFIG = ${JSON.stringify(cityConfig)};</script>`;
     
-    // Modify template for this city
+    // Modify template for this city with pre-rendered SEO content
     let html = template
+        // Pre-render title tag
+        .replace(/<title[^>]*>.*?<\/title>/i, `<title>${pageTitle}</title>`)
+        // Pre-render meta description
+        .replace(/<meta name="description"[^>]*>/i, `<meta name="description" content="${metaDesc}">`)
+        // Pre-render canonical URL
+        .replace(/<link rel="canonical"[^>]*>/i, `<link rel="canonical" href="${pageUrl}">`)
+        // Pre-render OG tags
+        .replace(/<meta property="og:url"[^>]*>/i, `<meta property="og:url" content="${pageUrl}">`)
+        .replace(/<meta property="og:title"[^>]*>/i, `<meta property="og:title" content="${pageTitle}">`)
+        .replace(/<meta property="og:description"[^>]*>/i, `<meta property="og:description" content="${metaDesc}">`)
+        // Pre-render Schema.org JSON-LD
+        .replace(/<script type="application\/ld\+json" id="schema-json">[\s\S]*?<\/script>/i, 
+            `<script type="application/ld+json" id="schema-json">\n${JSON.stringify(schemaJson, null, 2)}\n    </script>`)
         // Insert config before first script
         .replace('<script src="https://unpkg.com/leaflet', `${configScript}\n    <script src="https://unpkg.com/leaflet`)
         // Update paths for subdirectory
@@ -107,12 +186,18 @@ function generateCityPage(city, stateAbbr, providers, template) {
 }
 
 function generateStatePage(stateAbbr, cities, providers, template) {
-    const slug = stateAbbr.toLowerCase();
     const stateName = stateNames[stateAbbr.toUpperCase()] || stateAbbr;
+    const slug = stateName.toLowerCase().replace(/\s+/g, '-');
     const stateProviders = providers.filter(p => 
         p.state && (p.state.toUpperCase() === stateAbbr.toUpperCase() || p.state.toLowerCase() === stateName.toLowerCase())
     );
     const stats = getCityStats(stateProviders);
+    const baseUrl = 'https://dumpstermap.io';
+    const pageUrl = `${baseUrl}/dumpster-rental/${slug}.html`;
+    
+    // SEO-optimized title and description for state pages
+    const pageTitle = `Dumpster Rental in ${stateName} - Compare ${stats.count} Providers Statewide | DumpsterMap`;
+    const metaDesc = `Find dumpster rental companies across ${stateName}. Compare ${stats.count} providers statewide. ${stats.avgRating ? `Avg rating: ${stats.avgRating}★.` : ''} Get instant quotes for any city in ${stateName}.`;
     
     const stateConfig = {
         city: '',
@@ -127,9 +212,59 @@ function generateStatePage(stateAbbr, cities, providers, template) {
         totalReviews: stats.totalReviews
     };
     
+    // Pre-rendered Schema.org JSON-LD for state pages
+    const schemaJson = {
+        "@context": "https://schema.org",
+        "@graph": [
+            {
+                "@type": "WebPage",
+                "@id": pageUrl,
+                "name": pageTitle,
+                "description": metaDesc,
+                "url": pageUrl,
+                "breadcrumb": { "@id": `${pageUrl}#breadcrumb` }
+            },
+            {
+                "@type": "BreadcrumbList",
+                "@id": `${pageUrl}#breadcrumb`,
+                "itemListElement": [
+                    { "@type": "ListItem", "position": 1, "name": "Home", "item": baseUrl },
+                    { "@type": "ListItem", "position": 2, "name": stateName, "item": pageUrl }
+                ]
+            },
+            {
+                "@type": "Service",
+                "name": `Dumpster Rental in ${stateName}`,
+                "serviceType": "Dumpster Rental",
+                "provider": {
+                    "@type": "Organization",
+                    "name": "DumpsterMap",
+                    "url": baseUrl
+                },
+                "areaServed": {
+                    "@type": "State",
+                    "name": stateName
+                }
+            }
+        ]
+    };
+    
     const configScript = `<script>window.CITY_CONFIG = ${JSON.stringify(stateConfig)};</script>`;
     
     let html = template
+        // Pre-render title tag
+        .replace(/<title[^>]*>.*?<\/title>/i, `<title>${pageTitle}</title>`)
+        // Pre-render meta description  
+        .replace(/<meta name="description"[^>]*>/i, `<meta name="description" content="${metaDesc}">`)
+        // Pre-render canonical URL
+        .replace(/<link rel="canonical"[^>]*>/i, `<link rel="canonical" href="${pageUrl}">`)
+        // Pre-render OG tags
+        .replace(/<meta property="og:url"[^>]*>/i, `<meta property="og:url" content="${pageUrl}">`)
+        .replace(/<meta property="og:title"[^>]*>/i, `<meta property="og:title" content="${pageTitle}">`)
+        .replace(/<meta property="og:description"[^>]*>/i, `<meta property="og:description" content="${metaDesc}">`)
+        // Pre-render Schema.org JSON-LD
+        .replace(/<script type="application\/ld\+json" id="schema-json">[\s\S]*?<\/script>/i,
+            `<script type="application/ld+json" id="schema-json">\n${JSON.stringify(schemaJson, null, 2)}\n    </script>`)
         .replace('<script src="https://unpkg.com/leaflet', `${configScript}\n    <script src="https://unpkg.com/leaflet`)
         .replace(/href="index\.html"/g, 'href="../index.html"')
         .replace(/href="results\.html"/g, 'href="../results.html"')
@@ -164,17 +299,20 @@ function main() {
     providers.forEach(p => {
         if (!p.city || !p.state) return;
         
-        const cityKey = `${p.city}|${p.state}`;
+        // Normalize state to abbreviation for consistent grouping
+        const normalizedState = normalizeState(p.state);
+        if (!normalizedState) return;  // Skip if we can't normalize the state
+        
+        const cityKey = `${p.city}|${normalizedState}`;
         if (!cityGroups[cityKey]) {
             cityGroups[cityKey] = [];
         }
         cityGroups[cityKey].push(p);
         
-        const stateKey = p.state.toUpperCase();
-        if (!stateGroups[stateKey]) {
-            stateGroups[stateKey] = [];
+        if (!stateGroups[normalizedState]) {
+            stateGroups[normalizedState] = [];
         }
-        stateGroups[stateKey].push(p);
+        stateGroups[normalizedState].push(p);
     });
     
     console.log(`🏙️  Found ${Object.keys(cityGroups).length} unique cities`);
@@ -182,13 +320,13 @@ function main() {
     
     // Major metros that should always have pages (even with fewer providers)
     const majorMetros = new Set([
-        'Pittsburgh|Pennsylvania', 'Cleveland|Ohio', 'St. Louis|Missouri',
-        'Baltimore|Maryland', 'Salt Lake City|Utah', 'Hartford|Connecticut',
-        'Providence|Rhode Island', 'Buffalo|New York', 'Rochester|New York',
-        'Richmond|Virginia', 'Norfolk|Virginia', 'Louisville|Kentucky',
-        'Memphis|Tennessee', 'Nashville|Tennessee', 'New Orleans|Louisiana',
-        'Oklahoma City|Oklahoma', 'Milwaukee|Wisconsin', 'Kansas City|Missouri',
-        'Virginia Beach|Virginia', 'Raleigh|North Carolina', 'Greensboro|North Carolina'
+        'Pittsburgh|PA', 'Cleveland|OH', 'St. Louis|MO',
+        'Baltimore|MD', 'Salt Lake City|UT', 'Hartford|CT',
+        'Providence|RI', 'Buffalo|NY', 'Rochester|NY',
+        'Richmond|VA', 'Norfolk|VA', 'Louisville|KY',
+        'Memphis|TN', 'Nashville|TN', 'New Orleans|LA',
+        'Oklahoma City|OK', 'Milwaukee|WI', 'Kansas City|MO',
+        'Virginia Beach|VA', 'Raleigh|NC', 'Greensboro|NC'
     ]);
     
     // Filter cities with minimum providers (for SEO value)
@@ -222,12 +360,17 @@ function main() {
     Object.entries(stateGroups).forEach(([stateAbbr, list]) => {
         if (list.length < 5) return;  // Skip states with few providers
         
+        const stateName = stateNames[stateAbbr];
+        if (!stateName) return;  // Skip if we can't find the state name
+        
+        const stateSlug = stateName.toLowerCase().replace(/\s+/g, '-');
+        
         const cities = Object.entries(cityGroups)
             .filter(([key]) => key.endsWith(`|${stateAbbr}`))
             .map(([key]) => key.split('|')[0]);
         
         const html = generateStatePage(stateAbbr, cities, providers, template);
-        const filePath = path.join(outputDir, `${stateAbbr.toLowerCase()}.html`);
+        const filePath = path.join(outputDir, `${stateSlug}.html`);
         fs.writeFileSync(filePath, html);
         statesGenerated++;
     });
@@ -256,8 +399,11 @@ function main() {
     // State pages
     Object.keys(stateGroups).forEach(stateAbbr => {
         if (stateGroups[stateAbbr].length >= 5) {
+            const stateName = stateNames[stateAbbr];
+            if (!stateName) return;
+            const stateSlug = stateName.toLowerCase().replace(/\s+/g, '-');
             sitemapEntries.push({ 
-                loc: `${baseUrl}/dumpster-rental/${stateAbbr.toLowerCase()}.html`, 
+                loc: `${baseUrl}/dumpster-rental/${stateSlug}.html`, 
                 priority: '0.7', 
                 changefreq: 'weekly' 
             });

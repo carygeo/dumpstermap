@@ -46,12 +46,12 @@
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://dumpstermap.io/dumpster-rental/miami-fl.html</loc>
+    <loc>https://dumpstermap.io/dumpster-rental/phoenix-az.html</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://dumpstermap.io/dumpster-rental/phoenix-az.html</loc>
+    <loc>https://dumpstermap.io/dumpster-rental/miami-fl.html</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
@@ -61,12 +61,12 @@
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://dumpstermap.io/dumpster-rental/los-angeles-ca.html</loc>
+    <loc>https://dumpstermap.io/dumpster-rental/charlotte-nc.html</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://dumpstermap.io/dumpster-rental/charlotte-nc.html</loc>
+    <loc>https://dumpstermap.io/dumpster-rental/los-angeles-ca.html</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
@@ -161,6 +161,11 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://dumpstermap.io/dumpster-rental/nashville-tn.html</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://dumpstermap.io/dumpster-rental/raleigh-nc.html</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -177,11 +182,6 @@
   </url>
   <url>
     <loc>https://dumpstermap.io/dumpster-rental/oklahoma-city-ok.html</loc>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://dumpstermap.io/dumpster-rental/nashville-tn.html</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
@@ -576,6 +576,11 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://dumpstermap.io/dumpster-rental/franklin-tn.html</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://dumpstermap.io/dumpster-rental/lake-charles-la.html</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -592,6 +597,11 @@
   </url>
   <url>
     <loc>https://dumpstermap.io/dumpster-rental/pompano-beach-fl.html</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://dumpstermap.io/dumpster-rental/scottsdale-az.html</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
@@ -632,11 +642,6 @@
   </url>
   <url>
     <loc>https://dumpstermap.io/dumpster-rental/abilene-tx.html</loc>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://dumpstermap.io/dumpster-rental/franklin-tn.html</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
@@ -707,11 +712,6 @@
   </url>
   <url>
     <loc>https://dumpstermap.io/dumpster-rental/st-paul-mn.html</loc>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://dumpstermap.io/dumpster-rental/scottsdale-az.html</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
@@ -831,6 +831,11 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://dumpstermap.io/dumpster-rental/spring-tx.html</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://dumpstermap.io/dumpster-rental/baltimore-md.html</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -897,6 +902,11 @@
   </url>
   <url>
     <loc>https://dumpstermap.io/dumpster-rental/pensacola-fl.html</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://dumpstermap.io/dumpster-rental/atlanta-ga.html</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
@@ -1086,11 +1096,6 @@
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://dumpstermap.io/dumpster-rental/spring-tx.html</loc>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
     <loc>https://dumpstermap.io/dumpster-rental/bossier-city-la.html</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -1152,11 +1157,6 @@
   </url>
   <url>
     <loc>https://dumpstermap.io/dumpster-rental/bluffton-in.html</loc>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://dumpstermap.io/dumpster-rental/atlanta-ga.html</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
@@ -1242,6 +1242,16 @@
   </url>
   <url>
     <loc>https://dumpstermap.io/dumpster-rental/lapeer-mi.html</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://dumpstermap.io/dumpster-rental/gastonia-nc.html</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://dumpstermap.io/dumpster-rental/mansfield-tx.html</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
@@ -1581,12 +1591,22 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://dumpstermap.io/dumpster-rental/smyrna-ga.html</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://dumpstermap.io/dumpster-rental/spartanburg-sc.html</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://dumpstermap.io/dumpster-rental/spokane-valley-wa.html</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://dumpstermap.io/dumpster-rental/huntersville-nc.html</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
@@ -1776,22 +1796,12 @@
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://dumpstermap.io/dumpster-rental/gastonia-nc.html</loc>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
     <loc>https://dumpstermap.io/dumpster-rental/hyde-park-ma.html</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://dumpstermap.io/dumpster-rental/payson-az.html</loc>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://dumpstermap.io/dumpster-rental/mansfield-tx.html</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
@@ -2737,11 +2747,6 @@
   </url>
   <url>
     <loc>https://dumpstermap.io/dumpster-rental/alaska.html</loc>
-    <changefreq>weekly</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://dumpstermap.io/dumpster-rental/tx.html</loc>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
