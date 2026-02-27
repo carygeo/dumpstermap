@@ -112,7 +112,7 @@ function generateCityPage(city, stateAbbr, providers, template) {
                 "@id": `${pageUrl}#breadcrumb`,
                 "itemListElement": [
                     { "@type": "ListItem", "position": 1, "name": "Home", "item": baseUrl },
-                    { "@type": "ListItem", "position": 2, "name": stateName, "item": `${baseUrl}/dumpster-rental/${stateAbbr.toLowerCase()}.html` },
+                    { "@type": "ListItem", "position": 2, "name": stateName, "item": `${baseUrl}/dumpster-rental/${stateName.toLowerCase().replace(/\s+/g, '-')}.html` },
                     { "@type": "ListItem", "position": 3, "name": `${city}, ${stateAbbr}`, "item": pageUrl }
                 ]
             },
