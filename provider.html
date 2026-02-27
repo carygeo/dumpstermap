@@ -1042,6 +1042,28 @@
                 localBusinessSchema.sameAs = [provider.website];
             }
             
+            // Add areaServed for geographic targeting SEO
+            localBusinessSchema.areaServed = {
+                "@type": "City",
+                "name": provider.city,
+                "containedInPlace": {
+                    "@type": "State",
+                    "name": provider.state
+                }
+            };
+            
+            // Add additionalType for better categorization
+            localBusinessSchema.additionalType = "https://schema.org/WasteManagement";
+            
+            // Add knowsAbout for topical authority
+            localBusinessSchema.knowsAbout = [
+                "Dumpster Rental",
+                "Roll-Off Container Rental",
+                "Construction Debris Removal",
+                "Residential Waste Management",
+                "Commercial Waste Disposal"
+            ];
+            
             // Update the schema element
             const schemaEl = document.getElementById('schema-localbusiness');
             if (schemaEl) {
