@@ -15,6 +15,41 @@
     <meta name="twitter:title" content="Contact Us | DumpsterMap">
     <meta name="twitter:description" content="Get in touch with DumpsterMap for dumpster rental questions.">
     <meta name="twitter:image" content="https://dumpstermap.io/og-image.png">
+    
+    <!-- BreadcrumbList Schema -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://dumpstermap.io" },
+        { "@type": "ListItem", "position": 2, "name": "Contact Us", "item": "https://dumpstermap.io/contact.html" }
+      ]
+    }
+    </script>
+    
+    <!-- ContactPage Schema -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "ContactPage",
+      "name": "Contact DumpsterMap",
+      "description": "Get in touch with DumpsterMap for dumpster rental questions, support, or business inquiries.",
+      "mainEntity": {
+        "@type": "Organization",
+        "name": "DumpsterMap",
+        "url": "https://dumpstermap.io",
+        "email": "support@dumpstermap.io",
+        "contactPoint": {
+          "@type": "ContactPoint",
+          "contactType": "customer service",
+          "email": "support@dumpstermap.io",
+          "availableLanguage": "English"
+        }
+      }
+    }
+    </script>
+    
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }

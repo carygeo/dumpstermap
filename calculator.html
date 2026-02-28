@@ -15,6 +15,56 @@
     <meta name="twitter:title" content="Dumpster Size Calculator | DumpsterMap">
     <meta name="twitter:description" content="Calculate the right dumpster size for your project.">
     <meta name="twitter:image" content="https://dumpstermap.io/og-image.png">
+    
+    <!-- BreadcrumbList Schema -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://dumpstermap.io" },
+        { "@type": "ListItem", "position": 2, "name": "Size Calculator", "item": "https://dumpstermap.io/calculator.html" }
+      ]
+    }
+    </script>
+    
+    <!-- HowTo Schema for Calculator -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "HowTo",
+      "name": "How to Calculate Dumpster Size for Your Project",
+      "description": "Use our interactive calculator to determine the right dumpster size based on your project type, debris materials, and estimated volume.",
+      "step": [
+        {
+          "@type": "HowToStep",
+          "position": 1,
+          "name": "Select Your Project Type",
+          "text": "Choose from common project types like home renovation, roof replacement, construction, cleanout, or landscaping."
+        },
+        {
+          "@type": "HowToStep",
+          "position": 2,
+          "name": "Specify Materials",
+          "text": "Select the types of debris you'll be disposing of: household items, construction debris, roofing, concrete, dirt, or yard waste."
+        },
+        {
+          "@type": "HowToStep",
+          "position": 3,
+          "name": "Estimate Volume",
+          "text": "Use our visual guide to estimate how many cubic yards of material you have, or enter dimensions if known."
+        },
+        {
+          "@type": "HowToStep",
+          "position": 4,
+          "name": "Get Size Recommendation",
+          "text": "Our calculator recommends the ideal dumpster size (10, 15, 20, 30, or 40 yard) based on your inputs and shows estimated pricing."
+        }
+      ],
+      "totalTime": "PT2M"
+    }
+    </script>
+    
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
