@@ -18,6 +18,7 @@ const staticPages = [
     { path: 'calculator.html', changefreq: 'weekly', priority: '0.8' },
     { path: 'sizes.html', changefreq: 'weekly', priority: '0.8' },
     { path: 'map.html', changefreq: 'daily', priority: '0.8' },
+    { path: 'faq.html', changefreq: 'weekly', priority: '0.8' },
     { path: 'for-providers.html', changefreq: 'weekly', priority: '0.7' },
     { path: 'contact.html', changefreq: 'monthly', priority: '0.5' },
 ];
