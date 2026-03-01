@@ -385,6 +385,16 @@ function main() {
     sitemapEntries.push({ loc: baseUrl, priority: '1.0', changefreq: 'daily' });
     sitemapEntries.push({ loc: `${baseUrl}/results.html`, priority: '0.9', changefreq: 'daily' });
     
+    // Important static pages (high SEO value)
+    sitemapEntries.push({ loc: `${baseUrl}/calculator.html`, priority: '0.9', changefreq: 'weekly' });
+    sitemapEntries.push({ loc: `${baseUrl}/sizes.html`, priority: '0.9', changefreq: 'weekly' });
+    sitemapEntries.push({ loc: `${baseUrl}/faq.html`, priority: '0.8', changefreq: 'weekly' });
+    sitemapEntries.push({ loc: `${baseUrl}/for-providers.html`, priority: '0.8', changefreq: 'monthly' });
+    sitemapEntries.push({ loc: `${baseUrl}/contact.html`, priority: '0.7', changefreq: 'monthly' });
+    sitemapEntries.push({ loc: `${baseUrl}/map.html`, priority: '0.7', changefreq: 'daily' });
+    sitemapEntries.push({ loc: `${baseUrl}/privacy.html`, priority: '0.3', changefreq: 'yearly' });
+    sitemapEntries.push({ loc: `${baseUrl}/terms.html`, priority: '0.3', changefreq: 'yearly' });
+    
     // City pages
     citiesToGenerate.forEach(([key]) => {
         const [city, state] = key.split('|');
@@ -410,10 +420,14 @@ function main() {
         }
     });
     
+    // Add lastmod date for freshness signals
+    const today = new Date().toISOString().split('T')[0];
+    
     const sitemap = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 ${sitemapEntries.map(e => `  <url>
     <loc>${e.loc}</loc>
+    <lastmod>${today}</lastmod>
     <changefreq>${e.changefreq}</changefreq>
     <priority>${e.priority}</priority>
   </url>`).join('\n')}
