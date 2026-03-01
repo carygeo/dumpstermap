@@ -32,6 +32,8 @@ const stateAbbrs = new Set([
 ]);
 
 function generateSitemap() {
+    const today = new Date().toISOString().split('T')[0];
+    
     let xml = '<?xml version="1.0" encoding="UTF-8"?>\n';
     xml += '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n';
     
@@ -40,6 +42,7 @@ function generateSitemap() {
         const loc = page.path ? `${baseUrl}/${page.path}` : baseUrl;
         xml += `  <url>\n`;
         xml += `    <loc>${loc}</loc>\n`;
+        xml += `    <lastmod>${today}</lastmod>\n`;
         xml += `    <changefreq>${page.changefreq}</changefreq>\n`;
         xml += `    <priority>${page.priority}</priority>\n`;
         xml += `  </url>\n`;
@@ -67,6 +70,7 @@ function generateSitemap() {
     for (const file of statePages) {
         xml += `  <url>\n`;
         xml += `    <loc>${baseUrl}/dumpster-rental/${file}</loc>\n`;
+        xml += `    <lastmod>${today}</lastmod>\n`;
         xml += `    <changefreq>weekly</changefreq>\n`;
         xml += `    <priority>0.85</priority>\n`;
         xml += `  </url>\n`;
@@ -76,6 +80,7 @@ function generateSitemap() {
     for (const file of cityPages) {
         xml += `  <url>\n`;
         xml += `    <loc>${baseUrl}/dumpster-rental/${file}</loc>\n`;
+        xml += `    <lastmod>${today}</lastmod>\n`;
         xml += `    <changefreq>weekly</changefreq>\n`;
         xml += `    <priority>0.8</priority>\n`;
         xml += `  </url>\n`;
