@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 /**
- * Fix State Page Canonicals
+ * Fix Schema URLs in State Abbreviation Pages
  * 
- * Updates abbreviated state pages (ny.html, ca.html) to have
- * canonical URLs pointing to the full-name versions (new-york.html, california.html)
+ * Updates JSON-LD schema URLs in abbreviated state pages (ny.html, ca.html)
+ * to match their canonical URLs (new-york.html, california.html)
  */
 
 const fs = require('fs');
@@ -30,6 +30,7 @@ const outputDir = path.join(__dirname, '../dumpster-rental');
 const baseUrl = 'https://dumpstermap.io';
 
 let fixed = 0;
+let skipped = 0;
 let errors = 0;
 
 for (const [abbr, fullName] of Object.entries(stateNames)) {
@@ -38,54 +39,41 @@ for (const [abbr, fullName] of Object.entries(stateNames)) {
     const canonicalUrl = `${baseUrl}/dumpster-rental/${fullSlug}.html`;
     
     if (!fs.existsSync(abbrFile)) {
-        continue;  // Skip if abbreviated file doesn't exist
+        continue;
     }
     
     try {
         let html = fs.readFileSync(abbrFile, 'utf8');
+        let modified = false;
         
-        // Check if already has correct canonical
-        if (html.includes(`href="${canonicalUrl}"`)) {
-            console.log(`✓ ${abbr.toLowerCase()}.html - already correct`);
-            continue;
-        }
-        
-        // Fix canonical URL
-        const oldCanonical = `${baseUrl}/dumpster-rental/${abbr.toLowerCase()}.html`;
-        html = html.replace(
-            new RegExp(`<link rel="canonical"[^>]*href="[^"]*"[^>]*>`, 'i'),
-            `<link rel="canonical" href="${canonicalUrl}">`
-        );
-        
-        // Fix og:url to also point to canonical
-        html = html.replace(
-            new RegExp(`<meta property="og:url"[^>]*content="[^"]*${abbr.toLowerCase()}\\.html"[^>]*>`, 'i'),
-            `<meta property="og:url" content="${canonicalUrl}">`
-        );
-        
-        // Fix JSON-LD schema URL to match canonical
-        const schemaOldUrl = `"url": "https://dumpstermap.io/dumpster-rental/${abbr.toLowerCase()}.html"`;
+        // Fix JSON-LD schema URL (the main "url" field in CollectionPage)
+        const schemaOldUrl = `"url": "${baseUrl}/dumpster-rental/${abbr.toLowerCase()}.html"`;
         const schemaNewUrl = `"url": "${canonicalUrl}"`;
         if (html.includes(schemaOldUrl)) {
             html = html.replace(schemaOldUrl, schemaNewUrl);
-            console.log(`   Also fixed JSON-LD schema URL`);
+            modified = true;
         }
         
-        // Fix breadcrumb schema URL too
-        const breadcrumbOldUrl = `"item": "https://dumpstermap.io/dumpster-rental/${abbr.toLowerCase()}.html"`;
+        // Fix breadcrumb schema "item" URL
+        const breadcrumbOldUrl = `"item": "${baseUrl}/dumpster-rental/${abbr.toLowerCase()}.html"`;
         const breadcrumbNewUrl = `"item": "${canonicalUrl}"`;
         if (html.includes(breadcrumbOldUrl)) {
             html = html.replace(new RegExp(breadcrumbOldUrl.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), breadcrumbNewUrl);
-            console.log(`   Also fixed breadcrumb schema URL`);
+            modified = true;
         }
         
-        fs.writeFileSync(abbrFile, html);
-        console.log(`✅ Fixed ${abbr.toLowerCase()}.html → ${fullSlug}.html`);
-        fixed++;
+        if (modified) {
+            fs.writeFileSync(abbrFile, html);
+            console.log(`✅ Fixed schema URLs in ${abbr.toLowerCase()}.html → ${fullSlug}.html`);
+            fixed++;
+        } else {
+            console.log(`✓ ${abbr.toLowerCase()}.html - schema URLs already correct`);
+            skipped++;
+        }
     } catch (err) {
         console.error(`❌ Error processing ${abbr.toLowerCase()}.html:`, err.message);
         errors++;
     }
 }
 
-console.log(`\n📊 Summary: Fixed ${fixed} files, ${errors} errors`);
+console.log(`\n📊 Summary: Fixed ${fixed} files, ${skipped} already correct, ${errors} errors`);
