@@ -22,6 +22,8 @@ const staticPages = [
     { path: 'how-to-rent-a-dumpster.html', changefreq: 'monthly', priority: '0.8' },
     { path: 'for-providers.html', changefreq: 'weekly', priority: '0.7' },
     { path: 'contact.html', changefreq: 'monthly', priority: '0.5' },
+    { path: 'privacy.html', changefreq: 'yearly', priority: '0.3' },
+    { path: 'terms.html', changefreq: 'yearly', priority: '0.3' },
 ];
 
 // State abbreviations (2-letter pages get higher priority)
