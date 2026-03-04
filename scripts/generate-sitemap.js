@@ -34,6 +34,16 @@ const stateAbbrs = new Set([
     'vt','va','wa','wv','wi','wy'
 ]);
 
+// Top metros get highest city priority (0.9)
+const topMetros = new Set([
+    'houston-tx', 'dallas-tx', 'orlando-fl', 'austin-tx', 'tampa-fl',
+    'brooklyn-ny', 'jacksonville-fl', 'phoenix-az', 'miami-fl', 'san-jose-ca',
+    'new-york-ny', 'los-angeles-ca', 'chicago-il', 'san-antonio-tx', 'san-diego-ca',
+    'san-francisco-ca', 'seattle-wa', 'denver-co', 'boston-ma', 'atlanta-ga',
+    'las-vegas-nv', 'charlotte-nc', 'philadelphia-pa', 'detroit-mi', 'portland-or',
+    'minneapolis-mn', 'columbus-oh', 'indianapolis-in', 'washington-dc', 'nashville-tn'
+]);
+
 function generateSitemap() {
     const today = new Date().toISOString().split('T')[0];
     
@@ -79,13 +89,15 @@ function generateSitemap() {
         xml += `  </url>\n`;
     }
     
-    // Add city pages
+    // Add city pages (top metros get higher priority)
     for (const file of cityPages) {
+        const name = file.replace('.html', '');
+        const priority = topMetros.has(name) ? '0.9' : '0.8';
         xml += `  <url>\n`;
         xml += `    <loc>${baseUrl}/dumpster-rental/${file}</loc>\n`;
         xml += `    <lastmod>${today}</lastmod>\n`;
         xml += `    <changefreq>weekly</changefreq>\n`;
-        xml += `    <priority>0.8</priority>\n`;
+        xml += `    <priority>${priority}</priority>\n`;
         xml += `  </url>\n`;
     }
     
