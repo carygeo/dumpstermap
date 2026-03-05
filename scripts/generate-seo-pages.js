@@ -396,13 +396,17 @@ function main() {
     sitemapEntries.push({ loc: `${baseUrl}/privacy.html`, priority: '0.3', changefreq: 'yearly' });
     sitemapEntries.push({ loc: `${baseUrl}/terms.html`, priority: '0.3', changefreq: 'yearly' });
     
-    // City pages
-    citiesToGenerate.forEach(([key]) => {
+    // City pages - prioritize major metros with more providers
+    citiesToGenerate.forEach(([key, list], index) => {
         const [city, state] = key.split('|');
         const slug = createSlug(city, state);
+        // Top 30 cities get priority 0.9, next 70 get 0.85, rest get 0.8
+        let priority = '0.8';
+        if (index < 30) priority = '0.9';
+        else if (index < 100) priority = '0.85';
         sitemapEntries.push({ 
             loc: `${baseUrl}/dumpster-rental/${slug}.html`, 
-            priority: '0.8', 
+            priority, 
             changefreq: 'weekly' 
         });
     });
