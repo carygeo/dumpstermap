@@ -15,6 +15,48 @@
     <meta name="twitter:title" content="Find Dumpster Rentals Near You | Map View">
     <meta name="twitter:description" content="Find dumpster rental companies near you on an interactive map.">
     <meta name="twitter:image" content="https://dumpstermap.io/og-image.png">
+    
+    <!-- BreadcrumbList Schema -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://dumpstermap.io" },
+        { "@type": "ListItem", "position": 2, "name": "Map View", "item": "https://dumpstermap.io/map.html" }
+      ]
+    }
+    </script>
+    
+    <!-- WebApplication Schema for Map Tool -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebApplication",
+      "name": "DumpsterMap Interactive Map",
+      "url": "https://dumpstermap.io/map.html",
+      "description": "Interactive map to find dumpster rental companies near you. Browse providers by location and compare services.",
+      "applicationCategory": "UtilityApplication",
+      "operatingSystem": "All",
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "USD"
+      },
+      "featureList": [
+        "Interactive map with provider locations",
+        "Geolocation support",
+        "Provider filtering by service area",
+        "Direct contact integration"
+      ],
+      "author": {
+        "@type": "Organization",
+        "name": "DumpsterMap",
+        "url": "https://dumpstermap.io"
+      }
+    }
+    </script>
+    
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>

@@ -15,6 +15,41 @@
     <meta name="twitter:title" content="Dumpster Rental Results | DumpsterMap">
     <meta name="twitter:description" content="Compare dumpster rental prices from local providers.">
     <meta name="twitter:image" content="https://dumpstermap.io/og-image.png">
+    
+    <!-- BreadcrumbList Schema -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://dumpstermap.io" },
+        { "@type": "ListItem", "position": 2, "name": "Search Results", "item": "https://dumpstermap.io/results.html" }
+      ]
+    }
+    </script>
+    
+    <!-- SearchResultsPage Schema -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "SearchResultsPage",
+      "name": "Dumpster Rental Search Results",
+      "description": "Compare dumpster rental prices from local providers. View ratings, reviews, and get instant quotes.",
+      "url": "https://dumpstermap.io/results.html",
+      "mainEntity": {
+        "@type": "ItemList",
+        "name": "Dumpster Rental Providers",
+        "description": "Local dumpster rental companies matching your search criteria",
+        "itemListOrder": "https://schema.org/ItemListOrderDescending"
+      },
+      "potentialAction": {
+        "@type": "SearchAction",
+        "target": "https://dumpstermap.io/results.html?zip={search_term_string}",
+        "query-input": "required name=search_term_string"
+      }
+    }
+    </script>
+    
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.css" />
