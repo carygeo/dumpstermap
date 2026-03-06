@@ -5557,6 +5557,141 @@ app.get('/api/admin/outreach-stats', (req, res) => {
 // Serve uploaded photos
 app.use('/uploads', express.static(UPLOADS_DIR, { maxAge: '7d' }));
 
+// ============================================
+// PROVIDER PAGE WITH SERVER-SIDE SCHEMA (SEO)
+// ============================================
+app.get(['/provider', '/provider.html'], (req, res) => {
+  const providerId = req.query.id;
+  const providerSlug = req.query.slug;
+  
+  // If no id/slug, just serve the static file
+  if (!providerId && !providerSlug) {
+    return res.sendFile(path.join(__dirname, 'provider.html'));
+  }
+  
+  try {
+    // Load provider data
+    const providersPath = path.join(__dirname, 'data', 'providers.json');
+    const data = JSON.parse(fs.readFileSync(providersPath, 'utf8'));
+    const provider = data.providers.find(p => 
+      p.id === providerId || 
+      p.slug === providerSlug ||
+      p.slug === decodeURIComponent(providerSlug || '')
+    );
+    
+    if (!provider) {
+      return res.sendFile(path.join(__dirname, 'provider.html'));
+    }
+    
+    // Read the HTML template
+    let html = fs.readFileSync(path.join(__dirname, 'provider.html'), 'utf8');
+    
+    // Build LocalBusiness schema
+    const localBusinessSchema = {
+      "@context": "https://schema.org",
+      "@type": "LocalBusiness",
+      "@id": `https://dumpstermap.io/provider?id=${provider.id}`,
+      "name": provider.name,
+      "description": `${provider.name} offers dumpster rental services in ${provider.city}, ${provider.state}.`,
+      "url": provider.website || `https://dumpstermap.io/provider?id=${provider.id}`,
+      "telephone": provider.phone || undefined,
+      "address": {
+        "@type": "PostalAddress",
+        "addressLocality": provider.city,
+        "addressRegion": provider.state,
+        "postalCode": provider.zip || undefined
+      },
+      "geo": (provider.lat && provider.lng) ? {
+        "@type": "GeoCoordinates",
+        "latitude": provider.lat,
+        "longitude": provider.lng
+      } : undefined,
+      "priceRange": "$$",
+      "serviceType": "Dumpster Rental"
+    };
+    
+    // Add aggregateRating if available
+    if (provider.rating && provider.reviewCount > 0) {
+      localBusinessSchema.aggregateRating = {
+        "@type": "AggregateRating",
+        "ratingValue": provider.rating,
+        "reviewCount": provider.reviewCount
+      };
+    }
+    
+    // Add image if available
+    if (provider.photo) {
+      localBusinessSchema.image = provider.photo;
+    }
+    
+    // Clean undefined values
+    const cleanSchema = JSON.parse(JSON.stringify(localBusinessSchema));
+    
+    // Build breadcrumb schema
+    const breadcrumbSchema = {
+      "@context": "https://schema.org",
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://dumpstermap.io" },
+        { "@type": "ListItem", "position": 2, "name": provider.state, "item": `https://dumpstermap.io/dumpster-rental/${provider.state.toLowerCase()}.html` },
+        { "@type": "ListItem", "position": 3, "name": `${provider.city}, ${provider.state}`, "item": `https://dumpstermap.io/dumpster-rental/${provider.city.toLowerCase().replace(/\s+/g, '-')}-${provider.state.toLowerCase()}.html` },
+        { "@type": "ListItem", "position": 4, "name": provider.name }
+      ]
+    };
+    
+    // Update title tag
+    const pageTitle = `${provider.name} - Dumpster Rental in ${provider.city}, ${provider.state} | DumpsterMap`;
+    html = html.replace(
+      /<title[^>]*>.*?<\/title>/i,
+      `<title>${pageTitle}</title>`
+    );
+    
+    // Update meta description
+    const metaDesc = `Get a free quote from ${provider.name} in ${provider.city}, ${provider.state}. ${provider.rating ? `Rated ${provider.rating} stars from ${provider.reviewCount} reviews.` : 'Local dumpster rental provider.'} No phone calls needed.`;
+    html = html.replace(
+      /<meta name="description"[^>]*>/i,
+      `<meta name="description" content="${metaDesc}">`
+    );
+    
+    // Update canonical
+    html = html.replace(
+      /<link rel="canonical"[^>]*>/i,
+      `<link rel="canonical" href="https://dumpstermap.io/provider?id=${provider.id}">`
+    );
+    
+    // Update OG tags
+    html = html.replace(
+      /<meta property="og:title"[^>]*>/i,
+      `<meta property="og:title" content="${pageTitle}">`
+    );
+    html = html.replace(
+      /<meta property="og:description"[^>]*>/i,
+      `<meta property="og:description" content="${metaDesc}">`
+    );
+    html = html.replace(
+      /<meta property="og:url"[^>]*>/i,
+      `<meta property="og:url" content="https://dumpstermap.io/provider?id=${provider.id}">`
+    );
+    
+    // Replace schema placeholders
+    html = html.replace(
+      /<script type="application\/ld\+json" id="schema-localbusiness">[\s\S]*?<\/script>/,
+      `<script type="application/ld+json" id="schema-localbusiness">\n${JSON.stringify(cleanSchema, null, 2)}\n    </script>`
+    );
+    html = html.replace(
+      /<script type="application\/ld\+json" id="schema-breadcrumb">[\s\S]*?<\/script>/,
+      `<script type="application/ld+json" id="schema-breadcrumb">\n${JSON.stringify(breadcrumbSchema, null, 2)}\n    </script>`
+    );
+    
+    res.set('Content-Type', 'text/html');
+    res.send(html);
+    
+  } catch (err) {
+    console.error('Provider SSR error:', err.message);
+    res.sendFile(path.join(__dirname, 'provider.html'));
+  }
+});
+
 // Static files with caching
 app.use(express.static(path.join(__dirname), { 
   extensions: ['html'],
