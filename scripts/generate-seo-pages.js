@@ -70,7 +70,71 @@ function getCityStats(providers) {
     return { count, avgRating, totalReviews, avgLat, avgLng };
 }
 
-function generateCityPage(city, stateAbbr, providers, template) {
+// Calculate distance between two lat/lng points (Haversine formula)
+function getDistance(lat1, lng1, lat2, lng2) {
+    if (!lat1 || !lng1 || !lat2 || !lng2) return Infinity;
+    const R = 3959; // Earth's radius in miles
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLng = (lng2 - lng1) * Math.PI / 180;
+    const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+              Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+              Math.sin(dLng/2) * Math.sin(dLng/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    return R * c;
+}
+
+// Generate pre-rendered nearby city links HTML
+function generateNearbyCitiesHtml(currentCity, currentState, currentStats, allCityGroups, maxCities = 12) {
+    const currentKey = `${currentCity}|${currentState}`;
+    const nearbyCities = [];
+    
+    // Find cities in the same state or nearby
+    for (const [key, providers] of Object.entries(allCityGroups)) {
+        if (key === currentKey) continue;
+        
+        const [city, state] = key.split('|');
+        const stats = getCityStats(providers);
+        
+        // Calculate distance if we have coordinates
+        let distance = Infinity;
+        if (currentStats.avgLat && currentStats.avgLng && stats.avgLat && stats.avgLng) {
+            distance = getDistance(currentStats.avgLat, currentStats.avgLng, stats.avgLat, stats.avgLng);
+        }
+        
+        // Include if same state OR within 100 miles
+        if (state === currentState || distance < 100) {
+            nearbyCities.push({
+                city,
+                state,
+                count: providers.length,
+                distance,
+                sameState: state === currentState
+            });
+        }
+    }
+    
+    // Sort: prioritize same-state cities, then by distance, then by provider count
+    nearbyCities.sort((a, b) => {
+        if (a.sameState !== b.sameState) return b.sameState - a.sameState;
+        if (a.distance !== b.distance) return a.distance - b.distance;
+        return b.count - a.count;
+    });
+    
+    // Take top N cities
+    const topCities = nearbyCities.slice(0, maxCities);
+    
+    if (topCities.length === 0) return '';
+    
+    // Generate HTML links
+    const links = topCities.map(c => {
+        const slug = createSlug(c.city, c.state);
+        return `<a href="${slug}.html" class="city-link">${c.city}, ${c.state}</a>`;
+    }).join('\n                ');
+    
+    return links;
+}
+
+function generateCityPage(city, stateAbbr, providers, template, allCityGroups) {
     const slug = createSlug(city, stateAbbr);
     const stateName = stateNames[stateAbbr.toUpperCase()] || stateAbbr;
     const stats = getCityStats(providers);
@@ -158,6 +222,11 @@ function generateCityPage(city, stateAbbr, providers, template) {
     // Inject config at the start of the first script
     const configScript = `<script>window.CITY_CONFIG = ${JSON.stringify(cityConfig)};</script>`;
     
+    // Generate pre-rendered nearby cities HTML for SEO
+    const nearbyCitiesHtml = allCityGroups 
+        ? generateNearbyCitiesHtml(city, stateAbbr, stats, allCityGroups)
+        : '';
+    
     // Modify template for this city with pre-rendered SEO content
     let html = template
         // Pre-render title tag
@@ -181,6 +250,14 @@ function generateCityPage(city, stateAbbr, providers, template) {
         .replace(/src="app\.js"/g, 'src="../app.js"')
         .replace(/'data\/providers\.json'/g, "'../data/providers.json'")
         .replace(/"data\/providers\.json"/g, '"../data/providers.json"');
+    
+    // Pre-render nearby cities links for SEO crawlability
+    if (nearbyCitiesHtml) {
+        html = html.replace(
+            /<div class="city-links" id="nearby-links">\s*<!--\s*Populated by JS\s*-->\s*<\/div>/i,
+            `<div class="city-links" id="nearby-links">\n                ${nearbyCitiesHtml}\n            </div>`
+        );
+    }
     
     return html;
 }
@@ -344,7 +421,7 @@ function main() {
     citiesToGenerate.forEach(([key, list]) => {
         const [city, state] = key.split('|');
         const slug = createSlug(city, state);
-        const html = generateCityPage(city, state, list, template);
+        const html = generateCityPage(city, state, list, template, cityGroups);
         const filePath = path.join(outputDir, `${slug}.html`);
         fs.writeFileSync(filePath, html);
         generated++;
