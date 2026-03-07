@@ -26,22 +26,34 @@ const staticPages = [
     { path: 'terms.html', changefreq: 'yearly', priority: '0.3' },
 ];
 
-// State abbreviations (2-letter pages get higher priority)
-const stateAbbrs = new Set([
-    'al','ak','az','ar','ca','co','ct','de','dc','fl','ga','hi','id','il','in',
-    'ia','ks','ky','la','me','md','ma','mi','mn','ms','mo','mt','ne','nv','nh',
-    'nj','nm','ny','nc','nd','oh','ok','or','pa','ri','sc','sd','tn','tx','ut',
-    'vt','va','wa','wv','wi','wy'
+// State names (full lowercase) - pages like "texas.html", "florida.html"
+const stateNames = new Set([
+    'alabama','alaska','arizona','arkansas','california','colorado','connecticut',
+    'delaware','florida','georgia','hawaii','idaho','illinois','indiana','iowa',
+    'kansas','kentucky','louisiana','maine','maryland','massachusetts','michigan',
+    'minnesota','mississippi','missouri','montana','nebraska','nevada',
+    'new-hampshire','new-jersey','new-mexico','new-york','north-carolina',
+    'north-dakota','ohio','oklahoma','oregon','pennsylvania','rhode-island',
+    'south-carolina','south-dakota','tennessee','texas','utah','vermont',
+    'virginia','washington','west-virginia','wisconsin','wyoming','district-of-columbia'
 ]);
 
-// Top metros get highest city priority (0.9)
+// Top metros get highest city priority (0.9) - based on provider counts
 const topMetros = new Set([
+    // Tier 1: 30+ providers
     'houston-tx', 'dallas-tx', 'orlando-fl', 'austin-tx', 'tampa-fl',
     'brooklyn-ny', 'jacksonville-fl', 'phoenix-az', 'miami-fl', 'san-jose-ca',
     'new-york-ny', 'los-angeles-ca', 'chicago-il', 'san-antonio-tx', 'san-diego-ca',
-    'san-francisco-ca', 'seattle-wa', 'denver-co', 'boston-ma', 'atlanta-ga',
-    'las-vegas-nv', 'charlotte-nc', 'philadelphia-pa', 'detroit-mi', 'portland-or',
-    'minneapolis-mn', 'columbus-oh', 'indianapolis-in', 'washington-dc', 'nashville-tn'
+    'charlotte-nc', 'fort-lauderdale-fl', 'el-paso-tx',
+    // Tier 2: 20-29 providers
+    'las-vegas-nv', 'fort-worth-tx', 'detroit-mi', 'portland-or', 'colorado-springs-co',
+    'louisville-ky', 'denver-co', 'bakersfield-ca', 'salt-lake-city-ut', 'new-orleans-la',
+    'indianapolis-in', 'grand-rapids-mi',
+    // Tier 3: important metros (15-19 providers or major search volume)
+    'st-petersburg-fl', 'raleigh-nc', 'greensboro-nc', 'sacramento-ca', 'reno-nv',
+    'oklahoma-city-ok', 'nashville-tn', 'midland-tx', 'lubbock-tx', 'knoxville-tn',
+    'seattle-wa', 'boston-ma', 'atlanta-ga', 'philadelphia-pa', 'minneapolis-mn',
+    'columbus-oh', 'san-francisco-ca', 'washington-dc'
 ]);
 
 function generateSitemap() {
@@ -72,7 +84,7 @@ function generateSitemap() {
     
     for (const file of files) {
         const name = file.replace('.html', '');
-        if (stateAbbrs.has(name)) {
+        if (stateNames.has(name)) {
             statePages.push(file);
         } else {
             cityPages.push(file);
