@@ -375,6 +375,52 @@
             gap: 0.5rem;
         }
         
+        /* Find Local Section */
+        .find-local-section {
+            background: var(--bg-light);
+            padding: 2rem;
+            border-radius: 12px;
+            margin: 2rem 0;
+            border: 1px solid var(--border);
+        }
+        
+        .find-local-section h2 {
+            color: var(--text);
+            margin-bottom: 1rem;
+            text-align: center;
+        }
+        
+        .find-local-section > p {
+            text-align: center;
+            margin-bottom: 1.5rem;
+            color: var(--text-light);
+        }
+        
+        .city-links {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+        
+        .city-links-row {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 0.5rem 1.5rem;
+        }
+        
+        .city-links-row a {
+            color: var(--primary);
+            text-decoration: none;
+            font-weight: 500;
+            padding: 0.25rem 0;
+        }
+        
+        .city-links-row a:hover {
+            text-decoration: underline;
+            color: var(--primary-dark);
+        }
+        
         /* CTA Section */
         .cta-section {
             background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
@@ -842,6 +888,40 @@
                 <h4>📞 When in Doubt, Ask</h4>
                 <p>If you're unsure whether an item is accepted, call your provider first. Policies vary by location and disposal facility. It's better to ask than face a contamination fee.</p>
             </div>
+        </section>
+        
+        <section id="find-local" class="find-local-section">
+            <h2>🗺️ Find Dumpster Rental Near You</h2>
+            <p>Ready to book? Compare prices from local providers in your city:</p>
+            
+            <div class="city-links">
+                <div class="city-links-row">
+                    <a href="dumpster-rental/new-york-ny.html">New York, NY</a>
+                    <a href="dumpster-rental/los-angeles-ca.html">Los Angeles, CA</a>
+                    <a href="dumpster-rental/chicago-il.html">Chicago, IL</a>
+                    <a href="dumpster-rental/houston-tx.html">Houston, TX</a>
+                </div>
+                <div class="city-links-row">
+                    <a href="dumpster-rental/phoenix-az.html">Phoenix, AZ</a>
+                    <a href="dumpster-rental/philadelphia-pa.html">Philadelphia, PA</a>
+                    <a href="dumpster-rental/san-antonio-tx.html">San Antonio, TX</a>
+                    <a href="dumpster-rental/san-diego-ca.html">San Diego, CA</a>
+                </div>
+                <div class="city-links-row">
+                    <a href="dumpster-rental/dallas-tx.html">Dallas, TX</a>
+                    <a href="dumpster-rental/austin-tx.html">Austin, TX</a>
+                    <a href="dumpster-rental/jacksonville-fl.html">Jacksonville, FL</a>
+                    <a href="dumpster-rental/miami-fl.html">Miami, FL</a>
+                </div>
+                <div class="city-links-row">
+                    <a href="dumpster-rental/denver-co.html">Denver, CO</a>
+                    <a href="dumpster-rental/seattle-wa.html">Seattle, WA</a>
+                    <a href="dumpster-rental/atlanta-ga.html">Atlanta, GA</a>
+                    <a href="dumpster-rental/boston-ma.html">Boston, MA</a>
+                </div>
+            </div>
+            
+            <p style="margin-top: 1rem; text-align: center;"><a href="/" style="color: var(--primary);">Search all 6,500+ providers →</a></p>
         </section>
         
         <div class="cta-section">
