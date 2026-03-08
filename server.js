@@ -2741,12 +2741,13 @@ app.post('/admin/outreach/bulk-send', requireAdminAuth, async (req, res) => {
   
   for (const contact of contacts) {
     const html = generateOutreachEmail(contact);
-    // Use Gmail directly for outreach (no rate limits)
-    const success = await sendEmailViaGmail(
+    const text = `Join DumpsterMap and get quality dumpster rental leads in ${contact.zip || 'your area'}. Visit https://dumpstermap.fly.dev/for-providers to get started.`;
+    // Use sendEmail which supports Resend (primary) or Gmail fallback
+    const success = await sendEmail(
       contact.provider_email,
       `Partner with DumpsterMap - Get Quality Dumpster Leads in ${contact.zip || 'Your Area'}`,
       html,
-      null,
+      text,
       'DumpsterMap Partners <admin@dumpstermap.io>'
     );
     
@@ -2762,7 +2763,7 @@ app.post('/admin/outreach/bulk-send', requireAdminAuth, async (req, res) => {
     await new Promise(r => setTimeout(r, 300));
   }
   
-  console.log(`Bulk outreach (Gmail): ${sent} sent, ${failed} failed`);
+  console.log(`Bulk outreach: ${sent} sent, ${failed} failed`);
   res.redirect(`/admin/outreach&sent=${sent}&failed=${failed}`);
 });
 
@@ -2792,12 +2793,13 @@ app.post('/api/outreach/send-batch', async (req, res) => {
   
   for (const contact of contacts) {
     const html = generateOutreachEmail(contact);
-    // Use Gmail directly for outreach (no Resend rate limits)
-    const success = await sendEmailViaGmail(
+    const text = `Join DumpsterMap and get quality dumpster rental leads in ${contact.zip || 'your area'}. Visit https://dumpstermap.fly.dev/for-providers to get started.`;
+    // Use sendEmail which supports Resend (primary) or Gmail fallback
+    const success = await sendEmail(
       contact.provider_email,
       `Partner with DumpsterMap - Get Quality Dumpster Leads in ${contact.zip || 'Your Area'}`,
       html,
-      null,
+      text,
       'DumpsterMap Partners <admin@dumpstermap.io>'
     );
     
