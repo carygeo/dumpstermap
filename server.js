@@ -2817,7 +2817,7 @@ app.post('/api/outreach/send-batch', async (req, res) => {
     await new Promise(r => setTimeout(r, 300));
   }
   
-  console.log(`Outreach batch (Gmail): ${sent} sent, ${failed} failed`);
+  console.log(`Outreach batch: ${sent} sent, ${failed} failed`);
   res.json({ status: 'ok', sent, failed, results });
 });
 
