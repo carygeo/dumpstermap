@@ -262,7 +262,27 @@ function generateCityPage(city, stateAbbr, providers, template, allCityGroups) {
     return html;
 }
 
-function generateStatePage(stateAbbr, cities, providers, template) {
+// Generate HTML for top cities in a state (for state page internal linking)
+function generateTopCitiesHtml(stateAbbr, cityGroups) {
+    // Get all cities in this state with provider counts
+    const stateCities = Object.entries(cityGroups)
+        .filter(([key]) => key.endsWith(`|${stateAbbr}`))
+        .map(([key, providers]) => ({
+            city: key.split('|')[0],
+            count: providers.length,
+            slug: createSlug(key.split('|')[0], stateAbbr)
+        }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 20);  // Top 20 cities
+    
+    if (stateCities.length === 0) return '';
+    
+    return stateCities.map(c => 
+        `<a href="${c.slug}.html">${c.city} (${c.count})</a>`
+    ).join('\n                ');
+}
+
+function generateStatePage(stateAbbr, cities, providers, template, cityGroups) {
     const stateName = stateNames[stateAbbr.toUpperCase()] || stateAbbr;
     const slug = stateName.toLowerCase().replace(/\s+/g, '-');
     const stateProviders = providers.filter(p => 
@@ -328,6 +348,9 @@ function generateStatePage(stateAbbr, cities, providers, template) {
     
     const configScript = `<script>window.CITY_CONFIG = ${JSON.stringify(stateConfig)};</script>`;
     
+    // Generate top cities HTML for internal linking
+    const topCitiesHtml = cityGroups ? generateTopCitiesHtml(stateAbbr, cityGroups) : '';
+    
     let html = template
         // Pre-render title tag
         .replace(/<title[^>]*>.*?<\/title>/i, `<title>${pageTitle}</title>`)
@@ -348,6 +371,19 @@ function generateStatePage(stateAbbr, cities, providers, template) {
         .replace(/src="app\.js"/g, 'src="../app.js"')
         .replace(/'data\/providers\.json'/g, "'../data/providers.json'")
         .replace(/"data\/providers\.json"/g, '"../data/providers.json"');
+    
+    // Inject top cities links for state pages (improving internal linking)
+    if (topCitiesHtml) {
+        html = html.replace(
+            /<div class="city-links" id="nearby-links">\s*<!--\s*Populated by JS\s*-->\s*<\/div>/i,
+            `<div class="city-links" id="nearby-links">\n                ${topCitiesHtml}\n            </div>`
+        );
+        // Update the heading for state pages
+        html = html.replace(
+            /<h3>Find Dumpster Rentals Nearby<\/h3>/i,
+            `<h3>Popular Cities in ${stateName}</h3>`
+        );
+    }
     
     return html;
 }
@@ -446,7 +482,7 @@ function main() {
             .filter(([key]) => key.endsWith(`|${stateAbbr}`))
             .map(([key]) => key.split('|')[0]);
         
-        const html = generateStatePage(stateAbbr, cities, providers, template);
+        const html = generateStatePage(stateAbbr, cities, providers, template, cityGroups);
         const filePath = path.join(outputDir, `${stateSlug}.html`);
         fs.writeFileSync(filePath, html);
         statesGenerated++;
