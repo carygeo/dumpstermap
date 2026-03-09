@@ -503,6 +503,7 @@ function main() {
     sitemapEntries.push({ loc: `${baseUrl}/sizes.html`, priority: '0.9', changefreq: 'weekly' });
     sitemapEntries.push({ loc: `${baseUrl}/faq.html`, priority: '0.8', changefreq: 'weekly' });
     sitemapEntries.push({ loc: `${baseUrl}/how-to-rent-a-dumpster.html`, priority: '0.8', changefreq: 'monthly' });
+    sitemapEntries.push({ loc: `${baseUrl}/what-can-you-put-in-a-dumpster.html`, priority: '0.8', changefreq: 'monthly' });
     sitemapEntries.push({ loc: `${baseUrl}/for-providers.html`, priority: '0.7', changefreq: 'monthly' });
     sitemapEntries.push({ loc: `${baseUrl}/map.html`, priority: '0.7', changefreq: 'daily' });
     sitemapEntries.push({ loc: `${baseUrl}/contact.html`, priority: '0.6', changefreq: 'monthly' });
