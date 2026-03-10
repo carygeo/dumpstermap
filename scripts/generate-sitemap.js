@@ -15,10 +15,10 @@ const dumpsterRentalDir = path.join(__dirname, '../dumpster-rental');
 const staticPages = [
     { path: '', changefreq: 'daily', priority: '1.0' },
     { path: 'results.html', changefreq: 'daily', priority: '0.9' },
-    { path: 'calculator.html', changefreq: 'weekly', priority: '0.8' },
-    { path: 'sizes.html', changefreq: 'weekly', priority: '0.8' },
-    { path: 'map.html', changefreq: 'daily', priority: '0.8' },
+    { path: 'calculator.html', changefreq: 'weekly', priority: '0.9' },
+    { path: 'sizes.html', changefreq: 'weekly', priority: '0.9' },
     { path: 'faq.html', changefreq: 'weekly', priority: '0.8' },
+    { path: 'map.html', changefreq: 'daily', priority: '0.8' },
     { path: 'how-to-rent-a-dumpster.html', changefreq: 'monthly', priority: '0.8' },
     { path: 'what-can-you-put-in-a-dumpster.html', changefreq: 'monthly', priority: '0.8' },
     { path: 'for-providers.html', changefreq: 'weekly', priority: '0.7' },
