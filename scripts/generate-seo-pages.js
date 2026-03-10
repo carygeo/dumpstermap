@@ -439,7 +439,13 @@ function main() {
         'Richmond|VA', 'Norfolk|VA', 'Louisville|KY',
         'Memphis|TN', 'Nashville|TN', 'New Orleans|LA',
         'Oklahoma City|OK', 'Milwaukee|WI', 'Kansas City|MO',
-        'Virginia Beach|VA', 'Raleigh|NC', 'Greensboro|NC'
+        'Virginia Beach|VA', 'Raleigh|NC', 'Greensboro|NC',
+        // Additional top 100 US metros (2026 SEO update)
+        'Toledo|OH', 'Garland|TX', 'Chesapeake|VA', 'Fremont|CA',
+        'Chula Vista|CA', 'Paradise|NV', 'Sunrise Manor|NV',
+        'Spring Valley|NV', 'Enterprise|NV', 'Fontana|CA',
+        'Moreno Valley|CA', 'Glendale|CA', 'Huntington Beach|CA',
+        'Santa Clarita|CA', 'Garden Grove|CA', 'Oceanside|CA'
     ]);
     
     // Filter cities with minimum providers (for SEO value)
