@@ -1,84 +1,21 @@
-#!/usr/bin/env node
-/**
- * DumpsterMap State Landing Page Generator
- * 
- * Creates state-level landing pages (e.g., /dumpster-rental/tx.html)
- * that list all cities with providers in that state
- */
-
-const fs = require('fs');
-const path = require('path');
-
-const dataPath = path.join(__dirname, '../data/providers.json');
-const outputDir = path.join(__dirname, '../dumpster-rental');
-
-const stateNames = {
-    'AL': 'Alabama', 'AK': 'Alaska', 'AZ': 'Arizona', 'AR': 'Arkansas',
-    'CA': 'California', 'CO': 'Colorado', 'CT': 'Connecticut', 'DE': 'Delaware',
-    'DC': 'District of Columbia', 'FL': 'Florida', 'GA': 'Georgia', 'HI': 'Hawaii',
-    'ID': 'Idaho', 'IL': 'Illinois', 'IN': 'Indiana', 'IA': 'Iowa',
-    'KS': 'Kansas', 'KY': 'Kentucky', 'LA': 'Louisiana', 'ME': 'Maine',
-    'MD': 'Maryland', 'MA': 'Massachusetts', 'MI': 'Michigan', 'MN': 'Minnesota',
-    'MS': 'Mississippi', 'MO': 'Missouri', 'MT': 'Montana', 'NE': 'Nebraska',
-    'NV': 'Nevada', 'NH': 'New Hampshire', 'NJ': 'New Jersey', 'NM': 'New Mexico',
-    'NY': 'New York', 'NC': 'North Carolina', 'ND': 'North Dakota', 'OH': 'Ohio',
-    'OK': 'Oklahoma', 'OR': 'Oregon', 'PA': 'Pennsylvania', 'RI': 'Rhode Island',
-    'SC': 'South Carolina', 'SD': 'South Dakota', 'TN': 'Tennessee', 'TX': 'Texas',
-    'UT': 'Utah', 'VT': 'Vermont', 'VA': 'Virginia', 'WA': 'Washington',
-    'WV': 'West Virginia', 'WI': 'Wisconsin', 'WY': 'Wyoming'
-};
-
-// Reverse lookup: full name -> abbreviation
-const nameToAbbr = Object.fromEntries(
-    Object.entries(stateNames).map(([abbr, name]) => [name.toLowerCase(), abbr])
-);
-
-function normalizeState(state) {
-    if (!state) return null;
-    const upper = state.toUpperCase();
-    if (stateNames[upper]) return upper; // Already abbreviation
-    const lower = state.toLowerCase();
-    return nameToAbbr[lower] || null;
-}
-
-function createCitySlug(city, state) {
-    return `${city.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${state.toLowerCase()}`;
-}
-
-function generateStatePage(stateAbbr, stateName, cities, stateStats) {
-    const sortedCities = Object.entries(cities)
-        .map(([city, data]) => ({ city, ...data }))
-        .sort((a, b) => b.providers - a.providers);
-    
-    const totalProviders = sortedCities.reduce((sum, c) => sum + c.providers, 0);
-    const topCities = sortedCities.slice(0, 10);
-    
-    // Use state-level rating stats
-    const avgRating = stateStats.avgRating ? stateStats.avgRating.toFixed(1) : null;
-    const totalReviews = stateStats.totalReviews || 0;
-    const ratingText = avgRating ? ` Avg rating: ${avgRating}★.` : '';
-    
-    const pageTitle = `Dumpster Rental ${stateName} - Compare ${totalProviders} Local Providers | DumpsterMap`;
-    const metaDesc = `Find dumpster rental companies across ${stateName}. Compare ${totalProviders} providers in ${sortedCities.length} cities.${ratingText} Get instant quotes for roll-off dumpsters.`;
-
-    return `<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>${pageTitle}</title>
-    <meta name="description" content="${metaDesc}">
-    <link rel="canonical" href="https://dumpstermap.io/dumpster-rental/${stateAbbr.toLowerCase()}.html">
+    <title>Dumpster Rental Hawaii - Compare 31 Local Providers | DumpsterMap</title>
+    <meta name="description" content="Find dumpster rental companies across Hawaii. Compare 31 providers in 15 cities. Avg rating: 4.3★. Get instant quotes for roll-off dumpsters.">
+    <link rel="canonical" href="https://dumpstermap.io/dumpster-rental/hi.html">
     
     <meta property="og:type" content="website">
-    <meta property="og:url" content="https://dumpstermap.io/dumpster-rental/${stateAbbr.toLowerCase()}.html">
-    <meta property="og:title" content="${pageTitle}">
-    <meta property="og:description" content="${metaDesc}">
+    <meta property="og:url" content="https://dumpstermap.io/dumpster-rental/hi.html">
+    <meta property="og:title" content="Dumpster Rental Hawaii - Compare 31 Local Providers | DumpsterMap">
+    <meta property="og:description" content="Find dumpster rental companies across Hawaii. Compare 31 providers in 15 cities. Avg rating: 4.3★. Get instant quotes for roll-off dumpsters.">
     <meta property="og:image" content="https://dumpstermap.io/og-image.png">
     
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="${pageTitle}">
-    <meta name="twitter:description" content="${metaDesc}">
+    <meta name="twitter:title" content="Dumpster Rental Hawaii - Compare 31 Local Providers | DumpsterMap">
+    <meta name="twitter:description" content="Find dumpster rental companies across Hawaii. Compare 31 providers in 15 cities. Avg rating: 4.3★. Get instant quotes for roll-off dumpsters.">
     
     <script type="application/ld+json">
     {
@@ -86,35 +23,116 @@ function generateStatePage(stateAbbr, stateName, cities, stateStats) {
         "@graph": [
             {
                 "@type": "CollectionPage",
-                "name": "Dumpster Rental in ${stateName}",
-                "description": "${metaDesc}",
-                "url": "https://dumpstermap.io/dumpster-rental/${stateAbbr.toLowerCase()}.html",
+                "name": "Dumpster Rental in Hawaii",
+                "description": "Find dumpster rental companies across Hawaii. Compare 31 providers in 15 cities. Avg rating: 4.3★. Get instant quotes for roll-off dumpsters.",
+                "url": "https://dumpstermap.io/dumpster-rental/hi.html",
                 "mainEntity": {
                     "@type": "ItemList",
-                    "numberOfItems": ${sortedCities.length},
+                    "numberOfItems": 15,
                     "itemListElement": [
-                        ${topCities.map((city, i) => `{
+                        {
                             "@type": "ListItem",
-                            "position": ${i + 1},
+                            "position": 1,
                             "item": {
                                 "@type": "City",
-                                "name": "${city.city}",
-                                "url": "https://dumpstermap.io/dumpster-rental/${createCitySlug(city.city, stateAbbr)}.html"
+                                "name": "Honolulu",
+                                "url": "https://dumpstermap.io/dumpster-rental/honolulu-hi.html"
                             }
-                        }`).join(',\n                        ')}
+                        },
+                        {
+                            "@type": "ListItem",
+                            "position": 2,
+                            "item": {
+                                "@type": "City",
+                                "name": "Kapolei",
+                                "url": "https://dumpstermap.io/dumpster-rental/kapolei-hi.html"
+                            }
+                        },
+                        {
+                            "@type": "ListItem",
+                            "position": 3,
+                            "item": {
+                                "@type": "City",
+                                "name": "Hilo",
+                                "url": "https://dumpstermap.io/dumpster-rental/hilo-hi.html"
+                            }
+                        },
+                        {
+                            "@type": "ListItem",
+                            "position": 4,
+                            "item": {
+                                "@type": "City",
+                                "name": "Aiea",
+                                "url": "https://dumpstermap.io/dumpster-rental/aiea-hi.html"
+                            }
+                        },
+                        {
+                            "@type": "ListItem",
+                            "position": 5,
+                            "item": {
+                                "@type": "City",
+                                "name": "Kailua-Kona",
+                                "url": "https://dumpstermap.io/dumpster-rental/kailua-kona-hi.html"
+                            }
+                        },
+                        {
+                            "@type": "ListItem",
+                            "position": 6,
+                            "item": {
+                                "@type": "City",
+                                "name": "Kailua",
+                                "url": "https://dumpstermap.io/dumpster-rental/kailua-hi.html"
+                            }
+                        },
+                        {
+                            "@type": "ListItem",
+                            "position": 7,
+                            "item": {
+                                "@type": "City",
+                                "name": "Wailuku",
+                                "url": "https://dumpstermap.io/dumpster-rental/wailuku-hi.html"
+                            }
+                        },
+                        {
+                            "@type": "ListItem",
+                            "position": 8,
+                            "item": {
+                                "@type": "City",
+                                "name": "Koloa",
+                                "url": "https://dumpstermap.io/dumpster-rental/koloa-hi.html"
+                            }
+                        },
+                        {
+                            "@type": "ListItem",
+                            "position": 9,
+                            "item": {
+                                "@type": "City",
+                                "name": "Keaau",
+                                "url": "https://dumpstermap.io/dumpster-rental/keaau-hi.html"
+                            }
+                        },
+                        {
+                            "@type": "ListItem",
+                            "position": 10,
+                            "item": {
+                                "@type": "City",
+                                "name": "Kahului",
+                                "url": "https://dumpstermap.io/dumpster-rental/kahului-hi.html"
+                            }
+                        }
                     ]
                 },
                 "breadcrumb": {
                     "@type": "BreadcrumbList",
                     "itemListElement": [
                         { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://dumpstermap.io/" },
-                        { "@type": "ListItem", "position": 2, "name": "${stateName}", "item": "https://dumpstermap.io/dumpster-rental/${stateAbbr.toLowerCase()}.html" }
+                        { "@type": "ListItem", "position": 2, "name": "Hawaii", "item": "https://dumpstermap.io/dumpster-rental/hi.html" }
                     ]
                 }
             },
             {
                 "@type": "Service",
-                "name": "Dumpster Rental in ${stateName}",
+                "name": "Dumpster Rental in Hawaii",
                 "serviceType": "Dumpster Rental",
                 "provider": {
                     "@type": "Organization",
@@ -123,15 +141,15 @@ function generateStatePage(stateAbbr, stateName, cities, stateStats) {
                 },
                 "areaServed": {
                     "@type": "State",
-                    "name": "${stateName}"
-                }${avgRating && totalReviews > 0 ? `,
+                    "name": "Hawaii"
+                },
                 "aggregateRating": {
                     "@type": "AggregateRating",
-                    "ratingValue": "${avgRating}",
+                    "ratingValue": "4.3",
                     "bestRating": "5",
                     "worstRating": "1",
-                    "ratingCount": "${totalReviews}"
-                }` : ''}
+                    "ratingCount": "3159"
+                }
             }
         ]
     }
@@ -370,40 +388,96 @@ function generateStatePage(stateAbbr, stateName, cities, stateStats) {
     </header>
     
     <nav class="breadcrumbs">
-        <a href="/">Home</a> › ${stateName}
+        <a href="/">Home</a> › Hawaii
     </nav>
     
     <section class="hero">
-        <h1>Dumpster Rental in ${stateName}</h1>
-        <p>Compare prices from local dumpster rental companies across ${stateName}. No phone calls needed.</p>
+        <h1>Dumpster Rental in Hawaii</h1>
+        <p>Compare prices from local dumpster rental companies across Hawaii. No phone calls needed.</p>
         <div class="stats">
             <div class="stat">
-                <div class="stat-value">${totalProviders.toLocaleString()}</div>
+                <div class="stat-value">31</div>
                 <div class="stat-label">Providers</div>
             </div>
             <div class="stat">
-                <div class="stat-value">${sortedCities.length}</div>
+                <div class="stat-value">15</div>
                 <div class="stat-label">Cities</div>
-            </div>${avgRating ? `
+            </div>
             <div class="stat">
-                <div class="stat-value">${avgRating}★</div>
+                <div class="stat-value">4.3★</div>
                 <div class="stat-label">Avg Rating</div>
-            </div>` : ''}
+            </div>
         </div>
     </section>
     
     <main>
-        <h2 class="section-title">Cities with Dumpster Rentals in ${stateName}</h2>
+        <h2 class="section-title">Cities with Dumpster Rentals in Hawaii</h2>
         <div class="cities-grid">
-            ${sortedCities.map(city => `
-            <a href="/dumpster-rental/${createCitySlug(city.city, stateAbbr)}.html" class="city-card">
-                <span class="city-name">${city.city}</span>
-                <span class="city-count">${city.providers} provider${city.providers === 1 ? '' : 's'}</span>
-            </a>`).join('')}
+            
+            <a href="/dumpster-rental/honolulu-hi.html" class="city-card">
+                <span class="city-name">Honolulu</span>
+                <span class="city-count">8 providers</span>
+            </a>
+            <a href="/dumpster-rental/kapolei-hi.html" class="city-card">
+                <span class="city-name">Kapolei</span>
+                <span class="city-count">5 providers</span>
+            </a>
+            <a href="/dumpster-rental/hilo-hi.html" class="city-card">
+                <span class="city-name">Hilo</span>
+                <span class="city-count">4 providers</span>
+            </a>
+            <a href="/dumpster-rental/aiea-hi.html" class="city-card">
+                <span class="city-name">Aiea</span>
+                <span class="city-count">2 providers</span>
+            </a>
+            <a href="/dumpster-rental/kailua-kona-hi.html" class="city-card">
+                <span class="city-name">Kailua-Kona</span>
+                <span class="city-count">2 providers</span>
+            </a>
+            <a href="/dumpster-rental/kailua-hi.html" class="city-card">
+                <span class="city-name">Kailua</span>
+                <span class="city-count">1 provider</span>
+            </a>
+            <a href="/dumpster-rental/wailuku-hi.html" class="city-card">
+                <span class="city-name">Wailuku</span>
+                <span class="city-count">1 provider</span>
+            </a>
+            <a href="/dumpster-rental/koloa-hi.html" class="city-card">
+                <span class="city-name">Koloa</span>
+                <span class="city-count">1 provider</span>
+            </a>
+            <a href="/dumpster-rental/keaau-hi.html" class="city-card">
+                <span class="city-name">Keaau</span>
+                <span class="city-count">1 provider</span>
+            </a>
+            <a href="/dumpster-rental/kahului-hi.html" class="city-card">
+                <span class="city-name">Kahului</span>
+                <span class="city-count">1 provider</span>
+            </a>
+            <a href="/dumpster-rental/puunene-hi.html" class="city-card">
+                <span class="city-name">Puunene</span>
+                <span class="city-count">1 provider</span>
+            </a>
+            <a href="/dumpster-rental/lihue-hi.html" class="city-card">
+                <span class="city-name">Lihue</span>
+                <span class="city-count">1 provider</span>
+            </a>
+            <a href="/dumpster-rental/hana-hi.html" class="city-card">
+                <span class="city-name">Hana</span>
+                <span class="city-count">1 provider</span>
+            </a>
+            <a href="/dumpster-rental/kalaheo-hi.html" class="city-card">
+                <span class="city-name">Kalaheo</span>
+                <span class="city-count">1 provider</span>
+            </a>
+            <a href="/dumpster-rental/kaneohe-hi.html" class="city-card">
+                <span class="city-name">Kaneohe</span>
+                <span class="city-count">1 provider</span>
+            </a>
         </div>
         
         <div class="cta-box">
-            <h2>Need a Dumpster in ${stateName}?</h2>
+            <h2>Need a Dumpster in Hawaii?</h2>
             <p>Enter your zip code to see all available providers in your area with real-time pricing.</p>
             <a href="/" class="btn btn-primary">Get Free Quotes →</a>
         </div>
@@ -431,72 +505,8 @@ function generateStatePage(stateAbbr, stateName, cities, stateStats) {
             </div>
         </div>
         <div class="footer-bottom">
-            © ${new Date().getFullYear()} DumpsterMap. All rights reserved.
+            © 2026 DumpsterMap. All rights reserved.
         </div>
     </footer>
 </body>
-</html>`;
-}
-
-// Main execution
-console.log('Generating state landing pages...\n');
-
-const data = JSON.parse(fs.readFileSync(dataPath, 'utf8'));
-
-// Group providers by state and city, track ratings
-const states = {};
-const stateRatings = {}; // Track rating data per state
-
-data.providers.forEach(p => {
-    if (!p.state || !p.city) return;
-    const stateAbbr = normalizeState(p.state);
-    if (!stateAbbr) return; // Skip invalid states
-    
-    // Initialize state data structures
-    if (!states[stateAbbr]) states[stateAbbr] = {};
-    if (!stateRatings[stateAbbr]) {
-        stateRatings[stateAbbr] = { ratingSum: 0, ratingCount: 0, totalReviews: 0 };
-    }
-    
-    // Track city provider count
-    if (!states[stateAbbr][p.city]) {
-        states[stateAbbr][p.city] = { providers: 0 };
-    }
-    states[stateAbbr][p.city].providers++;
-    
-    // Track ratings for state-level aggregate
-    if (p.rating && p.rating > 0) {
-        stateRatings[stateAbbr].ratingSum += p.rating;
-        stateRatings[stateAbbr].ratingCount++;
-    }
-    if (p.reviewCount && p.reviewCount > 0) {
-        stateRatings[stateAbbr].totalReviews += p.reviewCount;
-    }
-});
-
-// Calculate average ratings per state
-const stateStats = {};
-for (const [stateAbbr, ratings] of Object.entries(stateRatings)) {
-    stateStats[stateAbbr] = {
-        avgRating: ratings.ratingCount > 0 ? ratings.ratingSum / ratings.ratingCount : null,
-        totalReviews: ratings.totalReviews
-    };
-}
-
-// Generate pages
-let generated = 0;
-for (const [stateAbbr, cities] of Object.entries(states)) {
-    const stateName = stateNames[stateAbbr];
-    if (!stateName) continue;
-    
-    const html = generateStatePage(stateAbbr, stateName, cities, stateStats[stateAbbr] || {});
-    const filename = `${stateAbbr.toLowerCase()}.html`;
-    const filepath = path.join(outputDir, filename);
-    
-    fs.writeFileSync(filepath, html);
-    const rating = stateStats[stateAbbr]?.avgRating?.toFixed(1) || 'N/A';
-    console.log(`✓ ${filename} - ${stateName} (${Object.keys(cities).length} cities, ${rating}★)`);
-    generated++;
-}
-
-console.log(`\nGenerated ${generated} state pages.`);
+</html>
