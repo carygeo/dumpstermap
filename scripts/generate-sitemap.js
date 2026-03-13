@@ -21,6 +21,7 @@ const staticPages = [
     { path: 'map.html', changefreq: 'daily', priority: '0.8' },
     { path: 'how-to-rent-a-dumpster.html', changefreq: 'monthly', priority: '0.8' },
     { path: 'what-can-you-put-in-a-dumpster.html', changefreq: 'monthly', priority: '0.8' },
+    { path: 'dumpster-rental-cost.html', changefreq: 'monthly', priority: '0.8' },
     { path: 'for-providers.html', changefreq: 'weekly', priority: '0.8' },
     { path: 'contact.html', changefreq: 'monthly', priority: '0.5' },
     { path: 'privacy.html', changefreq: 'yearly', priority: '0.3' },

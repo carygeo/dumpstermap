@@ -49,6 +49,12 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://dumpstermap.io/dumpster-rental-cost.html</loc>
+    <lastmod>2026-03-13</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://dumpstermap.io/for-providers.html</loc>
     <lastmod>2026-03-13</lastmod>
     <changefreq>weekly</changefreq>
