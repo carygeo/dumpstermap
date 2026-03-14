@@ -309,7 +309,7 @@ function generateStatePage(stateAbbr, cities, providers, template, cityGroups) {
         totalReviews: stats.totalReviews
     };
     
-    // Pre-rendered Schema.org JSON-LD for state pages
+    // Pre-rendered Schema.org JSON-LD for state pages (with FAQ schema for SEO)
     const schemaJson = {
         "@context": "https://schema.org",
         "@graph": [
@@ -342,6 +342,35 @@ function generateStatePage(stateAbbr, cities, providers, template, cityGroups) {
                     "@type": "State",
                     "name": stateName
                 }
+            },
+            {
+                "@type": "FAQPage",
+                "mainEntity": [
+                    {
+                        "@type": "Question",
+                        "name": `How much does dumpster rental cost in ${stateName}?`,
+                        "acceptedAnswer": {
+                            "@type": "Answer",
+                            "text": `Dumpster rental prices in ${stateName} typically range from $250-$600 depending on size and location. 10-yard dumpsters start around $250-350, 20-yard at $300-450, and 30-40 yard at $400-600. Urban areas may have higher prices, while rural areas tend to be more affordable.`
+                        }
+                    },
+                    {
+                        "@type": "Question",
+                        "name": `How many dumpster rental companies are in ${stateName}?`,
+                        "acceptedAnswer": {
+                            "@type": "Answer",
+                            "text": `DumpsterMap lists ${stats.count} dumpster rental providers across ${stateName}. ${stats.avgRating ? `These providers have an average rating of ${stats.avgRating} stars from ${stats.totalReviews} reviews.` : ''} Use our comparison tool to find the best rates in your city.`
+                        }
+                    },
+                    {
+                        "@type": "Question",
+                        "name": `What size dumpster do I need for my project in ${stateName}?`,
+                        "acceptedAnswer": {
+                            "@type": "Answer",
+                            "text": "Dumpster size depends on your project: 10-yard for small cleanouts or single-room renovations, 20-yard for medium home projects or roofing, 30-yard for large renovations or construction, and 40-yard for major construction or commercial jobs. Most residential projects use 10-20 yard dumpsters."
+                        }
+                    }
+                ]
             }
         ]
     };
