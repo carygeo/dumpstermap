@@ -40,6 +40,14 @@ const stateNames = new Set([
     'virginia','washington','west-virginia','wisconsin','wyoming','district-of-columbia'
 ]);
 
+// State abbreviations to exclude (these canonicalize to full state name pages)
+const stateAbbreviations = new Set([
+    'ak','al','ar','az','ca','co','ct','dc','de','fl','ga','hi','ia','id','il',
+    'in','ks','ky','la','ma','md','me','mi','mn','mo','ms','mt','nc','nd','ne',
+    'nh','nj','nm','nv','ny','oh','ok','or','pa','ri','sc','sd','tn','tx','ut',
+    'va','vt','wa','wi','wv','wy'
+]);
+
 // Top metros get highest city priority (0.9) - based on provider counts
 const topMetros = new Set([
     // Tier 1: 30+ providers
@@ -104,8 +112,17 @@ function generateSitemap() {
     }
     
     // Add city pages (top metros get higher priority)
+    // Skip state abbreviation pages (they canonicalize to full name versions)
+    let skippedAbbrevs = 0;
     for (const file of cityPages) {
         const name = file.replace('.html', '');
+        
+        // Skip state abbreviation pages (e.g., al.html → alabama.html)
+        if (stateAbbreviations.has(name)) {
+            skippedAbbrevs++;
+            continue;
+        }
+        
         const priority = topMetros.has(name) ? '0.9' : '0.8';
         xml += `  <url>\n`;
         xml += `    <loc>${baseUrl}/dumpster-rental/${file}</loc>\n`;
@@ -118,11 +135,12 @@ function generateSitemap() {
     xml += '</urlset>';
     
     fs.writeFileSync(outputPath, xml);
+    const includedCities = cityPages.length - skippedAbbrevs;
     console.log(`Generated sitemap.xml with:`);
     console.log(`  - ${staticPages.length} static pages`);
     console.log(`  - ${statePages.length} state pages`);
-    console.log(`  - ${cityPages.length} city pages`);
-    console.log(`  - ${staticPages.length + statePages.length + cityPages.length} total URLs`);
+    console.log(`  - ${includedCities} city pages (skipped ${skippedAbbrevs} state abbreviation redirects)`);
+    console.log(`  - ${staticPages.length + statePages.length + includedCities} total URLs`);
 }
 
 generateSitemap();
